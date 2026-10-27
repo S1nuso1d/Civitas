@@ -140,3 +140,9 @@
 - Added a two-step building action: first click previews required resources, second click confirms the order.
 - Choosing another building replaces the pending selection; no resources are spent on the first click.
 - The server remains responsible for validating stock and charging materials.
+
+
+## Alpha 0.9.3 — отмена выбранного заказа
+- Added indexed cancellation: `/civitas construction cancel <number>`.
+- Added a queue index field to the dashboard, so players can target a specific not-yet-started order.
+- Full refunds are retained; partially constructed orders cannot be cancelled.

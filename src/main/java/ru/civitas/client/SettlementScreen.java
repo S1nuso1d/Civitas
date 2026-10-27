@@ -21,6 +21,7 @@ public final class SettlementScreen extends Screen {
     private EditBox settlementName;
     private EditBox itemId;
     private EditBox amount;
+    private EditBox orderIndex;
     private String pendingBuild = "";
 
     public SettlementScreen() {
@@ -76,7 +77,12 @@ public final class SettlementScreen extends Screen {
         addButton("   Ферма", right, top + 337, BUTTON_WIDTH, "civitas build farm", Items.WHEAT);
         addButton("   Мастерская", left, top + 363, INNER_WIDTH, "civitas build workshop", Items.CRAFTING_TABLE);
 
-        addButton("   Отменить следующий заказ", left, top + 389, INNER_WIDTH, "civitas construction cancel", Items.BARRIER);
+        orderIndex = new EditBox(font, left, top + 389, 55, 20, Component.literal("№"));
+        orderIndex.setMaxLength(3);
+        orderIndex.setValue("1");
+        orderIndex.setFilter(value -> value.isEmpty() || value.chars().allMatch(Character::isDigit));
+        addRenderableWidget(orderIndex);
+        addButton("   Отменить заказ №", left + 65, top + 389, INNER_WIDTH - 65, "civitas construction cancel selected", Items.BARRIER);
         addRenderableWidget(Button.builder(Component.literal("Закрыть  [Esc]"), button -> onClose())
                 .bounds(left, top + 412, INNER_WIDTH, 16).build());
     }
@@ -84,7 +90,7 @@ public final class SettlementScreen extends Screen {
     private void addButton(String label, int x, int y, int width, String command, net.minecraft.world.item.Item icon) {
         addRenderableWidget(Button.builder(Component.literal(label), button -> {
             String actual = command;
-            if (actual.startsWith("civitas build ")) {
+            if (actual.equals("civitas construction cancel selected")) {\n                actual = "civitas construction cancel " + safeOrderIndex();\n            }\n            if (actual.startsWith("civitas build ")) {
                 if (!actual.equals(pendingBuild)) {
                     pendingBuild = actual;
                     return;
@@ -117,7 +123,7 @@ public final class SettlementScreen extends Screen {
         return value.matches("[a-z0-9_.-]+:[a-z0-9_./-]+") ? value : "minecraft:oak_log";
     }
 
-    private String safeAmount() {
+    private String safeOrderIndex() {\n        try { return Integer.toString(Math.max(1, Math.min(999, Integer.parseInt(orderIndex.getValue())))); }\n        catch (NumberFormatException exception) { return "1"; }\n    }\n\n    private String safeAmount() {
         try {
             int value = Integer.parseInt(amount.getValue());
             return Integer.toString(Math.max(1, Math.min(2304, value)));

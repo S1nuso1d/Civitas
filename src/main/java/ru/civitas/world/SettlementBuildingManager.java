@@ -51,11 +51,17 @@ public final class SettlementBuildingManager {
     }
 
     public static BuildResult cancelFirstOrder(CivitasSavedData data, net.minecraft.server.level.ServerPlayer player) {
+        return cancelOrder(data, player, 1);
+    }
+
+    public static BuildResult cancelOrder(CivitasSavedData data, net.minecraft.server.level.ServerPlayer player, int orderNumber) {
         var orders = data.getConstructionOrders();
-        if (orders.isEmpty()) return new BuildResult(false, "Очередь строительства пуста.");
-        CivitasSavedData.ConstructionOrder order = orders.get(0);
+        if (orderNumber < 1 || orderNumber > orders.size()) {
+            return new BuildResult(false, "Заказ №" + orderNumber + " не найден. В очереди заказов: " + orders.size() + ".");
+        }
+        CivitasSavedData.ConstructionOrder order = orders.get(orderNumber - 1);
         if (order.progress() > 0) {
-            return new BuildResult(false, "Первый заказ уже начат. Его нельзя отменить, чтобы не оставить недостроенное здание и не потерять материалы.");
+            return new BuildResult(false, "Заказ №" + orderNumber + " уже начат. Его нельзя отменить, чтобы не оставить недостроенное здание и не потерять материалы.");
         }
         Map<String, Integer> refund = switch (order.type()) {
             case "cabin" -> cost(BuildingType.CABIN);
@@ -77,7 +83,7 @@ public final class SettlementBuildingManager {
                 remaining -= batch;
             }
         }
-        return new BuildResult(true, "Заказ отменён. Полный комплект материалов возвращён игроку; если инвентарь был заполнен, предметы выпали рядом.");
+        return new BuildResult(true, "Заказ №" + orderNumber + " отменён. Полный комплект материалов возвращён игроку; при заполненном инвентаре предметы выпали рядом.");
     }
 
     private static int layerCount(BuildingType type) { return switch (type) { case CABIN -> 5; case FARM -> 2; case WORKSHOP -> 4; }; }

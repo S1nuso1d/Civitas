@@ -109,3 +109,10 @@ Assign a resident as builder with `/civitas worker builder` or the in-game settl
 - Clicking the same building again confirms the order and sends the command that charges materials and adds the order to the queue.
 - Selecting a different building replaces the pending selection, reducing accidental resource spending.
 - Build costs are currently shown as a fixed UI preview; server-side warehouse validation remains authoritative.
+
+
+## Alpha 0.9.3 — выбор заказа для отмены
+
+- Added `/civitas construction cancel <номер>`; the number follows the current queue order shown by `/civitas construction`.
+- The dashboard now accepts an order number for cancellation rather than only targeting the first order.
+- Only orders with zero construction progress can be cancelled. The original material set is refunded; begun orders remain protected.
