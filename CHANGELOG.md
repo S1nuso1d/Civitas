@@ -8,7 +8,8 @@
 - Added a persistent lumberjack role on a vanilla villager.
 - Added a first worker loop: search nearby tree logs, navigate, chop with a short delay, carry up to eight logs and deposit them into the physical warehouse.
 - Added migration for villages created by earlier Civitas versions.
-- Latest CI and manual in-game verification are pending.
+- GitHub Actions Gradle build succeeded on commit `2b75e0a47592e016f4933d62ee160695895b467e`; artifact `civitas-0.4.0-forge-1.21.1` was uploaded: https://github.com/S1nuso1d/Civitas/actions/runs/40600446312
+- Manual in-game verification of pathfinding, chopping, delivery and respawn is still pending.
 
 ## Alpha 0.3.1 — starter village
 

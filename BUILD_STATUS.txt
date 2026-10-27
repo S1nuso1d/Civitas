@@ -14,7 +14,7 @@ Implemented in source:
 Validation:
 - Alpha 0.3.0 Gradle build succeeded on commit 9798485879cce462cab2d7d52beb72bede929411.
 - Alpha 0.3.1 starter-village code compiled successfully before the last refinements.
-- Alpha 0.4.0 worker AI and integration need the latest GitHub Actions build to finish.
+- Alpha 0.4.0 Gradle build succeeded on commit 2b75e0a47592e016f4933d62ee160695895b467e (GitHub Actions run 84); artifact civitas-0.4.0-forge-1.21.1 was uploaded.
 - No manual Minecraft launch, pathfinding, inventory-delivery, or persistence test is claimed.
 
 Required manual tests:
