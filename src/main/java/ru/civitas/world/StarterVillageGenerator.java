@@ -219,8 +219,10 @@ public final class StarterVillageGenerator {
     }
 
     private static void placeVillageDecor(ServerLevel level, BlockPos center) {
-        level.setBlock(center.offset(-3, 0, 0), Blocks.LANTERN.defaultBlockState(), Block.UPDATE_ALL);
-        level.setBlock(center.offset(3, 0, 0), Blocks.LANTERN.defaultBlockState(), Block.UPDATE_ALL);
+        level.setBlock(center.offset(-3, 0, 0), Blocks.OAK_FENCE.defaultBlockState(), Block.UPDATE_ALL);
+        level.setBlock(center.offset(-3, 1, 0), Blocks.LANTERN.defaultBlockState(), Block.UPDATE_ALL);
+        level.setBlock(center.offset(3, 0, 0), Blocks.OAK_FENCE.defaultBlockState(), Block.UPDATE_ALL);
+        level.setBlock(center.offset(3, 1, 0), Blocks.LANTERN.defaultBlockState(), Block.UPDATE_ALL);
         level.setBlock(center.offset(0, 0, 3), Blocks.CRAFTING_TABLE.defaultBlockState(), Block.UPDATE_ALL);
         level.setBlock(center.offset(0, 0, -3), Blocks.CAMPFIRE.defaultBlockState(), Block.UPDATE_ALL);
     }
