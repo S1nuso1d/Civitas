@@ -11,8 +11,8 @@ Current implementation:
 
 Validation:
 - Alpha 0.2.7 CI build succeeded on commit b593e4f8b79a59fd9fdce96160ead41bc69fe47.
-- Alpha 0.3.0 introduced new Forge/Minecraft menu and block-entity APIs. Its CI build is currently being checked; do not distribute a JAR until the latest Actions run succeeds.
-- No manual Minecraft launch or persistence test is claimed.
+- Alpha 0.3.0 Gradle build succeeded on commit 9798485879cce462cab2d7d52beb72bede929411 (GitHub Actions run 63); artifact civitas-0.3.0-forge-1.21.1 was uploaded.
+- The compile result does not confirm that the mod has been manually launched in Minecraft. Persistence, owner permissions, Shift-click, legacy migration and multiplayer still need in-game testing.
 
 Build locally:
 1. Use 64-bit Java 21.
