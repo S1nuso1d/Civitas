@@ -14,7 +14,7 @@ import net.minecraft.network.protocol.game.ServerboundChatCommandPacket;
  */
 public final class SettlementScreen extends Screen {
     private static final int PANEL_WIDTH = 340;
-    private static final int PANEL_HEIGHT = 322;
+    private static final int PANEL_HEIGHT = 370;
 
     private EditBox settlementName;
     private EditBox itemId;

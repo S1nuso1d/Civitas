@@ -24,6 +24,8 @@ import ru.civitas.block.SettlementWarehouseBlock;
 import ru.civitas.block.SettlementWarehouseBlockEntity;
 import ru.civitas.data.CivitasSavedData;
 import ru.civitas.worker.LumberjackWorkerAI;
+import ru.civitas.world.SettlementBuildingManager;
+import ru.civitas.world.SettlementBuildingManager.BuildingType;
 
 public final class CivitasCommands {
     private CivitasCommands() {
@@ -41,6 +43,9 @@ public final class CivitasCommands {
                                 .then(Commands.argument("name", StringArgumentType.greedyString())
                                         .executes(CivitasCommands::rename)))
                         .then(Commands.literal("workers").executes(CivitasCommands::workers))
+                        .then(Commands.literal("build").then(Commands.literal("cabin").executes(ctx -> build(ctx, BuildingType.CABIN)))
+                                .then(Commands.literal("farm").executes(ctx -> build(ctx, BuildingType.FARM)))
+                                .then(Commands.literal("workshop").executes(ctx -> build(ctx, BuildingType.WORKSHOP))))
                         .then(Commands.literal("worker")
                                 .then(Commands.literal("lumberjack").executes(CivitasCommands::assignLumberjack))
                                 .then(Commands.literal("pause").executes(context -> setLumberjackPaused(context, true)))
@@ -62,7 +67,7 @@ public final class CivitasCommands {
         source.sendSuccess(() -> Component.literal("§e/civitas found <название> §7— основать поселение в текущей точке"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas status §7— состояние поселения"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas rename <название> §7— переименовать поселение"), false);
-        source.sendSuccess(() -> Component.literal("§e/civitas workers §7— список жителей и их роли"), false);
+        source.sendSuccess(() -> Component.literal("§e/civitas workers §7— список жителей и их роли"), false);\n        source.sendSuccess(() -> Component.literal("§e/civitas build cabin|farm|workshop §7— построить здание за ресурсы склада"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas worker lumberjack §7— назначить лесоруба"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas worker pause|resume §7— приостановить/продолжить"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas worker clear §7— снять профессию после доставки груза"), false);
@@ -195,6 +200,29 @@ public final class CivitasCommands {
             return Command.SINGLE_SUCCESS;
         }
         context.getSource().sendFailure(Component.literal("Лесоруб не найден или ещё несёт брёвна. Дождись доставки груза."));
+        return 0;
+    }
+
+    private static int build(CommandContext<CommandSourceStack> context, BuildingType type) throws CommandSyntaxException {
+        ServerPlayer player = context.getSource().getPlayerOrException();
+        CivitasSavedData data = CivitasSavedData.get(context.getSource().getServer());
+        if (!ensureOwner(context.getSource(), player, data)) return 0;
+        SettlementWarehouseBlockEntity warehouse = findWarehouse(context.getSource(), data);
+        if (warehouse == null) {
+            context.getSource().sendFailure(Component.literal("Центральный физический склад не найден."));
+            return 0;
+        }
+        SettlementBuildingManager.BuildResult result = SettlementBuildingManager.build(
+                context.getSource().getServer().overworld(),
+                data.getStarterVillageCenter(),
+                warehouse,
+                type
+        );
+        if (result.success()) {
+            context.getSource().sendSuccess(() -> Component.literal("§a" + result.message()), false);
+            return Command.SINGLE_SUCCESS;
+        }
+        context.getSource().sendFailure(Component.literal(result.message()));
         return 0;
     }
 

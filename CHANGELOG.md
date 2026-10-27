@@ -1,4 +1,4 @@
-# Changelog
+## Alpha 0.6.0 — строительная система\n\n- Added three placeable settlement structures: cabin, farm and workshop.\n- Building costs are charged from the same physical warehouse used by the inventory UI and storage commands.\n- Build sites are checked before resources are removed; occupied terrain and insufficient materials abort the build.\n- Added building buttons to the settlement management screen.\n- GitHub Actions compilation and manual in-game checks are pending.\n\n# Changelog
 
 ## Alpha 0.5.0 — управление задачами работников
 
