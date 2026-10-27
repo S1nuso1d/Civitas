@@ -31,6 +31,10 @@ public final class CivitasSavedData extends SavedData {
     private int centerZ;
     private int population = 5;
     private int level = 1;
+    private boolean starterVillageGenerated;
+    private int villageX;
+    private int villageY;
+    private int villageZ;
     private final Map<String, Integer> resources = new TreeMap<>();
 
     public CivitasSavedData() {
@@ -51,6 +55,10 @@ public final class CivitasSavedData extends SavedData {
         data.centerZ = tag.getInt("center_z");
         data.population = Math.max(0, tag.getInt("population"));
         data.level = Math.max(1, tag.getInt("level"));
+        data.starterVillageGenerated = tag.getBoolean("starter_village_generated");
+        data.villageX = tag.getInt("village_x");
+        data.villageY = tag.getInt("village_y");
+        data.villageZ = tag.getInt("village_z");
 
         CompoundTag storedResources = tag.getCompound("resources");
         for (String itemId : storedResources.getAllKeys()) {
@@ -73,6 +81,10 @@ public final class CivitasSavedData extends SavedData {
         tag.putInt("center_z", centerZ);
         tag.putInt("population", population);
         tag.putInt("level", level);
+        tag.putBoolean("starter_village_generated", starterVillageGenerated);
+        tag.putInt("village_x", villageX);
+        tag.putInt("village_y", villageY);
+        tag.putInt("village_z", villageZ);
 
         CompoundTag storedResources = new CompoundTag();
         resources.forEach(storedResources::putInt);
@@ -178,5 +190,21 @@ public final class CivitasSavedData extends SavedData {
 
     public int getLevel() {
         return level;
+    }
+
+    public boolean hasStarterVillage() {
+        return starterVillageGenerated;
+    }
+
+    public BlockPos getStarterVillageCenter() {
+        return new BlockPos(villageX, villageY, villageZ);
+    }
+
+    public void setStarterVillageCenter(BlockPos center) {
+        villageX = center.getX();
+        villageY = center.getY();
+        villageZ = center.getZ();
+        starterVillageGenerated = true;
+        setDirty();
     }
 }
