@@ -1,5 +1,15 @@
 # Changelog
 
+## Alpha 0.4.1 — unified warehouse and worker recovery
+
+- Unified `/civitas storage`, `/civitas deposit`, and `/civitas withdraw` with the 27-slot physical warehouse used by the GUI.
+- Added capacity checks before depositing and availability checks before withdrawing to prevent partial or lost transfers.
+- Legacy virtual resources are migrated into the physical inventory when warehouse commands are used.
+- Improved lumberjack recovery: if no safe work position is available, a worker carrying logs attempts to return to the warehouse.
+- GitHub Actions build and manual gameplay tests for this revision are pending.
+
+# Changelog
+
 ## Alpha 0.4.0 — starter village and first worker
 
 - Added a persistent starter village and set the world's spawn point to its square.

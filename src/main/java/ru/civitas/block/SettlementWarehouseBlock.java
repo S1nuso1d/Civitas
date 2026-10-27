@@ -74,7 +74,7 @@ public final class SettlementWarehouseBlock extends Block implements EntityBlock
      * exact number inserted is removed from SavedData, so full warehouses keep
      * any remainder in the legacy store instead of losing it.
      */
-    private static void migrateLegacyResources(CivitasSavedData settlement,
+    public static void migrateLegacyResources(CivitasSavedData settlement,
                                                SettlementWarehouseBlockEntity warehouse) {
         for (Map.Entry<String, Integer> entry : settlement.getResources().entrySet()) {
             ResourceLocation id = ResourceLocation.tryParse(entry.getKey());

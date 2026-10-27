@@ -122,13 +122,26 @@ public final class LumberjackWorkerAI {
         }
 
         if (treeLog == null) {
-            villager.getNavigation().stop();
+            if (carriedCount > 0) {
+                if (villager.distanceToSqr(deliveryStand.getX() + 0.5D, deliveryStand.getY(), deliveryStand.getZ() + 0.5D) > 5.0D) {
+                    villager.getNavigation().moveTo(deliveryStand.getX() + 0.5D, deliveryStand.getY(), deliveryStand.getZ() + 0.5D, 0.9D);
+                } else {
+                    depositCarriedLogs(warehouse, persistent, carriedItemId, carriedCount);
+                }
+            } else {
+                villager.getNavigation().stop();
+            }
             return;
         }
 
         BlockPos workPos = findWorkPosition(level, treeLog);
         if (workPos == null) {
-            villager.getNavigation().stop();
+            persistent.putInt(CHOP_PROGRESS_KEY, 0);
+            if (carriedCount > 0) {
+                villager.getNavigation().moveTo(deliveryStand.getX() + 0.5D, deliveryStand.getY(), deliveryStand.getZ() + 0.5D, 0.9D);
+            } else {
+                villager.getNavigation().stop();
+            }
             return;
         }
 

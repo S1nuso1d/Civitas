@@ -1,4 +1,4 @@
-Civitas Alpha 0.4.0 — build status
+Civitas Alpha 0.4.1 — build status
 Target: Minecraft Java Edition 1.21.1 + Forge 52.1.20 + Java 21
 
 Implemented in source:
@@ -9,9 +9,11 @@ Implemented in source:
 - A villager is assigned a persistent lumberjack role, including migration for older worlds.
 - Lumberjack searches nearby tree logs with leaves, navigates to the tree, chops with a short delay, carries up to eight logs, returns to the warehouse and deposits into physical slots.
 - If the warehouse is missing/full, carried logs remain with the worker until delivery can resume.
-- Legacy virtual warehouse commands remain separate from the physical inventory.
+- Alpha 0.4.1 routes storage/deposit/withdraw commands to the physical warehouse inventory and migrates legacy resources on demand.
+- Lumberjack recovery now attempts delivery when a safe tree work position cannot be found.
 
 Validation:
+- Alpha 0.4.1 changes have not yet been built by CI; gameplay testing is pending.
 - Alpha 0.3.0 Gradle build succeeded on commit 9798485879cce462cab2d7d52beb72bede929411.
 - Alpha 0.3.1 starter-village code compiled successfully before the last refinements.
 - Alpha 0.4.0 Gradle build succeeded on commit 2b75e0a47592e016f4933d62ee160695895b467e (GitHub Actions run 84); artifact civitas-0.4.0-forge-1.21.1 was uploaded.
