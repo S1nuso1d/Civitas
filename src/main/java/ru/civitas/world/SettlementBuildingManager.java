@@ -34,7 +34,7 @@ public final class SettlementBuildingManager {
 
     public static BuildResult build(ServerLevel level, BlockPos warehousePos,
                                     SettlementWarehouseBlockEntity warehouse, BuildingType type, CivitasSavedData data) {
-        BlockPos site = findSite(level, warehousePos, type);
+        BlockPos site = findSite(level, warehousePos, type, data);
         if (site == null) return new BuildResult(false,
                 "Нет свободной площадки рядом с деревней. Освободи участок примерно 7×7 блоков.");
 
@@ -45,9 +45,6 @@ public final class SettlementBuildingManager {
                 return new BuildResult(false, "Не хватает ресурсов на складе: нужно " + describeCosts(type) + ".");
             }
         }
-        boolean occupiedByOrder = data.getConstructionOrders().stream().anyMatch(order ->
-                Math.abs(order.x() - site.getX()) <= 5 && Math.abs(order.z() - site.getZ()) <= 5);
-        if (occupiedByOrder) return new BuildResult(false, "На этом участке уже запланировано строительство.");
         cost.forEach((id, amount) -> remove(warehouse, id, amount));
         data.addConstructionOrder(type.name().toLowerCase(java.util.Locale.ROOT), site, layerCount(type));
         return new BuildResult(true, "Заказ принят: " + label(type) + ". Материалы списаны со склада; строительство будет идти послойно. Статус: /civitas construction.");
@@ -89,13 +86,16 @@ public final class SettlementBuildingManager {
         return switch (type) { case CABIN -> "жилой дом"; case FARM -> "ферма"; case WORKSHOP -> "мастерская"; };
     }
 
-    private static BlockPos findSite(ServerLevel level, BlockPos center, BuildingType type) {
+    private static BlockPos findSite(ServerLevel level, BlockPos center, BuildingType type, CivitasSavedData data) {
         BlockPos[] candidates = switch (type) {
             case CABIN -> new BlockPos[]{center.offset(9, 0, 0), center.offset(-9, 0, 0), center.offset(0, 0, 9), center.offset(0, 0, -9)};
             case FARM -> new BlockPos[]{center.offset(0, 0, 11), center.offset(11, 0, 0), center.offset(-11, 0, 0), center.offset(0, 0, -11)};
             case WORKSHOP -> new BlockPos[]{center.offset(-9, 0, 0), center.offset(0, 0, -9), center.offset(9, 0, 0), center.offset(0, 0, 9)};
         };
         for (BlockPos candidate : candidates) {
+            boolean reserved = data.getConstructionOrders().stream().anyMatch(order ->
+                    Math.abs(order.x() - candidate.getX()) <= 5 && Math.abs(order.z() - candidate.getZ()) <= 5);
+            if (reserved || data.hasBuildingNear(candidate, 5)) continue;
             int x = candidate.getX(), z = candidate.getZ();
             if (!level.hasChunkAt(candidate)) continue;
             int groundY = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z) - 1;

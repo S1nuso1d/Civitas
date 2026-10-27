@@ -14,7 +14,7 @@ import net.minecraft.network.protocol.game.ServerboundChatCommandPacket;
  */
 public final class SettlementScreen extends Screen {
     private static final int PANEL_WIDTH = 340;
-    private static final int PANEL_HEIGHT = 370;
+    private static final int PANEL_HEIGHT = 398;
 
     private EditBox settlementName;
     private EditBox itemId;
@@ -69,6 +69,8 @@ public final class SettlementScreen extends Screen {
                 sendCommand("civitas workers")).bounds(left, top + 205, buttonWidth, 20).build());
         addRenderableWidget(Button.builder(Component.literal("Назначить лесоруба"), button ->
                 sendCommand("civitas worker lumberjack")).bounds(left + buttonWidth + gap, top + 205, buttonWidth, 20).build());
+        addRenderableWidget(Button.builder(Component.literal("Назначить строителя"), button ->
+                sendCommand("civitas worker builder")).bounds(left, top + 286, buttonWidth, 20).build());
         addRenderableWidget(Button.builder(Component.literal("Приостановить"), button ->
                 sendCommand("civitas worker pause")).bounds(left, top + 232, buttonWidth, 20).build());
         addRenderableWidget(Button.builder(Component.literal("Продолжить"), button ->
@@ -84,11 +86,11 @@ public final class SettlementScreen extends Screen {
                 onClose()).bounds(left + buttonWidth + gap, top + 178, buttonWidth, 20).build());
 
         addRenderableWidget(Button.builder(Component.literal("Построить дом"), button ->
-                sendCommand("civitas build cabin")).bounds(left, top + 300, buttonWidth, 20).build());
+                sendCommand("civitas build cabin")).bounds(left, top + 326, buttonWidth, 20).build());
         addRenderableWidget(Button.builder(Component.literal("Построить ферму"), button ->
-                sendCommand("civitas build farm")).bounds(left + buttonWidth + gap, top + 300, buttonWidth, 20).build());
+                sendCommand("civitas build farm")).bounds(left + buttonWidth + gap, top + 326, buttonWidth, 20).build());
         addRenderableWidget(Button.builder(Component.literal("Построить мастерскую"), button ->
-                sendCommand("civitas build workshop")).bounds(left, top + 327, 310, 20).build());
+                sendCommand("civitas build workshop")).bounds(left, top + 353, 310, 20).build());
     }
 
     private String safeName() {
@@ -128,8 +130,8 @@ public final class SettlementScreen extends Screen {
         graphics.drawCenteredString(this.font, Component.literal("Управление поселением"), this.width / 2, top + 23, 0xFFFFFFFF);
         graphics.drawString(this.font, Component.literal("Название поселения"), left + 15, top + 36, 0xFFD7DCE4, false);
         graphics.drawString(this.font, Component.literal("Предмет и количество для склада"), left + 15, top + 110, 0xFFD7DCE4, false);
-        graphics.drawCenteredString(this.font, Component.literal("Строительство за ресурсы склада"), this.width / 2, top + 286, 0xFFE7C982);
-        graphics.drawCenteredString(this.font, Component.literal("Ответы сервера появятся в чате"), this.width / 2, top + 354, 0xFFB8C0CC);
+        graphics.drawCenteredString(this.font, Component.literal("Строительство за ресурсы склада"), this.width / 2, top + 312, 0xFFE7C982);
+        graphics.drawCenteredString(this.font, Component.literal("Ответы сервера появятся в чате"), this.width / 2, top + 382, 0xFFB8C0CC);
         super.render(graphics, mouseX, mouseY, partialTick);
     }
 

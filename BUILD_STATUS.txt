@@ -1,6 +1,6 @@
-Civitas Alpha 0.7.0 — build status
+Civitas Alpha 0.8.0 — build status
 Target: Minecraft Java Edition 1.21.1 + Forge 52.1.20 + Java 21
 
-New: persisted construction queue, one-layer-per-second progression, saved progress, /civitas construction.
+New: physical villager builder role; builders travel to queued construction sites and advance layers only when nearby. Construction pauses until a builder is assigned. Site selection skips registered buildings and reserved queued sites.
 
 GitHub Actions compilation and manual in-game verification are pending for this revision.

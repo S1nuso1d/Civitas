@@ -114,3 +114,10 @@
 
 - Moved the project to Forge 1.21.1.
 - Added persistent settlement metadata, settlement founding, and virtual storage.
+
+
+## Alpha 0.8.0
+- Added builder profession via `/civitas worker builder` and the settlement GUI.
+- A real villager walks to the next queued site and advances one layer every three seconds while nearby.
+- Construction pauses if no builder is assigned instead of placing blocks automatically.
+- Site selection skips registered buildings and reserved queued sites.

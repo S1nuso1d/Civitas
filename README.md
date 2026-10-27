@@ -85,3 +85,7 @@ Civitas — модификация Minecraft Java Edition о развитии п
 GitHub Actions: https://github.com/S1nuso1d/Civitas/actions
 
 Успешная компиляция не заменяет ручной тест запуска Minecraft. Для стартовой деревни отдельно проверь новый мир, повторный вход, смерть/возрождение, склад и существующий мир с уже основанным поселением.
+
+
+### Alpha 0.8.0 — builders
+Assign a resident as builder with `/civitas worker builder` or the in-game settlement panel. The builder walks to the next queued construction site and advances it only when nearby. Without a builder, queued construction waits. Check progress with `/civitas construction`.

@@ -50,6 +50,7 @@ public final class CivitasCommands {
                                 .then(Commands.literal("workshop").executes(ctx -> build(ctx, BuildingType.WORKSHOP))))
                         .then(Commands.literal("worker")
                                 .then(Commands.literal("lumberjack").executes(CivitasCommands::assignLumberjack))
+                                .then(Commands.literal("builder").executes(CivitasCommands::assignBuilder))
                                 .then(Commands.literal("pause").executes(context -> setLumberjackPaused(context, true)))
                                 .then(Commands.literal("resume").executes(context -> setLumberjackPaused(context, false)))
                                 .then(Commands.literal("clear").executes(CivitasCommands::clearLumberjack)))
@@ -74,6 +75,7 @@ public final class CivitasCommands {
         source.sendSuccess(() -> Component.literal("§e/civitas construction §7— очередь и прогресс строительства"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas build cabin|farm|workshop §7— построить здание за ресурсы склада"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas worker lumberjack §7— назначить лесоруба"), false);
+        source.sendSuccess(() -> Component.literal("§e/civitas worker builder §7— назначить строителя"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas worker pause|resume §7— приостановить/продолжить"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas worker clear §7— снять профессию после доставки груза"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas storage §7— содержимое физического склада"), false);
@@ -155,7 +157,7 @@ public final class CivitasCommands {
         for (Villager villager : villagers) {
             final int number = index++;
             String role = LumberjackWorkerAI.getWorkerRole(villager);
-            String displayRole = "lumberjack".equals(role) ? "Лесоруб" : "Без назначения";
+            String displayRole = "lumberjack".equals(role) ? "Лесоруб" : "builder".equals(role) ? "Строитель" : "Без назначения";
             String name = villager.getCustomName() == null
                     ? villager.getName().getString()
                     : villager.getCustomName().getString();
@@ -163,7 +165,7 @@ public final class CivitasCommands {
             String line = number + ". " + name + " — " + displayRole + " | " + activity;
             context.getSource().sendSuccess(() -> Component.literal(line), false);
         }
-        context.getSource().sendSuccess(() -> Component.literal("Назначить ближайшего жителя: /civitas worker lumberjack"), false);
+        context.getSource().sendSuccess(() -> Component.literal("Назначить жителя: /civitas worker lumberjack или /civitas worker builder"), false);
         return Command.SINGLE_SUCCESS;
     }
 
@@ -180,6 +182,40 @@ public final class CivitasCommands {
         }
         context.getSource().sendFailure(Component.literal("Не удалось найти жителя для назначения. Проверь, что жители есть рядом с деревней."));
         return 0;
+    }
+
+    private static int assignBuilder(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        ServerPlayer player = context.getSource().getPlayerOrException();
+        CivitasSavedData data = CivitasSavedData.get(context.getSource().getServer());
+        if (!ensureOwner(context.getSource(), player, data)) return 0;
+        ServerLevel level = context.getSource().getServer().overworld();
+        BlockPos center = data.hasStarterVillage() ? data.getStarterVillageCenter() : data.getCenter();
+        AABB area = new AABB(center).inflate(24, 12, 24);
+        java.util.List<Villager> villagers = level.getEntitiesOfClass(Villager.class, area);
+        Villager chosen = null;
+        double nearest = Double.MAX_VALUE;
+        for (Villager villager : villagers) {
+            String role = villager.getPersistentData().getString("civitas.worker_role");
+            if ("lumberjack".equals(role) || "builder".equals(role)) continue;
+            double distance = villager.distanceToSqr(center.getX() + 0.5D, center.getY() + 1.0D, center.getZ() + 0.5D);
+            if (distance < nearest) { nearest = distance; chosen = villager; }
+        }
+        if (chosen == null) {
+            context.getSource().sendFailure(Component.literal("Нет свободного жителя. Сними с одного жителя другую профессию или приведи нового."));
+            return 0;
+        }
+        for (Villager villager : villagers) {
+            if ("builder".equals(villager.getPersistentData().getString("civitas.worker_role"))) {
+                villager.getPersistentData().putString("civitas.worker_role", "");
+                villager.getNavigation().stop();
+            }
+        }
+        chosen.getPersistentData().putString("civitas.worker_role", "builder");
+        chosen.setCustomName(Component.literal("Строитель Civitas"));
+        chosen.setCustomNameVisible(true);
+        chosen.setPersistenceRequired();
+        context.getSource().sendSuccess(() -> Component.literal("§aНазначен строитель. Он отправится к ближайшему заказу в очереди."), false);
+        return Command.SINGLE_SUCCESS;
     }
 
     private static int setLumberjackPaused(CommandContext<CommandSourceStack> context, boolean paused) throws CommandSyntaxException {
