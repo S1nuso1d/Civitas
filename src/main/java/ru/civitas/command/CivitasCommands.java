@@ -274,12 +274,57 @@ public final class CivitasCommands {
     }
 
     private static int construction(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
-        ServerPlayer player=context.getSource().getPlayerOrException(); CivitasSavedData data=CivitasSavedData.get(context.getSource().getServer());
-        if(!ensureOwner(context.getSource(),player,data))return 0;
-        var orders=data.getConstructionOrders();
-        context.getSource().sendSuccess(()->Component.literal("§6§lОчередь строительства: "+orders.size()),false);
-        if(orders.isEmpty()){context.getSource().sendSuccess(()->Component.literal("Активных строительных заказов нет."),false);return Command.SINGLE_SUCCESS;}
-        for(int i=0;i<orders.size();i++){var o=orders.get(i);String label=switch(o.type()){case "cabin"->"Жилой дом";case "farm"->"Ферма";case "workshop"->"Мастерская";default->o.type();};String line=(i+1)+". "+label+" — слой "+(o.progress()+1)+"/"+o.totalLayers()+" ("+o.x()+", "+o.y()+", "+o.z()+")";context.getSource().sendSuccess(()->Component.literal(line),false);}
+        ServerPlayer player = context.getSource().getPlayerOrException();
+        CivitasSavedData data = CivitasSavedData.get(context.getSource().getServer());
+        if (!ensureOwner(context.getSource(), player, data)) return 0;
+
+        var orders = data.getConstructionOrders();
+        context.getSource().sendSuccess(() -> Component.literal("§6§lОчередь строительства: " + orders.size()), false);
+        if (orders.isEmpty()) {
+            context.getSource().sendSuccess(() -> Component.literal("Активных строительных заказов нет."), false);
+            return Command.SINGLE_SUCCESS;
+        }
+
+        ServerLevel level = context.getSource().getServer().overworld();
+        for (int i = 0; i < orders.size(); i++) {
+            var order = orders.get(i);
+            String label = switch (order.type()) {
+                case "cabin" -> "Жилой дом";
+                case "farm" -> "Ферма";
+                case "workshop" -> "Мастерская";
+                default -> order.type();
+            };
+            int percent = Math.min(100, order.progress() * 100 / order.totalLayers());
+            String progressLine = (i + 1) + ". " + label + " — " + percent + "% (слой "
+                    + Math.min(order.progress() + 1, order.totalLayers()) + "/" + order.totalLayers() + ")";
+            context.getSource().sendSuccess(() -> Component.literal(progressLine), false);
+
+            BlockPos site = new BlockPos(order.x(), order.y(), order.z());
+            String workerState = "строитель не назначен";
+            if (level.hasChunkAt(site)) {
+                AABB area = new AABB(site).inflate(64, 24, 64);
+                Villager builder = null;
+                double nearest = Double.MAX_VALUE;
+                for (Villager villager : level.getEntitiesOfClass(Villager.class, area)) {
+                    if (!"builder".equals(villager.getPersistentData().getString("civitas.worker_role"))) continue;
+                    double distance = villager.distanceToSqr(site.getX() + 0.5D, site.getY() + 1.0D, site.getZ() + 0.5D);
+                    if (distance < nearest) {
+                        nearest = distance;
+                        builder = villager;
+                    }
+                }
+                if (builder != null) {
+                    workerState = nearest <= 25.0D ? "строитель на площадке" : "строитель направляется к площадке";
+                } else {
+                    workerState = "в радиусе стройки нет строителя";
+                }
+            } else {
+                workerState = "площадка в незагруженном чанке";
+            }
+            String stateLine = "   Состояние: " + workerState + " | координаты: "
+                    + order.x() + ", " + order.y() + ", " + order.z();
+            context.getSource().sendSuccess(() -> Component.literal(stateLine), false);
+        }
         return Command.SINGLE_SUCCESS;
     }
 
