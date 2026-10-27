@@ -54,7 +54,7 @@ public final class CivitasMod {
 
         BlockPos village = data.getStarterVillageCenter();
         if (!player.getPersistentData().getBoolean(VILLAGE_SPAWN_DONE_KEY)) {
-            player.teleportTo(overworld, village.getX() + 0.5D, village.getY() + 1.0D, village.getZ() + 0.5D, 0.0F, 0.0F);
+            player.teleportTo(overworld, village.getX() + 0.5D, village.getY() + 1.0D, village.getZ() + 2.5D, 0.0F, 0.0F);
             player.getPersistentData().putBoolean(VILLAGE_SPAWN_DONE_KEY, true);
             player.sendSystemMessage(Component.literal("Ты прибыл в деревню Civitas. Здесь начинается развитие твоей цивилизации."));
         }
@@ -81,7 +81,7 @@ public final class CivitasMod {
         }
 
         BlockPos village = data.getStarterVillageCenter();
-        player.teleportTo(overworld, village.getX() + 0.5D, village.getY() + 1.0D, village.getZ() + 0.5D, 0.0F, 0.0F);
+        player.teleportTo(overworld, village.getX() + 0.5D, village.getY() + 1.0D, village.getZ() + 2.5D, 0.0F, 0.0F);
         player.sendSystemMessage(Component.literal("Ты возвращаешься в деревню Civitas."));
     }
 
