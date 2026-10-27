@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.5 — Expanded settlement management UI
+- Added rename, deposit, and withdraw actions to the in-game management panel.
+- Added input fields for a settlement name, resource item ID, and amount.
+- Added client-side validation for item IDs and quantity bounds; server-side command checks remain authoritative.
+- Added a GitHub Actions workflow to compile the Forge mod on pushes and pull requests.
+- Updated README and installation instructions to identify the 0.2.5 artifact.
+
 ## 0.2.4 — In-game management panel
 - Added the first Civitas settlement management screen, opened by using the Civilization Codex.
 - Added UI actions to found a settlement, view settlement status, open storage information, and view help without manually typing commands.
@@ -14,16 +21,13 @@
 - Сообщения Windows-скриптов заменены на ASCII, чтобы избежать испорченной кодировки в `cmd.exe`.
 - Обновлены версия проекта, имя JAR и инструкция сборки.
 
-
 ## Alpha 0.2.2
-- Добавлен корневой `src/main/resources/pack.mcmeta` с `pack_format: 34` для Minecraft 1.21–1.21.1. Это устраняет отсутствие метаданных, из-за которого Forge показывал предупреждение о наборе ресурсов.
+- Добавлен корневой `src/main/resources/pack.mcmeta` с `pack_format: 34` для Minecraft 1.21–1.21.1.
 - Повышена версия проекта до 0.2.2; обновлены пути JAR и инструкции.
 
-
 ## Alpha 0.2.1
-- Исправлена ошибка компиляции `Item#getMaxStackSize()` для Minecraft/Forge 1.21.1: используется `Item#getDefaultMaxStackSize()`.
+- Исправлена ошибка компиляции `Item#getMaxStackSize()` для Minecraft/Forge 1.21.1.
 - Версия проекта и инструкции обновлены до 0.2.1.
-- Исправлена кодировка скриптов запуска Windows для более читаемого вывода русских сообщений.
 
 ## Alpha 0.2.0
 - Перенос с NeoForge на Forge 1.21.1.
