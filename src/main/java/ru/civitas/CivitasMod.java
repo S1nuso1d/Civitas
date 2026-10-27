@@ -1,6 +1,8 @@
 package ru.civitas;
 
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.CreativeModeTabs;
+import net.minecraftforge.event.BuildCreativeModeTabContentsEvent;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.common.MinecraftForge;
@@ -21,6 +23,7 @@ public final class CivitasMod {
         ModBlocks.BLOCKS.register(context.getModEventBus());
         ModItems.ITEMS.register(context.getModEventBus());
         MinecraftForge.EVENT_BUS.addListener(this::onPlayerLoggedIn);
+        MinecraftForge.EVENT_BUS.addListener(this::onBuildCreativeTab);
         MinecraftForge.EVENT_BUS.addListener(this::onRegisterCommands);
     }
 
@@ -39,6 +42,12 @@ public final class CivitasMod {
         player.getPersistentData().putBoolean(CODEX_RECEIVED_KEY, true);
         player.sendSystemMessage(Component.translatable("message.civitas.welcome"));
         player.sendSystemMessage(Component.literal("Подсказка: используй Кодекс цивилизации в инвентаре, чтобы открыть панель управления."));
+    }
+
+    private void onBuildCreativeTab(BuildCreativeModeTabContentsEvent event) {
+        if (event.getTabKey() == CreativeModeTabs.FUNCTIONAL_BLOCKS) {
+            event.accept(ModItems.WAREHOUSE_ITEM.get());
+        }
     }
 
     private void onRegisterCommands(RegisterCommandsEvent event) {
