@@ -11,6 +11,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.Heightmap;
 import ru.civitas.block.SettlementWarehouseBlockEntity;
+import ru.civitas.data.CivitasSavedData;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -32,11 +33,12 @@ public final class SettlementBuildingManager {
     }
 
     public static BuildResult build(ServerLevel level, BlockPos warehousePos,
-                                    SettlementWarehouseBlockEntity warehouse, BuildingType type) {
+                                    SettlementWarehouseBlockEntity warehouse, BuildingType type, CivitasSavedData data) {
         BlockPos site = findSite(level, warehousePos, type);
         if (site == null) return new BuildResult(false,
                 "Нет свободной площадки рядом с деревней. Освободи участок примерно 7×7 блоков.");
 
+        if (data.hasBuildingNear(site, 5)) return new BuildResult(false, "Рядом уже зарегистрировано здание. Выбери другой участок.");
         Map<String, Integer> cost = cost(type);
         for (Map.Entry<String, Integer> entry : cost.entrySet()) {
             if (count(warehouse, entry.getKey()) < entry.getValue()) {
@@ -50,7 +52,8 @@ public final class SettlementBuildingManager {
             case FARM -> buildFarm(level, site);
             case WORKSHOP -> buildWorkshop(level, site);
         }
-        return new BuildResult(true, "Построено: " + label(type) + ". Материалы списаны с физического склада.");
+        data.registerBuilding(type.name().toLowerCase(java.util.Locale.ROOT), site);
+        return new BuildResult(true, "Построено: " + label(type) + ". Здание записано в реестр поселения. Материалы списаны с физического склада.");
     }
 
     private static Map<String, Integer> cost(BuildingType type) {

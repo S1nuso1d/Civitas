@@ -76,8 +76,8 @@ public final class SettlementScreen extends Screen {
         addRenderableWidget(Button.builder(Component.literal("Снять профессию"), button ->
                 sendCommand("civitas worker clear")).bounds(left, top + 259, buttonWidth, 20).build());
 
-        addRenderableWidget(Button.builder(Component.literal("Помощь"), button ->
-                sendCommand("civitas help")).bounds(left, top + 178, buttonWidth, 20).build());
+        addRenderableWidget(Button.builder(Component.literal("Список зданий"), button ->
+                sendCommand("civitas buildings")).bounds(left, top + 178, buttonWidth, 20).build());
         addRenderableWidget(Button.builder(Component.literal("Закрыть"), button ->
                 onClose()).bounds(left + buttonWidth + gap, top + 178, buttonWidth, 20).build());
 

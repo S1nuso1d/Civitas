@@ -1,1 +1,6 @@
-Civitas Alpha 0.6.0 — build status\nTarget: Minecraft Java Edition 1.21.1 + Forge 52.1.20 + Java 21\n\nNew in this revision: physical construction for a cabin, farm and workshop, paid from the warehouse; build-site validation; settlement UI buttons.\n\nCI compilation and manual in-game verification are pending. Do not treat the artifact from an earlier commit as the build for this revision.\n
+Civitas Alpha 0.6.1 — build status
+Target: Minecraft Java Edition 1.21.1 + Forge 52.1.20 + Java 21
+
+New in this revision: persistent building registry, building coordinates saved in world data, /civitas buildings and a management-screen shortcut, basic spacing protection for registered structures.
+
+GitHub Actions compilation and manual in-game verification are pending. Do not treat an artifact from an earlier commit as the build for this revision.

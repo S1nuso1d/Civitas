@@ -1,5 +1,13 @@
 ## Alpha 0.6.0 — строительная система\n\n- Added three placeable settlement structures: cabin, farm and workshop.\n- Building costs are charged from the same physical warehouse used by the inventory UI and storage commands.\n- Build sites are checked before resources are removed; occupied terrain and insufficient materials abort the build.\n- Added building buttons to the settlement management screen.\n- GitHub Actions compilation and manual in-game checks are pending.\n\n# Changelog
 
+## Alpha 0.6.1 — постоянный реестр зданий
+
+- Added a world-persistent building registry with type and coordinates stored in Civitas SavedData.
+- Added `/civitas buildings` and a settlement-panel button to inspect registered buildings.
+- Prevented new registered structures from being placed too close to an already registered building.
+- GitHub Actions compilation and manual in-game checks are pending for this revision.
+
+
 ## Alpha 0.5.0 — управление задачами работников
 
 - Added persistent pause/resume controls for the lumberjack. Pausing stops navigation but preserves the role and carried resources.

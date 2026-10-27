@@ -3,12 +3,16 @@ package ru.civitas.data;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.util.datafix.DataFixTypes;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.UUID;
@@ -36,6 +40,9 @@ public final class CivitasSavedData extends SavedData {
     private int villageY;
     private int villageZ;
     private final Map<String, Integer> resources = new TreeMap<>();
+    private final List<BuildingRecord> buildings = new ArrayList<>();
+
+    public record BuildingRecord(String type, int x, int y, int z) { }
 
     public CivitasSavedData() {
     }
@@ -60,6 +67,12 @@ public final class CivitasSavedData extends SavedData {
         data.villageY = tag.getInt("village_y");
         data.villageZ = tag.getInt("village_z");
 
+        ListTag storedBuildings = tag.getList("buildings", Tag.TAG_COMPOUND);
+        for (int i = 0; i < storedBuildings.size(); i++) {
+            CompoundTag building = storedBuildings.getCompound(i);
+            String type = building.getString("type");
+            if (!type.isBlank()) data.buildings.add(new BuildingRecord(type, building.getInt("x"), building.getInt("y"), building.getInt("z")));
+        }
         CompoundTag storedResources = tag.getCompound("resources");
         for (String itemId : storedResources.getAllKeys()) {
             int count = storedResources.getInt(itemId);
@@ -86,6 +99,16 @@ public final class CivitasSavedData extends SavedData {
         tag.putInt("village_y", villageY);
         tag.putInt("village_z", villageZ);
 
+        ListTag storedBuildings = new ListTag();
+        for (BuildingRecord record : buildings) {
+            CompoundTag building = new CompoundTag();
+            building.putString("type", record.type());
+            building.putInt("x", record.x());
+            building.putInt("y", record.y());
+            building.putInt("z", record.z());
+            storedBuildings.add(building);
+        }
+        tag.put("buildings", storedBuildings);
         CompoundTag storedResources = new CompoundTag();
         resources.forEach(storedResources::putInt);
         tag.put("resources", storedResources);
@@ -168,6 +191,20 @@ public final class CivitasSavedData extends SavedData {
         return Collections.unmodifiableMap(new TreeMap<>(resources));
     }
 
+    public void registerBuilding(String type, BlockPos position) {
+        if (type == null || type.isBlank() || position == null) return;
+        buildings.add(new BuildingRecord(type, position.getX(), position.getY(), position.getZ()));
+        setDirty();
+    }
+    public List<BuildingRecord> getBuildings() {
+        return Collections.unmodifiableList(new ArrayList<>(buildings));
+    }
+    public boolean hasBuildingNear(BlockPos position, int radius) {
+        for (BuildingRecord building : buildings) {
+            if (Math.abs(building.x() - position.getX()) <= radius && Math.abs(building.z() - position.getZ()) <= radius) return true;
+        }
+        return false;
+    }
     public boolean isFounded() {
         return founded;
     }
