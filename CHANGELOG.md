@@ -1,14 +1,19 @@
 # Changelog
 
+## Alpha 0.4.2 — worker management UI
+
+- Added `/civitas workers` to list villagers near the starter settlement and display their Civitas roles.
+- Added `/civitas worker lumberjack` to assign the nearest villager as lumberjack and clear duplicate lumberjack roles nearby.
+- Added worker-management buttons to the in-game settlement management screen.
+- CI build and manual gameplay tests for this revision are pending.
+
 ## Alpha 0.4.1 — unified warehouse and worker recovery
 
 - Unified `/civitas storage`, `/civitas deposit`, and `/civitas withdraw` with the 27-slot physical warehouse used by the GUI.
 - Added capacity checks before depositing and availability checks before withdrawing to prevent partial or lost transfers.
 - Legacy virtual resources are migrated into the physical inventory when warehouse commands are used.
 - Improved lumberjack recovery: if no safe work position is available, a worker carrying logs attempts to return to the warehouse.
-- GitHub Actions build and manual gameplay tests for this revision are pending.
-
-# Changelog
+- GitHub Actions build succeeded on commit `6dbf3a444a688b75cc83ce872d0b57de4c226edd`: https://github.com/S1nuso1d/Civitas/actions/runs/40601663898
 
 ## Alpha 0.4.0 — starter village and first worker
 

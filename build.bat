@@ -16,7 +16,7 @@ set "CIVITAS_EXIT=%ERRORLEVEL%"
 if "%CIVITAS_EXIT%"=="0" (
     echo.
     echo BUILD SUCCESSFUL.
-    echo JAR: build\libs\civitas-0.4.1.jar
+    echo JAR: build\libs\civitas-0.4.2.jar
 ) else (
     echo.
     echo BUILD FAILED. Review the error messages above.
