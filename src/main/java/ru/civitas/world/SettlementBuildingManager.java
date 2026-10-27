@@ -25,9 +25,9 @@ public final class SettlementBuildingManager {
 
     public static String describeCosts(BuildingType type) {
         return switch (type) {
-            case CABIN -> "16 oak planks, 8 oak logs, 4 glass";
-            case FARM -> "24 dirt, 8 wheat seeds, 1 water bucket";
-            case WORKSHOP -> "24 oak planks, 16 cobblestone, 1 crafting table";
+            case CABIN -> "32 oak planks, 8 oak logs, 4 glass";
+            case FARM -> "49 dirt, 24 wheat seeds, 1 water bucket";
+            case WORKSHOP -> "32 oak planks, 25 cobblestone, 1 crafting table";
         };
     }
 
@@ -56,9 +56,9 @@ public final class SettlementBuildingManager {
     private static Map<String, Integer> cost(BuildingType type) {
         Map<String, Integer> cost = new LinkedHashMap<>();
         switch (type) {
-            case CABIN -> { cost.put("minecraft:oak_planks", 16); cost.put("minecraft:oak_log", 8); cost.put("minecraft:glass", 4); }
-            case FARM -> { cost.put("minecraft:dirt", 24); cost.put("minecraft:wheat_seeds", 8); cost.put("minecraft:water_bucket", 1); }
-            case WORKSHOP -> { cost.put("minecraft:oak_planks", 24); cost.put("minecraft:cobblestone", 16); cost.put("minecraft:crafting_table", 1); }
+            case CABIN -> { cost.put("minecraft:oak_planks", 32); cost.put("minecraft:oak_log", 8); cost.put("minecraft:glass", 4); }
+            case FARM -> { cost.put("minecraft:dirt", 49); cost.put("minecraft:wheat_seeds", 24); cost.put("minecraft:water_bucket", 1); }
+            case WORKSHOP -> { cost.put("minecraft:oak_planks", 32); cost.put("minecraft:cobblestone", 25); cost.put("minecraft:crafting_table", 1); }
         }
         return cost;
     }
@@ -80,7 +80,7 @@ public final class SettlementBuildingManager {
             BlockPos ground = new BlockPos(x, groundY, z);
             if (!level.getBlockState(ground).isSolid()) continue;
             boolean clear = true;
-            int radius = type == BuildingType.FARM ? 3 : 2;
+            int radius = 3;
             int height = type == BuildingType.FARM ? 3 : 5;
             for (int dx = -radius; dx <= radius && clear; dx++) {
                 for (int dz = -radius; dz <= radius && clear; dz++) {

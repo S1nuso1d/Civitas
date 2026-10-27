@@ -80,6 +80,13 @@ public final class SettlementScreen extends Screen {
                 sendCommand("civitas help")).bounds(left, top + 178, buttonWidth, 20).build());
         addRenderableWidget(Button.builder(Component.literal("Закрыть"), button ->
                 onClose()).bounds(left + buttonWidth + gap, top + 178, buttonWidth, 20).build());
+
+        addRenderableWidget(Button.builder(Component.literal("Построить дом"), button ->
+                sendCommand("civitas build cabin")).bounds(left, top + 300, buttonWidth, 20).build());
+        addRenderableWidget(Button.builder(Component.literal("Построить ферму"), button ->
+                sendCommand("civitas build farm")).bounds(left + buttonWidth + gap, top + 300, buttonWidth, 20).build());
+        addRenderableWidget(Button.builder(Component.literal("Построить мастерскую"), button ->
+                sendCommand("civitas build workshop")).bounds(left, top + 327, 310, 20).build());
     }
 
     private String safeName() {
@@ -119,8 +126,8 @@ public final class SettlementScreen extends Screen {
         graphics.drawCenteredString(this.font, Component.literal("Управление поселением"), this.width / 2, top + 23, 0xFFFFFFFF);
         graphics.drawString(this.font, Component.literal("Название поселения"), left + 15, top + 36, 0xFFD7DCE4, false);
         graphics.drawString(this.font, Component.literal("Предмет и количество для склада"), left + 15, top + 110, 0xFFD7DCE4, false);
-        graphics.drawCenteredString(this.font, Component.literal("Управление задачей лесоруба"), this.width / 2, top + 289, 0xFFB8C0CC);
-        graphics.drawCenteredString(this.font, Component.literal("Ответы сервера появятся в чате"), this.width / 2, top + 303, 0xFFB8C0CC);
+        graphics.drawCenteredString(this.font, Component.literal("Строительство за ресурсы склада"), this.width / 2, top + 286, 0xFFE7C982);
+        graphics.drawCenteredString(this.font, Component.literal("Ответы сервера появятся в чате"), this.width / 2, top + 354, 0xFFB8C0CC);
         super.render(graphics, mouseX, mouseY, partialTick);
     }
 

@@ -67,7 +67,8 @@ public final class CivitasCommands {
         source.sendSuccess(() -> Component.literal("§e/civitas found <название> §7— основать поселение в текущей точке"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas status §7— состояние поселения"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas rename <название> §7— переименовать поселение"), false);
-        source.sendSuccess(() -> Component.literal("§e/civitas workers §7— список жителей и их роли"), false);\n        source.sendSuccess(() -> Component.literal("§e/civitas build cabin|farm|workshop §7— построить здание за ресурсы склада"), false);
+        source.sendSuccess(() -> Component.literal("§e/civitas workers §7— список жителей и их роли"), false);
+        source.sendSuccess(() -> Component.literal("§e/civitas build cabin|farm|workshop §7— построить здание за ресурсы склада"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas worker lumberjack §7— назначить лесоруба"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas worker pause|resume §7— приостановить/продолжить"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas worker clear §7— снять профессию после доставки груза"), false);
