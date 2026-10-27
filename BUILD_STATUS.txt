@@ -1,0 +1,25 @@
+Civitas Alpha 0.2.3 — build status
+Target: Minecraft Java Edition 1.21.1 + Forge 52.1.20 + Java 21
+
+Changes:
+- Rebuilt build.bat and run-client.bat as ASCII-only Windows batch files with CRLF line endings.
+- Both batch files push the current directory to the project root before invoking PowerShell with the relative path .\tools\gradle-run.ps1.
+- Changed the PowerShell helper's status messages to ASCII English to avoid console code-page mojibake.
+- Kept pack.mcmeta from 0.2.2 (pack_format 34 for Minecraft 1.21-1.21.1).
+- Bumped mod_version to 0.2.3 and refreshed install/roadmap/changelog docs.
+
+Validation performed:
+- Checked batch files contain CRLF line endings and only ASCII characters.
+- Checked PowerShell helper contains the expected Gradle launcher logic and CRLF line endings.
+- Parsed pack.mcmeta and all other JSON files in src/main/resources.
+- Checked source ZIP integrity after packaging.
+
+Not verified:
+- Full ForgeGradle compilation and Minecraft launch were not run in this environment.
+- No built JAR is included. Build on Windows with Java 21 and internet access.
+
+Build:
+1. Extract the ZIP completely.
+2. Run build.bat from the project directory.
+3. The expected output is build/libs/civitas-0.2.3.jar.
+4. Copy that JAR to the mods folder of Minecraft Forge 1.21.1 after removing old Civitas JARs.
