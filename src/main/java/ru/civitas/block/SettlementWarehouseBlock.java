@@ -28,13 +28,13 @@ public final class SettlementWarehouseBlock extends BaseEntityBlock {
     }
 
     @Override
-    protected RenderShape getRenderShape(BlockState state) {
+    public RenderShape getRenderShape(BlockState state) {
         return RenderShape.MODEL;
     }
 
     @Override
-    protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos,
-                                                Player player, BlockHitResult hit) {
+    public InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos,
+                                             Player player, BlockHitResult hit) {
         if (level.isClientSide) {
             return InteractionResult.SUCCESS;
         }
@@ -42,7 +42,7 @@ public final class SettlementWarehouseBlock extends BaseEntityBlock {
             return InteractionResult.CONSUME;
         }
 
-        CivitasSavedData settlement = CivitasSavedData.get(serverPlayer.server);
+        CivitasSavedData settlement = CivitasSavedData.get(serverPlayer.getServer());
         if (!settlement.isFounded()) {
             serverPlayer.sendSystemMessage(Component.literal("Сначала основай поселение: /civitas found <название>"));
             return InteractionResult.CONSUME;
