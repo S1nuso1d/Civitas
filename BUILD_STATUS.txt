@@ -1,31 +1,24 @@
-Civitas Alpha 0.3.0 — build status
+Civitas Alpha 0.3.1 — build status
 Target: Minecraft Java Edition 1.21.1 + Forge 52.1.20 + Java 21
 
 Current implementation:
-- Registered a block entity for the Settlement Warehouse.
-- Added a 27-slot container with NBT persistence.
-- Added a server menu and client screen with normal slot synchronization and Shift-click transfer.
-- Warehouse interaction checks settlement ownership or operator permissions.
-- Added migration of legacy virtual resources into free physical slots; only the amount actually inserted is removed from SavedData.
-- Kept Alpha 0.2 commands for compatibility. The old virtual-store commands do not yet directly operate on physical warehouse slots.
+- Persistent 27-slot physical warehouse with block-entity inventory.
+- Server menu and client screen with synchronized slots and Shift-click transfer.
+- First-join starter village generation in the Overworld: four small houses, beds, work-site blocks, paths, lighting, bell and four vanilla villagers.
+- Starter warehouse supplies: oak logs, bread, wheat seeds, cobblestone, torches and saplings.
+- Village coordinates and generated flag are persisted in CivitasSavedData; village is not regenerated on each login.
+- First-time players are moved to the village; respawning players are returned to the Overworld village.
+- If no settlement exists, one is founded at the village center and the first player becomes its owner.
+- The old virtual resource commands remain separate from physical slots and still need unification.
 
 Validation:
-- Alpha 0.2.7 CI build succeeded on commit b593e4f8b79a59fd9fdce96160ead41bc69fe47.
-- Alpha 0.3.0 Gradle build succeeded on commit 9798485879cce462cab2d7d52beb72bede929411 (GitHub Actions run 63); artifact civitas-0.3.0-forge-1.21.1 was uploaded.
-- The compile result does not confirm that the mod has been manually launched in Minecraft. Persistence, owner permissions, Shift-click, legacy migration and multiplayer still need in-game testing.
+- Alpha 0.3.0 Gradle build succeeded on commit 9798485879cce462cab2d7d52beb72bede929411.
+- Alpha 0.3.1 includes new village-generation code. Check the latest GitHub Actions run before distributing the JAR.
+- No manual in-game launch or persistence test is claimed.
 
-Build locally:
-1. Use 64-bit Java 21.
-2. Run build.bat or .\tools\gradle-run.ps1 build from the project root.
-3. Expected JAR after successful compilation: build/libs/civitas-0.3.0.jar.
-4. Install only one Civitas JAR into the mods folder of Minecraft 1.21.1 + Forge 52.1.20.
-
-Required manual tests after compilation:
-- Place a warehouse and open it as settlement owner.
-- Confirm a non-owner cannot open it.
-- Move stacks both ways, including Shift-click.
-- Close/reopen the GUI and verify slot contents.
-- Exit and restart the world and verify contents.
-- Fill the warehouse and verify no items disappear.
-- Test an existing Alpha 0.2 world with virtual resources and confirm migration.
-- Remove the warehouse and check expected item-drop behaviour.
+Required manual tests:
+- New world: verify spawn location, village blocks, four villagers and starter supplies.
+- Rejoin: verify no duplicate village or villagers.
+- Death in Overworld and another dimension: verify return to the village.
+- Existing world with a prior settlement: verify its data and buildings are not overwritten.
+- Warehouse slot persistence, permissions, full inventory, legacy migration and multiplayer.

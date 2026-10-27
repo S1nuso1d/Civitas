@@ -1,5 +1,15 @@
 # Changelog
 
+## Alpha 0.3.1 — starter village
+
+- Added a one-time starter village generator near the world spawn.
+- Added four houses, beds, work-site blocks, paths, lighting, a bell and four vanilla villagers.
+- Added starter resources to the physical warehouse.
+- Persisted village coordinates to world data and prevented regeneration on later logins.
+- First-time players are moved to the village; respawn in the Overworld or other dimensions returns them to the village.
+- Automatically found the initial settlement at the village center when no settlement exists.
+- CI and in-game verification are pending for this revision.
+
 ## Alpha 0.3.0 — in progress
 
 - Added a 27-slot physical warehouse block entity.
