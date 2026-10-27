@@ -144,7 +144,8 @@ public final class CivitasCommands {
             String name = villager.getCustomName() == null
                     ? villager.getName().getString()
                     : villager.getCustomName().getString();
-            String line = number + ". " + name + " — " + displayRole;
+            String activity = LumberjackWorkerAI.getWorkerStatus(villager);
+            String line = number + ". " + name + " — " + displayRole + " | " + activity;
             context.getSource().sendSuccess(() -> Component.literal(line), false);
         }
         context.getSource().sendSuccess(() -> Component.literal("Назначить ближайшего жителя: /civitas worker lumberjack"), false);

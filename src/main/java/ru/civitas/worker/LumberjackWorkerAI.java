@@ -77,6 +77,22 @@ public final class LumberjackWorkerAI {
         return villager.getPersistentData().getString(ROLE_KEY);
     }
 
+    /** Human-readable activity and cargo state for settlement management. */
+    public static String getWorkerStatus(Villager villager) {
+        var persistent = villager.getPersistentData();
+        int carried = Math.max(0, persistent.getInt(CARRIED_COUNT_KEY));
+        if (carried > 0) {
+            return "Несёт брёвна: " + carried + "/" + MAX_CARRIED;
+        }
+        if (persistent.getInt(CHOP_PROGRESS_KEY) > 0) {
+            return "Рубит дерево";
+        }
+        if (!"lumberjack".equals(getWorkerRole(villager))) {
+            return "Нет задачи";
+        }
+        return villager.getNavigation().isDone() ? "Ищет дерево" : "Идёт к дереву";
+    }
+
     /**
      * Assigns the nearest resident to the lumberjack role and removes that role
      * from any other resident in the starter-village area.
@@ -93,6 +109,14 @@ public final class LumberjackWorkerAI {
         }
         if (villagers.isEmpty()) {
             return false;
+        }
+
+        // Keep a worker carrying resources assigned until it has a chance to deliver them.
+        for (Villager villager : villagers) {
+            if ("lumberjack".equals(getWorkerRole(villager))
+                    && villager.getPersistentData().getInt(CARRIED_COUNT_KEY) > 0) {
+                return true;
+            }
         }
 
         Villager chosen = null;
