@@ -1,25 +1,25 @@
-Civitas Alpha 0.2.3 — build status
+Civitas Alpha 0.2.5 — build status
 Target: Minecraft Java Edition 1.21.1 + Forge 52.1.20 + Java 21
 
 Changes:
-- Rebuilt build.bat and run-client.bat as ASCII-only Windows batch files with CRLF line endings.
-- Both batch files push the current directory to the project root before invoking PowerShell with the relative path .\tools\gradle-run.ps1.
-- Changed the PowerShell helper's status messages to ASCII English to avoid console code-page mojibake.
-- Kept pack.mcmeta from 0.2.2 (pack_format 34 for Minecraft 1.21-1.21.1).
-- Bumped mod_version to 0.2.3 and refreshed install/roadmap/changelog docs.
+- Expanded SettlementScreen with UI actions for founding/renaming, status, storage, deposit, and withdraw.
+- Added input validation for item IDs and stack quantities; server-side checks remain authoritative.
+- Added GitHub Actions workflow at .github/workflows/build.yml to run Gradle build and upload the resulting JAR.
+- Updated version and installation documentation.
 
 Validation performed:
-- Checked batch files contain CRLF line endings and only ASCII characters.
-- Checked PowerShell helper contains the expected Gradle launcher logic and CRLF line endings.
-- Parsed pack.mcmeta and all other JSON files in src/main/resources.
-- Checked source ZIP integrity after packaging.
+- Read back changed files from GitHub and checked version strings and workflow content.
+- No local ForgeGradle build or Minecraft launch was performed during this update.
+- The GitHub Actions workflow should provide the first clean-environment compile result; check the Actions tab.
 
-Not verified:
-- Full ForgeGradle compilation and Minecraft launch were not run in this environment.
-- No built JAR is included. Build on Windows with Java 21 and internet access.
+Build locally:
+1. Use 64-bit Java 21.
+2. Run build.bat from the project root or .\\tools\\gradle-run.ps1 build in PowerShell.
+3. Expected JAR: build/libs/civitas-0.2.5.jar.
+4. Close Minecraft, remove older Civitas JARs from the profile's mods folder, and copy the new JAR there.
+5. Launch Minecraft 1.21.1 with Forge 52.x and use the Civilization Codex to open the management panel.
 
-Build:
-1. Extract the ZIP completely.
-2. Run build.bat from the project directory.
-3. The expected output is build/libs/civitas-0.2.3.jar.
-4. Copy that JAR to the mods folder of Minecraft Forge 1.21.1 after removing old Civitas JARs.
+Known limitations:
+- No physical warehouse block or worker NPC yet.
+- Settlement/storage responses are still sent to in-game chat rather than rendered as a live synchronized dashboard.
+- Compilation and runtime behavior are not claimed until the GitHub Actions run and in-game test complete.
