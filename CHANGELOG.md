@@ -1,5 +1,14 @@
 # Changelog
 
+## Alpha 0.2.6
+
+- Added a placeable Settlement Warehouse block using Minecraft's barrel textures.
+- Interacting with the warehouse opens the Civitas management panel.
+- Added English and Russian names for the warehouse.
+- Updated build output and CI artifact version to 0.2.6.
+
+## Alpha 0.2.5
+
 ## 0.2.5 — Expanded settlement management UI
 - Added rename, deposit, and withdraw actions to the in-game management panel.
 - Added input fields for a settlement name, resource item ID, and amount.
