@@ -6,13 +6,11 @@ import net.minecraft.core.NonNullList;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.Container;
+import net.minecraft.world.ContainerHelper;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.block.entity.BlockEntityType;
-import net.minecraft.world.ContainerHelper;
-import net.minecraft.world.level.Level;
 
 public final class SettlementWarehouseBlockEntity extends BlockEntity implements Container {
     public static final int SLOT_COUNT = 27;
@@ -125,7 +123,9 @@ public final class SettlementWarehouseBlockEntity extends BlockEntity implements
 
     @Override
     public void clearContent() {
-        items.clear();
+        for (int slot = 0; slot < items.size(); slot++) {
+            items.set(slot, ItemStack.EMPTY);
+        }
         setChanged();
     }
 }
