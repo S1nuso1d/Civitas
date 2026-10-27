@@ -216,6 +216,12 @@ public final class CivitasSavedData extends SavedData {
         setDirty();
     }
     public List<ConstructionOrder> getConstructionOrders() { return Collections.unmodifiableList(new ArrayList<>(constructionOrders)); }
+    public boolean removeConstructionOrder(ConstructionOrder order) {
+        if (order == null || !constructionOrders.remove(order)) return false;
+        setDirty();
+        return true;
+    }
+
     public void advanceConstructionOrder(ConstructionOrder order) {
         int index = constructionOrders.indexOf(order);
         if (index < 0) return;

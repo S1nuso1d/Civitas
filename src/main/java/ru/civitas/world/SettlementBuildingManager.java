@@ -50,6 +50,36 @@ public final class SettlementBuildingManager {
         return new BuildResult(true, "Заказ принят: " + label(type) + ". Материалы списаны со склада; строительство будет идти послойно. Статус: /civitas construction.");
     }
 
+    public static BuildResult cancelFirstOrder(CivitasSavedData data, net.minecraft.server.level.ServerPlayer player) {
+        var orders = data.getConstructionOrders();
+        if (orders.isEmpty()) return new BuildResult(false, "Очередь строительства пуста.");
+        CivitasSavedData.ConstructionOrder order = orders.get(0);
+        if (order.progress() > 0) {
+            return new BuildResult(false, "Первый заказ уже начат. Его нельзя отменить, чтобы не оставить недостроенное здание и не потерять материалы.");
+        }
+        Map<String, Integer> refund = switch (order.type()) {
+            case "cabin" -> cost(BuildingType.CABIN);
+            case "farm" -> cost(BuildingType.FARM);
+            case "workshop" -> cost(BuildingType.WORKSHOP);
+            default -> Map.of();
+        };
+        if (refund.isEmpty()) return new BuildResult(false, "Неизвестный тип заказа: " + order.type());
+        if (!data.removeConstructionOrder(order)) return new BuildResult(false, "Заказ уже изменился. Обнови очередь строительства.");
+        for (Map.Entry<String, Integer> entry : refund.entrySet()) {
+            ResourceLocation id = ResourceLocation.parse(entry.getKey());
+            if (!BuiltInRegistries.ITEM.containsKey(id)) continue;
+            Item item = BuiltInRegistries.ITEM.get(id);
+            int remaining = entry.getValue();
+            while (remaining > 0) {
+                int batch = Math.min(remaining, item.getDefaultMaxStackSize());
+                ItemStack stack = new ItemStack(item, batch);
+                if (!player.getInventory().add(stack)) player.drop(stack, false);
+                remaining -= batch;
+            }
+        }
+        return new BuildResult(true, "Заказ отменён. Полный комплект материалов возвращён игроку; если инвентарь был заполнен, предметы выпали рядом.");
+    }
+
     private static int layerCount(BuildingType type) { return switch (type) { case CABIN -> 5; case FARM -> 2; case WORKSHOP -> 4; }; }
     public static void placeConstructionLayer(ServerLevel level, CivitasSavedData data, CivitasSavedData.ConstructionOrder order) {
         BlockPos g = new BlockPos(order.x(), order.y(), order.z()); int y = order.progress() + 1;

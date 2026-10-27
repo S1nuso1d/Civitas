@@ -13,7 +13,7 @@ import net.minecraft.world.item.Items;
 /** Vanilla-inspired settlement dashboard with real Minecraft item icons. */
 public final class SettlementScreen extends Screen {
     private static final int PANEL_WIDTH = 360;
-    private static final int PANEL_HEIGHT = 430;
+    private static final int PANEL_HEIGHT = 452;
     private static final int INNER_WIDTH = 330;
     private static final int BUTTON_WIDTH = 160;
     private static final int GAP = 10;
@@ -75,8 +75,9 @@ public final class SettlementScreen extends Screen {
         addButton("   Ферма", right, top + 337, BUTTON_WIDTH, "civitas build farm", Items.WHEAT);
         addButton("   Мастерская", left, top + 363, INNER_WIDTH, "civitas build workshop", Items.CRAFTING_TABLE);
 
+        addButton("   Отменить следующий заказ", left, top + 389, INNER_WIDTH, "civitas construction cancel", Items.BARRIER);
         addRenderableWidget(Button.builder(Component.literal("Закрыть  [Esc]"), button -> onClose())
-                .bounds(left, top + 392, INNER_WIDTH, 20).build());
+                .bounds(left, top + 412, INNER_WIDTH, 16).build());
     }
 
     private void addButton(String label, int x, int y, int width, String command, net.minecraft.world.item.Item icon) {
@@ -148,7 +149,7 @@ public final class SettlementScreen extends Screen {
         drawSection(graphics, left + 15, top + 323, "СТРОИТЕЛЬСТВО · РЕСУРСЫ СО СКЛАДА");
         super.render(graphics, mouseX, mouseY, partialTick);
         for (IconPosition icon : iconPositions) graphics.renderItem(icon.stack(), icon.x(), icon.y());
-        graphics.drawCenteredString(font, Component.literal("Ответы и ошибки отображаются в чате"), width / 2, top + 416, 0xFF303030);
+        graphics.drawCenteredString(font, Component.literal("Ответы и ошибки отображаются в чате"), width / 2, top + 435, 0xFF303030);
     }
 
     private void drawSection(GuiGraphics graphics, int x, int y, String title) {

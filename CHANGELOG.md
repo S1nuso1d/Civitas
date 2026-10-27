@@ -128,3 +128,9 @@
 - Added real Minecraft item icons to action buttons and grouped actions into settlement/storage, residents/tasks, and construction sections.
 - Reworked the warehouse screen to match the vanilla inventory bevel and recessed slot look.
 - Updated the CI artifact name to `civitas-0.9.0-forge-1.21.1`.
+
+
+## Alpha 0.9.1 — безопасная отмена строительства
+- Added a dashboard action and `/civitas construction cancel` to cancel the first queued order before construction begins.
+- Refunds the full original material cost to the player inventory, dropping overflow nearby.
+- Started orders are protected from cancellation to avoid leaving partial structures and ambiguous refunds.
