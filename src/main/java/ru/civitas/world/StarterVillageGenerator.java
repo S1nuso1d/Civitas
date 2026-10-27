@@ -137,12 +137,12 @@ public final class StarterVillageGenerator {
         for (int signX : new int[]{-1, 1}) {
             for (int signZ : new int[]{-1, 1}) {
                 int houseX = signX * 7;
-                int entranceZ = signZ * 9;
+                int entranceZ = signZ * 7 - 2;
                 for (int x = 0; x <= 7; x++) {
                     level.setBlock(center.offset(signX * x, 0, entranceZ), Blocks.DIRT_PATH.defaultBlockState(), Block.UPDATE_ALL);
                 }
-                for (int z = 0; z <= 9; z++) {
-                    level.setBlock(center.offset(houseX, 0, signZ * z), Blocks.DIRT_PATH.defaultBlockState(), Block.UPDATE_ALL);
+                for (int z = 0; z <= Math.abs(entranceZ); z++) {
+                    level.setBlock(center.offset(houseX, 0, Integer.signum(entranceZ) * z), Blocks.DIRT_PATH.defaultBlockState(), Block.UPDATE_ALL);
                 }
             }
         }
