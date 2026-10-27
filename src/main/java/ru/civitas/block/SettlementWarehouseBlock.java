@@ -1,6 +1,7 @@
 package ru.civitas.block;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionResult;
@@ -8,16 +9,15 @@ import net.minecraft.world.MenuProvider;
 import net.minecraft.world.SimpleMenuProvider;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.BaseEntityBlock;
-import net.minecraft.world.level.block.RenderShape;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
-import net.minecraftforge.network.NetworkHooks;
 import ru.civitas.data.CivitasSavedData;
 import ru.civitas.menu.SettlementWarehouseMenu;
 
-public final class SettlementWarehouseBlock extends BaseEntityBlock {
+public final class SettlementWarehouseBlock extends Block implements EntityBlock {
     public SettlementWarehouseBlock(Properties properties) {
         super(properties);
     }
@@ -25,11 +25,6 @@ public final class SettlementWarehouseBlock extends BaseEntityBlock {
     @Override
     public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {
         return new SettlementWarehouseBlockEntity(pos, state);
-    }
-
-    @Override
-    public RenderShape getRenderShape(BlockState state) {
-        return RenderShape.MODEL;
     }
 
     @Override
@@ -62,7 +57,7 @@ public final class SettlementWarehouseBlock extends BaseEntityBlock {
                         new SettlementWarehouseMenu(containerId, inventory, warehouse, pos),
                 Component.translatable("block.civitas.warehouse")
         );
-        NetworkHooks.openScreen(serverPlayer, provider, pos);
+        serverPlayer.openMenu(provider, buffer -> buffer.writeBlockPos(pos));
         return InteractionResult.CONSUME;
     }
 }
