@@ -9,26 +9,29 @@ import ru.civitas.menu.SettlementWarehouseMenu;
 public final class SettlementWarehouseScreen extends AbstractContainerScreen<SettlementWarehouseMenu> {
     public SettlementWarehouseScreen(SettlementWarehouseMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title);
-        this.imageWidth = 176;
-        this.imageHeight = 166;
-        this.inventoryLabelY = this.imageHeight - 94;
+        imageWidth = 176;
+        imageHeight = 166;
+        inventoryLabelY = imageHeight - 94;
     }
 
     @Override
     protected void renderBg(GuiGraphics graphics, float partialTick, int mouseX, int mouseY) {
         int left = (width - imageWidth) / 2;
         int top = (height - imageHeight) / 2;
-        graphics.fill(left, top, left + imageWidth, top + imageHeight, 0xF020252D);
-        graphics.renderOutline(left, top, imageWidth, imageHeight, 0xFFB89A57);
-        graphics.fill(left + 7, top + 17, left + imageWidth - 7, top + 71, 0xFF343B46);
-        graphics.fill(left + 7, top + 85, left + imageWidth - 7, top + 139, 0xFF343B46);
-        graphics.fill(left + 7, top + 143, left + imageWidth - 7, top + 161, 0xFF343B46);
+        // Vanilla inventory-style bevel and recessed slot areas.
+        graphics.fill(left - 1, top - 1, left + imageWidth + 1, top + imageHeight + 1, 0xFF171717);
+        graphics.fill(left, top, left + imageWidth, top + imageHeight, 0xFFC6C6C6);
+        graphics.fill(left + 2, top + 2, left + imageWidth - 2, top + imageHeight - 2, 0xFF373737);
+        graphics.fill(left + 3, top + 3, left + imageWidth - 3, top + imageHeight - 3, 0xFFC6C6C6);
+        graphics.fill(left + 7, top + 17, left + imageWidth - 7, top + 71, 0xFF8B8B8B);
+        graphics.fill(left + 7, top + 85, left + imageWidth - 7, top + 139, 0xFF8B8B8B);
+        graphics.fill(left + 7, top + 143, left + imageWidth - 7, top + 161, 0xFF8B8B8B);
     }
 
     @Override
     protected void renderLabels(GuiGraphics graphics, int mouseX, int mouseY) {
-        graphics.drawString(font, Component.literal("Склад поселения"), 8, 6, 0xFFE7C982, false);
-        graphics.drawString(font, playerInventoryTitle, 8, inventoryLabelY, 0xFFFFFFFF, false);
+        graphics.drawString(font, Component.literal("Склад поселения"), 8, 6, 0xFF404040, false);
+        graphics.drawString(font, playerInventoryTitle, 8, inventoryLabelY, 0xFF404040, false);
     }
 
     @Override
@@ -39,7 +42,5 @@ public final class SettlementWarehouseScreen extends AbstractContainerScreen<Set
     }
 
     @Override
-    public boolean isPauseScreen() {
-        return false;
-    }
+    public boolean isPauseScreen() { return false; }
 }

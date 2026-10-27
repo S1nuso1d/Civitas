@@ -1,4 +1,4 @@
-# Civitas — Alpha 0.6.0 (Forge 1.21.1)
+# Civitas — Alpha 0.9.0 (Forge 1.21.1)
 
 Civitas — модификация Minecraft Java Edition о развитии поселения от деревни до цивилизации. Игрок начинает в поселении, управляет ресурсами и постепенно открывает новые возможности. Долгосрочная цель — физически работающие жители, строительство, экономика и соперничающие цивилизации.
 
@@ -89,3 +89,7 @@ GitHub Actions: https://github.com/S1nuso1d/Civitas/actions
 
 ### Alpha 0.8.0 — builders
 Assign a resident as builder with `/civitas worker builder` or the in-game settlement panel. The builder walks to the next queued construction site and advances it only when nearby. Without a builder, queued construction waits. Check progress with `/civitas construction`.
+
+
+## Alpha 0.9.0 — обновлённый интерфейс
+Панель управления переработана в стиле ванильного Minecraft: пиксельные рамки, иконки реальных предметов, отдельные разделы для поселения, склада, жителей и строительства. Окно склада приведено к визуальному стилю инвентаря Minecraft. Сборка CI публикует артефакт `civitas-0.9.0-forge-1.21.1`.

@@ -1,6 +1,6 @@
-Civitas Alpha 0.8.0 — build status
+Civitas Alpha 0.9.0 — build status
 Target: Minecraft Java Edition 1.21.1 + Forge 52.1.20 + Java 21
 
-New: physical villager builder role; builders travel to queued construction sites and advance layers only when nearby. Construction pauses until a builder is assigned. Site selection skips registered buildings and reserved queued sites.
+New: vanilla-inspired settlement dashboard, Minecraft item icons on action buttons, reorganized management/building sections, and vanilla-style warehouse panel. Builder AI from 0.8.0 retained.
 
-GitHub Actions compilation and manual in-game verification are pending for this revision.
+GitHub Actions compilation and manual in-game UI verification are pending for this revision.

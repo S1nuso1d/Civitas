@@ -7,91 +7,97 @@ import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ServerboundChatCommandPacket;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 
-/**
- * In-game management panel. Buttons submit actions to the server so players
- * can manage the settlement without manually typing Civitas commands.
- */
+/** Vanilla-inspired settlement dashboard with real Minecraft item icons. */
 public final class SettlementScreen extends Screen {
-    private static final int PANEL_WIDTH = 340;
-    private static final int PANEL_HEIGHT = 398;
+    private static final int PANEL_WIDTH = 360;
+    private static final int PANEL_HEIGHT = 430;
+    private static final int INNER_WIDTH = 330;
+    private static final int BUTTON_WIDTH = 160;
+    private static final int GAP = 10;
 
     private EditBox settlementName;
     private EditBox itemId;
     private EditBox amount;
 
     public SettlementScreen() {
-        super(Component.literal("Civitas — управление поселением"));
+        super(Component.translatable("screen.civitas.settlement"));
     }
 
     @Override
     protected void init() {
-        int left = (this.width - PANEL_WIDTH) / 2 + 15;
-        int top = (this.height - PANEL_HEIGHT) / 2 + 12;
-        int buttonWidth = 150;
-        int gap = 10;
+        int panelLeft = (width - PANEL_WIDTH) / 2;
+        int left = panelLeft + 15;
+        int top = (height - PANEL_HEIGHT) / 2;
+        int right = left + BUTTON_WIDTH + GAP;
 
-        settlementName = new EditBox(this.font, left, top + 32, 310, 20,
-                Component.literal("Название поселения"));
+        settlementName = new EditBox(font, left, top + 40, INNER_WIDTH, 20,
+                Component.translatable("screen.civitas.settlement_name"));
         settlementName.setMaxLength(40);
-        settlementName.setHint(Component.literal("Например, Новая деревня"));
+        settlementName.setHint(Component.translatable("screen.civitas.name_hint"));
         addRenderableWidget(settlementName);
 
-        addRenderableWidget(Button.builder(Component.literal("Основать поселение"), button ->
-                sendCommand("civitas found " + safeName())).bounds(left, top + 59, buttonWidth, 20).build());
-        addRenderableWidget(Button.builder(Component.literal("Переименовать"), button ->
-                sendCommand("civitas rename " + safeName())).bounds(left + buttonWidth + gap, top + 59, buttonWidth, 20).build());
+        addButton("   Основать поселение", left, top + 67, BUTTON_WIDTH, "civitas found " + safeNamePlaceholder(), Items.BELL);
+        addButton("   Переименовать", right, top + 67, BUTTON_WIDTH, "civitas rename " + safeNamePlaceholder(), Items.NAME_TAG);
 
-        addRenderableWidget(Button.builder(Component.literal("Обзор поселения"), button ->
-                sendCommand("civitas status")).bounds(left, top + 86, buttonWidth, 20).build());
-        addRenderableWidget(Button.builder(Component.literal("Содержимое склада"), button ->
-                sendCommand("civitas storage")).bounds(left + buttonWidth + gap, top + 86, buttonWidth, 20).build());
+        addButton("   Обзор поселения", left, top + 108, BUTTON_WIDTH, "civitas status", Items.WRITABLE_BOOK);
+        addButton("   Склад поселения", right, top + 108, BUTTON_WIDTH, "civitas storage", Items.CHEST);
 
-        itemId = new EditBox(this.font, left, top + 122, 220, 20, Component.literal("ID предмета"));
+        itemId = new EditBox(font, left, top + 148, 230, 20, Component.translatable("screen.civitas.item_id"));
         itemId.setMaxLength(128);
         itemId.setValue("minecraft:oak_log");
         itemId.setHint(Component.literal("minecraft:oak_log"));
         addRenderableWidget(itemId);
 
-        amount = new EditBox(this.font, left + 230, top + 122, 80, 20, Component.literal("Количество"));
+        amount = new EditBox(font, left + 240, top + 148, 90, 20, Component.translatable("screen.civitas.amount"));
         amount.setMaxLength(4);
         amount.setValue("16");
         amount.setFilter(value -> value.isEmpty() || value.chars().allMatch(Character::isDigit));
         addRenderableWidget(amount);
 
-        addRenderableWidget(Button.builder(Component.literal("Сдать предметы из руки"), button ->
-                sendCommand("civitas deposit " + safeAmount())).bounds(left, top + 151, buttonWidth, 20).build());
-        addRenderableWidget(Button.builder(Component.literal("Забрать со склада"), button ->
-                sendCommand("civitas withdraw " + safeItemId() + " " + safeAmount()))
-                .bounds(left + buttonWidth + gap, top + 151, buttonWidth, 20).build());
+        addButton("   Сдать из руки", left, top + 175, BUTTON_WIDTH, "civitas deposit " + safeAmount(), Items.HOPPER);
+        addButton("   Забрать со склада", right, top + 175, BUTTON_WIDTH, "civitas withdraw " + safeItemId() + " " + safeAmount(), Items.BARREL);
 
-        addRenderableWidget(Button.builder(Component.literal("Жители и задачи"), button ->
-                sendCommand("civitas workers")).bounds(left, top + 205, buttonWidth, 20).build());
-        addRenderableWidget(Button.builder(Component.literal("Назначить лесоруба"), button ->
-                sendCommand("civitas worker lumberjack")).bounds(left + buttonWidth + gap, top + 205, buttonWidth, 20).build());
-        addRenderableWidget(Button.builder(Component.literal("Назначить строителя"), button ->
-                sendCommand("civitas worker builder")).bounds(left, top + 286, buttonWidth, 20).build());
-        addRenderableWidget(Button.builder(Component.literal("Приостановить"), button ->
-                sendCommand("civitas worker pause")).bounds(left, top + 232, buttonWidth, 20).build());
-        addRenderableWidget(Button.builder(Component.literal("Продолжить"), button ->
-                sendCommand("civitas worker resume")).bounds(left + buttonWidth + gap, top + 232, buttonWidth, 20).build());
-        addRenderableWidget(Button.builder(Component.literal("Снять профессию"), button ->
-                sendCommand("civitas worker clear")).bounds(left, top + 259, buttonWidth, 20).build());
-        addRenderableWidget(Button.builder(Component.literal("Очередь строительства"), button ->
-                sendCommand("civitas construction")).bounds(left + buttonWidth + gap, top + 259, buttonWidth, 20).build());
+        addButton("   Жители и задачи", left, top + 216, BUTTON_WIDTH, "civitas workers", Items.VILLAGER_SPAWN_EGG);
+        addButton("   Назначить лесоруба", right, top + 216, BUTTON_WIDTH, "civitas worker lumberjack", Items.IRON_AXE);
+        addButton("   Назначить строителя", left, top + 242, BUTTON_WIDTH, "civitas worker builder", Items.IRON_PICKAXE);
+        addButton("   Пауза лесоруба", right, top + 242, BUTTON_WIDTH, "civitas worker pause", Items.CLOCK);
+        addButton("   Продолжить работу", left, top + 268, BUTTON_WIDTH, "civitas worker resume", Items.LIME_DYE);
+        addButton("   Снять профессию", right, top + 268, BUTTON_WIDTH, "civitas worker clear", Items.BARRIER);
 
-        addRenderableWidget(Button.builder(Component.literal("Список зданий"), button ->
-                sendCommand("civitas buildings")).bounds(left, top + 178, buttonWidth, 20).build());
-        addRenderableWidget(Button.builder(Component.literal("Закрыть"), button ->
-                onClose()).bounds(left + buttonWidth + gap, top + 178, buttonWidth, 20).build());
+        addButton("   Список зданий", left, top + 294, BUTTON_WIDTH, "civitas buildings", Items.BRICKS);
+        addButton("   Очередь стройки", right, top + 294, BUTTON_WIDTH, "civitas construction", Items.OAK_PLANKS);
 
-        addRenderableWidget(Button.builder(Component.literal("Построить дом"), button ->
-                sendCommand("civitas build cabin")).bounds(left, top + 326, buttonWidth, 20).build());
-        addRenderableWidget(Button.builder(Component.literal("Построить ферму"), button ->
-                sendCommand("civitas build farm")).bounds(left + buttonWidth + gap, top + 326, buttonWidth, 20).build());
-        addRenderableWidget(Button.builder(Component.literal("Построить мастерскую"), button ->
-                sendCommand("civitas build workshop")).bounds(left, top + 353, 310, 20).build());
+        addButton("   Дом", left, top + 337, BUTTON_WIDTH, "civitas build cabin", Items.OAK_DOOR);
+        addButton("   Ферма", right, top + 337, BUTTON_WIDTH, "civitas build farm", Items.WHEAT);
+        addButton("   Мастерская", left, top + 363, INNER_WIDTH, "civitas build workshop", Items.CRAFTING_TABLE);
+
+        addRenderableWidget(Button.builder(Component.literal("Закрыть  [Esc]"), button -> onClose())
+                .bounds(left, top + 392, INNER_WIDTH, 20).build());
     }
+
+    private void addButton(String label, int x, int y, int width, String command, net.minecraft.world.item.Item icon) {
+        addRenderableWidget(Button.builder(Component.literal(label), button -> {
+            String actual = command;
+            if (actual.startsWith("civitas found ") || actual.startsWith("civitas rename ")) {
+                actual = actual.substring(0, actual.lastIndexOf(' ') + 1) + safeName();
+            } else if (actual.startsWith("civitas deposit ")) {
+                actual = "civitas deposit " + safeAmount();
+            } else if (actual.startsWith("civitas withdraw ")) {
+                actual = "civitas withdraw " + safeItemId() + " " + safeAmount();
+            }
+            sendCommand(actual);
+        }).bounds(x, y, width, 20).build());
+        iconPositions.add(new IconPosition(x + 4, y + 2, new ItemStack(icon)));
+    }
+
+    private final java.util.List<IconPosition> iconPositions = new java.util.ArrayList<>();
+
+    private record IconPosition(int x, int y, ItemStack stack) {}
+
+    private String safeNamePlaceholder() { return "Новая деревня"; }
 
     private String safeName() {
         String value = settlementName.getValue().trim().replace('\n', ' ').replace('\r', ' ');
@@ -122,21 +128,35 @@ public final class SettlementScreen extends Screen {
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         renderBackground(graphics, mouseX, mouseY, partialTick);
-        int left = (this.width - PANEL_WIDTH) / 2;
-        int top = (this.height - PANEL_HEIGHT) / 2;
-        graphics.fill(left, top, left + PANEL_WIDTH, top + PANEL_HEIGHT, 0xF020252D);
-        graphics.renderOutline(left, top, PANEL_WIDTH, PANEL_HEIGHT, 0xFFB89A57);
-        graphics.drawCenteredString(this.font, Component.literal("CIVITAS"), this.width / 2, top + 10, 0xFFE7C982);
-        graphics.drawCenteredString(this.font, Component.literal("Управление поселением"), this.width / 2, top + 23, 0xFFFFFFFF);
-        graphics.drawString(this.font, Component.literal("Название поселения"), left + 15, top + 36, 0xFFD7DCE4, false);
-        graphics.drawString(this.font, Component.literal("Предмет и количество для склада"), left + 15, top + 110, 0xFFD7DCE4, false);
-        graphics.drawCenteredString(this.font, Component.literal("Строительство за ресурсы склада"), this.width / 2, top + 312, 0xFFE7C982);
-        graphics.drawCenteredString(this.font, Component.literal("Ответы сервера появятся в чате"), this.width / 2, top + 382, 0xFFB8C0CC);
+        int left = (width - PANEL_WIDTH) / 2;
+        int top = (height - PANEL_HEIGHT) / 2;
+
+        // Pixel-like beveled frame inspired by vanilla inventory panels.
+        graphics.fill(left, top, left + PANEL_WIDTH, top + PANEL_HEIGHT, 0xFF171717);
+        graphics.fill(left + 2, top + 2, left + PANEL_WIDTH - 2, top + PANEL_HEIGHT - 2, 0xFFC6C6C6);
+        graphics.fill(left + 4, top + 4, left + PANEL_WIDTH - 4, top + PANEL_HEIGHT - 4, 0xFF373737);
+        graphics.fill(left + 5, top + 5, left + PANEL_WIDTH - 5, top + PANEL_HEIGHT - 5, 0xFFC6C6C6);
+        graphics.fill(left + 7, top + 7, left + PANEL_WIDTH - 7, top + 30, 0xFF555555);
+        graphics.fill(left + 8, top + 8, left + PANEL_WIDTH - 8, top + 29, 0xFF292929);
+
+        graphics.drawCenteredString(font, Component.literal("CIVITAS"), width / 2, top + 11, 0xFFFFD866);
+        graphics.drawCenteredString(font, Component.literal("УПРАВЛЕНИЕ ПОСЕЛЕНИЕМ"), width / 2, top + 22, 0xFFFFFFFF);
+        graphics.drawString(font, Component.literal("Название поселения"), left + 15, top + 31, 0xFF303030, false);
+        drawSection(graphics, left + 15, top + 96, "ПОСЕЛЕНИЕ И СКЛАД");
+        graphics.drawString(font, Component.literal("ID предмета"), left + 15, top + 136, 0xFF303030, false);
+        graphics.drawString(font, Component.literal("Кол-во"), left + 255, top + 136, 0xFF303030, false);
+        drawSection(graphics, left + 15, top + 203, "ЖИТЕЛИ И ЗАДАЧИ");
+        drawSection(graphics, left + 15, top + 323, "СТРОИТЕЛЬСТВО · РЕСУРСЫ СО СКЛАДА");
         super.render(graphics, mouseX, mouseY, partialTick);
+        for (IconPosition icon : iconPositions) graphics.renderItem(icon.stack(), icon.x(), icon.y());
+        graphics.drawCenteredString(font, Component.literal("Ответы и ошибки отображаются в чате"), width / 2, top + 416, 0xFF303030);
+    }
+
+    private void drawSection(GuiGraphics graphics, int x, int y, String title) {
+        graphics.fill(x, y, x + INNER_WIDTH, y + 1, 0xFF777777);
+        graphics.drawString(font, Component.literal(title), x + 2, y - 8, 0xFF303030, false);
     }
 
     @Override
-    public boolean isPauseScreen() {
-        return false;
-    }
+    public boolean isPauseScreen() { return false; }
 }

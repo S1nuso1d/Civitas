@@ -121,3 +121,10 @@
 - A real villager walks to the next queued site and advances one layer every three seconds while nearby.
 - Construction pauses if no builder is assigned instead of placing blocks automatically.
 - Site selection skips registered buildings and reserved queued sites.
+
+
+## Alpha 0.9.0 — interface overhaul
+- Rebuilt the settlement dashboard around a compact vanilla-inspired pixel UI.
+- Added real Minecraft item icons to action buttons and grouped actions into settlement/storage, residents/tasks, and construction sections.
+- Reworked the warehouse screen to match the vanilla inventory bevel and recessed slot look.
+- Updated the CI artifact name to `civitas-0.9.0-forge-1.21.1`.
