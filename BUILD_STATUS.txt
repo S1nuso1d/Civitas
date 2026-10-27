@@ -1,28 +1,31 @@
-Civitas Alpha 0.2.7 — build status
+Civitas Alpha 0.3.0 — build status
 Target: Minecraft Java Edition 1.21.1 + Forge 52.1.20 + Java 21
 
-Changes:
-- Added a placeable Settlement Warehouse block that opens the management GUI.
-- Added the warehouse to Minecraft's Functional Blocks creative tab.
-- Registered the warehouse block/item and added English/Russian localization.
-- Existing SettlementScreen supports founding/renaming, status, storage, deposit, and withdraw.
-- Added input validation for item IDs and stack quantities; server-side checks remain authoritative.
-- Added GitHub Actions workflow at .github/workflows/build.yml to run Gradle build and upload the resulting JAR.
-- Updated version and installation documentation.
+Current implementation:
+- Registered a block entity for the Settlement Warehouse.
+- Added a 27-slot container with NBT persistence.
+- Added a server menu and client screen with normal slot synchronization and Shift-click transfer.
+- Warehouse interaction checks settlement ownership or operator permissions.
+- Added migration of legacy virtual resources into free physical slots; only the amount actually inserted is removed from SavedData.
+- Kept Alpha 0.2 commands for compatibility. The old virtual-store commands do not yet directly operate on physical warehouse slots.
 
-Validation performed:
-- Read back changed files from GitHub and checked version strings and workflow content.
-- No local ForgeGradle build or Minecraft launch was performed during this update.
-- The GitHub Actions workflow should provide the first clean-environment compile result; check the Actions tab.
+Validation:
+- Alpha 0.2.7 CI build succeeded on commit b593e4f8b79a59fd9fdce96160ead41bc69fe47.
+- Alpha 0.3.0 introduced new Forge/Minecraft menu and block-entity APIs. Its CI build is currently being checked; do not distribute a JAR until the latest Actions run succeeds.
+- No manual Minecraft launch or persistence test is claimed.
 
 Build locally:
 1. Use 64-bit Java 21.
-2. Run build.bat from the project root or .\\tools\\gradle-run.ps1 build in PowerShell.
-3. Expected JAR: build/libs/civitas-0.2.7.jar.
-4. Close Minecraft, remove older Civitas JARs from the profile's mods folder, and copy the new JAR there.
-5. Launch Minecraft 1.21.1 with Forge 52.x and use the Civilization Codex to open the management panel.
+2. Run build.bat or .\tools\gradle-run.ps1 build from the project root.
+3. Expected JAR after successful compilation: build/libs/civitas-0.3.0.jar.
+4. Install only one Civitas JAR into the mods folder of Minecraft 1.21.1 + Forge 52.1.20.
 
-Known limitations:
-- Warehouse has no slot-based container yet; worker NPCs are not implemented.
-- Settlement/storage responses are still sent to in-game chat rather than rendered as a live synchronized dashboard.
-- Compilation and runtime behavior are not claimed until the GitHub Actions run and in-game test complete.
+Required manual tests after compilation:
+- Place a warehouse and open it as settlement owner.
+- Confirm a non-owner cannot open it.
+- Move stacks both ways, including Shift-click.
+- Close/reopen the GUI and verify slot contents.
+- Exit and restart the world and verify contents.
+- Fill the warehouse and verify no items disappear.
+- Test an existing Alpha 0.2 world with virtual resources and confirm migration.
+- Remove the warehouse and check expected item-drop behaviour.
