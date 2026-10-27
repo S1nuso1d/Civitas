@@ -4,7 +4,7 @@ import net.minecraft.client.gui.screens.MenuScreens;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.client.event.RegisterMenuScreensEvent;
+import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import ru.civitas.CivitasMod;
 import ru.civitas.menu.ModMenus;
 
@@ -14,7 +14,7 @@ public final class ClientModEvents {
     }
 
     @SubscribeEvent
-    public static void onRegisterMenuScreens(RegisterMenuScreensEvent event) {
-        event.register(ModMenus.WAREHOUSE.get(), SettlementWarehouseScreen::new);
+    public static void onClientSetup(FMLClientSetupEvent event) {
+        event.enqueueWork(() -> MenuScreens.register(ModMenus.WAREHOUSE.get(), SettlementWarehouseScreen::new));
     }
 }
