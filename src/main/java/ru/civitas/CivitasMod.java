@@ -8,6 +8,7 @@ import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
+import ru.civitas.block.ModBlocks;
 import ru.civitas.command.CivitasCommands;
 import ru.civitas.item.ModItems;
 
@@ -17,6 +18,7 @@ public final class CivitasMod {
     private static final String CODEX_RECEIVED_KEY = "civitas.codex_received";
 
     public CivitasMod(FMLJavaModLoadingContext context) {
+        ModBlocks.BLOCKS.register(context.getModEventBus());
         ModItems.ITEMS.register(context.getModEventBus());
         MinecraftForge.EVENT_BUS.addListener(this::onPlayerLoggedIn);
         MinecraftForge.EVENT_BUS.addListener(this::onRegisterCommands);
