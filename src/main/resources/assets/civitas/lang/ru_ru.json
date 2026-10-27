@@ -2,5 +2,11 @@
   "item.civitas.civilization_codex": "Кодекс цивилизации",
   "block.civitas.warehouse": "Склад поселения",
   "item.civitas.warehouse": "Склад поселения",
-  "message.civitas.welcome": "Добро пожаловать в Civitas! Кодекс цивилизации поможет освоить основы управления поселением."
+  "message.civitas.welcome": "Добро пожаловать в Civitas! Кодекс цивилизации поможет освоить основы управления поселением.",
+  "screen.civitas.settlement": "Civitas — управление поселением",
+  "screen.civitas.settlement_name": "Название поселения",
+  "screen.civitas.name_hint": "Например, Новая деревня",
+  "screen.civitas.item_id": "ID предмета",
+  "screen.civitas.amount": "Количество"
 }
+

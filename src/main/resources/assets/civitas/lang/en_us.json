@@ -2,5 +2,11 @@
   "item.civitas.civilization_codex": "Civilization Codex",
   "block.civitas.warehouse": "Settlement Warehouse",
   "item.civitas.warehouse": "Settlement Warehouse",
-  "message.civitas.welcome": "Welcome to Civitas! The Civilization Codex will guide you through the basics of settlement management."
+  "message.civitas.welcome": "Welcome to Civitas! The Civilization Codex will guide you through the basics of settlement management.",
+  "screen.civitas.settlement": "Civitas — Settlement Management",
+  "screen.civitas.settlement_name": "Settlement name",
+  "screen.civitas.name_hint": "For example, New Village",
+  "screen.civitas.item_id": "Item ID",
+  "screen.civitas.amount": "Amount"
 }
+
