@@ -1,5 +1,10 @@
 # Changelog
 
+## Alpha 0.2.7
+
+- Added the Settlement Warehouse to Minecraft's Functional Blocks creative tab so it can be obtained without `/give`.
+- Updated the build script and CI artifact name to `0.2.7`.
+
 ## Alpha 0.2.6
 
 - Added a placeable Settlement Warehouse block using Minecraft's barrel textures.
