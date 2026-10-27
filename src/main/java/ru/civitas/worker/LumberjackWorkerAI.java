@@ -72,6 +72,57 @@ public final class LumberjackWorkerAI {
         chosen.setPersistenceRequired();
     }
 
+    /** Returns the Civitas role currently assigned to a villager, or an empty string. */
+    public static String getWorkerRole(Villager villager) {
+        return villager.getPersistentData().getString(ROLE_KEY);
+    }
+
+    /**
+     * Assigns the nearest resident to the lumberjack role and removes that role
+     * from any other resident in the starter-village area.
+     */
+    public static boolean assignNearestLumberjack(ServerLevel level, BlockPos villageCenter) {
+        AABB area = new AABB(
+                villageCenter.getX() - 24, villageCenter.getY() - 12, villageCenter.getZ() - 24,
+                villageCenter.getX() + 24, villageCenter.getY() + 12, villageCenter.getZ() + 24
+        );
+        java.util.List<Villager> villagers = level.getEntitiesOfClass(Villager.class, area);
+        if (villagers.isEmpty()) {
+            ensureWorkerExists(level, villageCenter);
+            villagers = level.getEntitiesOfClass(Villager.class, area);
+        }
+        if (villagers.isEmpty()) {
+            return false;
+        }
+
+        Villager chosen = null;
+        double nearestDistance = Double.MAX_VALUE;
+        for (Villager villager : villagers) {
+            if ("lumberjack".equals(getWorkerRole(villager))) {
+                villager.getPersistentData().putString(ROLE_KEY, "");
+                if (villager.getCustomName() != null
+                        && "Лесоруб Civitas".equals(villager.getCustomName().getString())) {
+                    villager.setCustomName(null);
+                    villager.setCustomNameVisible(false);
+                }
+            }
+            double distance = villager.distanceToSqr(
+                    villageCenter.getX() + 0.5D, villageCenter.getY() + 1.0D, villageCenter.getZ() + 0.5D);
+            if (distance < nearestDistance) {
+                chosen = villager;
+                nearestDistance = distance;
+            }
+        }
+        if (chosen == null) {
+            return false;
+        }
+        chosen.getPersistentData().putString(ROLE_KEY, "lumberjack");
+        chosen.setCustomName(Component.literal("Лесоруб Civitas"));
+        chosen.setCustomNameVisible(true);
+        chosen.setPersistenceRequired();
+        return true;
+    }
+
     public static void onLivingTick(LivingEvent.LivingTickEvent event) {
         LivingEntity entity = event.getEntity();
         if (!(entity instanceof Villager villager) || villager.level().isClientSide) {
