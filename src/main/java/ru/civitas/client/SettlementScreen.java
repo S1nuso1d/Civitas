@@ -92,7 +92,8 @@ public final class SettlementScreen extends Screen {
             String actual = command;
             if (actual.equals("civitas construction cancel selected")) {
                 actual = "civitas construction cancel " + safeOrderIndex();
-            }\n            if (actual.startsWith("civitas build ")) {
+            }
+            if (actual.startsWith("civitas build ")) {
                 if (!actual.equals(pendingBuild)) {
                     pendingBuild = actual;
                     return;
