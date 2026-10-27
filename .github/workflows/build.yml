@@ -32,6 +32,6 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: civitas-0.2.5-forge-1.21.1
+          name: civitas-0.2.6-forge-1.21.1
           path: build/libs/*.jar
           if-no-files-found: error
