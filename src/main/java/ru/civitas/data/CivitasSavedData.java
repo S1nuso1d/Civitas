@@ -125,7 +125,11 @@ public final class CivitasSavedData extends SavedData {
         if (!founded || itemId == null || itemId.isBlank() || amount <= 0) {
             return false;
         }
-        resources.merge(itemId, amount, Integer::sum);
+        int current = resources.getOrDefault(itemId, 0);
+        if (current > Integer.MAX_VALUE - amount) {
+            return false;
+        }
+        resources.put(itemId, current + amount);
         setDirty();
         return true;
     }
