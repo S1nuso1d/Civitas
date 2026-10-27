@@ -42,7 +42,10 @@ public final class CivitasCommands {
                                         .executes(CivitasCommands::rename)))
                         .then(Commands.literal("workers").executes(CivitasCommands::workers))
                         .then(Commands.literal("worker")
-                                .then(Commands.literal("lumberjack").executes(CivitasCommands::assignLumberjack)))
+                                .then(Commands.literal("lumberjack").executes(CivitasCommands::assignLumberjack))
+                                .then(Commands.literal("pause").executes(context -> setLumberjackPaused(context, true)))
+                                .then(Commands.literal("resume").executes(context -> setLumberjackPaused(context, false)))
+                                .then(Commands.literal("clear").executes(CivitasCommands::clearLumberjack)))
                         .then(Commands.literal("storage").executes(CivitasCommands::storage))
                         .then(Commands.literal("deposit")
                                 .then(Commands.argument("amount", IntegerArgumentType.integer(1, 2304))
@@ -60,7 +63,9 @@ public final class CivitasCommands {
         source.sendSuccess(() -> Component.literal("§e/civitas status §7— состояние поселения"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas rename <название> §7— переименовать поселение"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas workers §7— список жителей и их роли"), false);
-        source.sendSuccess(() -> Component.literal("§e/civitas worker lumberjack §7— назначить ближайшего жителя лесорубом"), false);
+        source.sendSuccess(() -> Component.literal("§e/civitas worker lumberjack §7— назначить лесоруба"), false);
+        source.sendSuccess(() -> Component.literal("§e/civitas worker pause|resume §7— приостановить/продолжить"), false);
+        source.sendSuccess(() -> Component.literal("§e/civitas worker clear §7— снять профессию после доставки груза"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas storage §7— содержимое физического склада"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas deposit <количество> §7— положить предметы из основной руки"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas withdraw <namespace:item> <количество> §7— забрать предметы"), false);
@@ -164,6 +169,32 @@ public final class CivitasCommands {
             return Command.SINGLE_SUCCESS;
         }
         context.getSource().sendFailure(Component.literal("Не удалось найти жителя для назначения. Проверь, что жители есть рядом с деревней."));
+        return 0;
+    }
+
+    private static int setLumberjackPaused(CommandContext<CommandSourceStack> context, boolean paused) throws CommandSyntaxException {
+        ServerPlayer player = context.getSource().getPlayerOrException();
+        CivitasSavedData data = CivitasSavedData.get(context.getSource().getServer());
+        if (!ensureOwner(context.getSource(), player, data)) return 0;
+        BlockPos center = data.hasStarterVillage() ? data.getStarterVillageCenter() : data.getCenter();
+        if (!LumberjackWorkerAI.setLumberjackPaused(context.getSource().getServer().overworld(), center, paused)) {
+            context.getSource().sendFailure(Component.literal("Лесоруб не назначен. Используй /civitas worker lumberjack."));
+            return 0;
+        }
+        context.getSource().sendSuccess(() -> Component.literal(paused ? "§eРабота лесоруба приостановлена. Груз сохранён." : "§aЛесоруб продолжил работу."), false);
+        return Command.SINGLE_SUCCESS;
+    }
+
+    private static int clearLumberjack(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        ServerPlayer player = context.getSource().getPlayerOrException();
+        CivitasSavedData data = CivitasSavedData.get(context.getSource().getServer());
+        if (!ensureOwner(context.getSource(), player, data)) return 0;
+        BlockPos center = data.hasStarterVillage() ? data.getStarterVillageCenter() : data.getCenter();
+        if (LumberjackWorkerAI.clearLumberjackRole(context.getSource().getServer().overworld(), center)) {
+            context.getSource().sendSuccess(() -> Component.literal("§aПрофессия лесоруба снята."), false);
+            return Command.SINGLE_SUCCESS;
+        }
+        context.getSource().sendFailure(Component.literal("Лесоруб не найден или ещё несёт брёвна. Дождись доставки груза."));
         return 0;
     }
 

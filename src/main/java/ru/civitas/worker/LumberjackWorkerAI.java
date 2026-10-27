@@ -28,6 +28,8 @@ public final class LumberjackWorkerAI {
     private static final String CARRIED_ITEM_KEY = "civitas.worker_carried_item";
     private static final String CARRIED_COUNT_KEY = "civitas.worker_carried_count";
     private static final String CHOP_PROGRESS_KEY = "civitas.worker_chop_progress";
+    private static final String PAUSED_KEY = "civitas.worker_paused";
+    private static final String ISSUE_KEY = "civitas.worker_issue";
     private static final int MAX_CARRIED = 8;
     private static final int WORK_INTERVAL = 20;
 
@@ -77,20 +79,48 @@ public final class LumberjackWorkerAI {
         return villager.getPersistentData().getString(ROLE_KEY);
     }
 
-    /** Human-readable activity and cargo state for settlement management. */
+    /** Human-readable activity, cargo, pause state and last blocking issue. */
     public static String getWorkerStatus(Villager villager) {
         var persistent = villager.getPersistentData();
+        if (persistent.getBoolean(PAUSED_KEY) && "lumberjack".equals(getWorkerRole(villager))) return "Приостановлен";
+        String issue = persistent.getString(ISSUE_KEY);
+        if (!issue.isBlank()) return issue;
         int carried = Math.max(0, persistent.getInt(CARRIED_COUNT_KEY));
-        if (carried > 0) {
-            return "Несёт брёвна: " + carried + "/" + MAX_CARRIED;
-        }
-        if (persistent.getInt(CHOP_PROGRESS_KEY) > 0) {
-            return "Рубит дерево";
-        }
-        if (!"lumberjack".equals(getWorkerRole(villager))) {
-            return "Нет задачи";
-        }
+        if (carried > 0) return "Несёт брёвна: " + carried + "/" + MAX_CARRIED;
+        if (persistent.getInt(CHOP_PROGRESS_KEY) > 0) return "Рубит дерево";
+        if (!"lumberjack".equals(getWorkerRole(villager))) return "Нет задачи";
         return villager.getNavigation().isDone() ? "Ищет дерево" : "Идёт к дереву";
+    }
+
+    public static boolean setLumberjackPaused(ServerLevel level, BlockPos villageCenter, boolean paused) {
+        AABB area = new AABB(villageCenter).inflate(24, 12, 24);
+        for (Villager villager : level.getEntitiesOfClass(Villager.class, area)) {
+            if ("lumberjack".equals(getWorkerRole(villager))) {
+                villager.getPersistentData().putBoolean(PAUSED_KEY, paused);
+                if (paused) villager.getNavigation().stop();
+                else villager.getPersistentData().putString(ISSUE_KEY, "");
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static boolean clearLumberjackRole(ServerLevel level, BlockPos villageCenter) {
+        AABB area = new AABB(villageCenter).inflate(24, 12, 24);
+        for (Villager villager : level.getEntitiesOfClass(Villager.class, area)) {
+            if (!"lumberjack".equals(getWorkerRole(villager))) continue;
+            if (villager.getPersistentData().getInt(CARRIED_COUNT_KEY) > 0) return false;
+            villager.getPersistentData().putString(ROLE_KEY, "");
+            villager.getPersistentData().putBoolean(PAUSED_KEY, false);
+            villager.getPersistentData().putString(ISSUE_KEY, "");
+            villager.getNavigation().stop();
+            if (villager.getCustomName() != null && "Лесоруб Civitas".equals(villager.getCustomName().getString())) {
+                villager.setCustomName(null);
+                villager.setCustomNameVisible(false);
+            }
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -155,6 +185,10 @@ public final class LumberjackWorkerAI {
         if (!"lumberjack".equals(villager.getPersistentData().getString(ROLE_KEY))) {
             return;
         }
+        if (villager.getPersistentData().getBoolean(PAUSED_KEY)) {
+            villager.getNavigation().stop();
+            return;
+        }
         if (villager.tickCount % WORK_INTERVAL != 0 || !(villager.level() instanceof ServerLevel level)) {
             return;
         }
@@ -169,9 +203,11 @@ public final class LumberjackWorkerAI {
 
         BlockPos warehousePos = worldData.getStarterVillageCenter();
         if (!(level.getBlockEntity(warehousePos) instanceof SettlementWarehouseBlockEntity warehouse)) {
+            villager.getPersistentData().putString(ISSUE_KEY, "Склад не найден");
             villager.getNavigation().stop();
             return;
         }
+        villager.getPersistentData().putString(ISSUE_KEY, "");
 
         var persistent = villager.getPersistentData();
         String carriedItemId = persistent.getString(CARRIED_ITEM_KEY);
@@ -185,6 +221,7 @@ public final class LumberjackWorkerAI {
         String targetItemId = treeLog == null ? "" : BuiltInRegistries.ITEM.getKey(level.getBlockState(treeLog).getBlock().asItem()).toString();
         boolean mustDeliver = carriedCount >= MAX_CARRIED
                 || carriedCount > 0 && (treeLog == null || !carriedItemId.equals(targetItemId));
+        if (treeLog == null && carriedCount == 0) persistent.putString(ISSUE_KEY, "Нет деревьев поблизости");
 
         BlockPos deliveryStand = warehousePos.offset(0, 1, 2);
         if (mustDeliver || treeLog == null && carriedCount > 0) {
@@ -211,6 +248,7 @@ public final class LumberjackWorkerAI {
 
         BlockPos workPos = findWorkPosition(level, treeLog);
         if (workPos == null) {
+            persistent.putString(ISSUE_KEY, "Нет безопасного места для рубки");
             persistent.putInt(CHOP_PROGRESS_KEY, 0);
             if (carriedCount > 0) {
                 villager.getNavigation().moveTo(deliveryStand.getX() + 0.5D, deliveryStand.getY(), deliveryStand.getZ() + 0.5D, 0.9D);
@@ -221,6 +259,7 @@ public final class LumberjackWorkerAI {
         }
 
         if (villager.distanceToSqr(workPos.getX() + 0.5D, workPos.getY(), workPos.getZ() + 0.5D) > 4.0D) {
+            persistent.putString(ISSUE_KEY, "");
             persistent.putInt(CHOP_PROGRESS_KEY, 0);
             villager.getNavigation().moveTo(workPos.getX() + 0.5D, workPos.getY(), workPos.getZ() + 0.5D, 0.9D);
             return;
@@ -353,6 +392,7 @@ public final class LumberjackWorkerAI {
 
         persistent.putInt(CARRIED_COUNT_KEY, remaining);
         persistent.putString(CARRIED_ITEM_KEY, remaining == 0 ? "" : itemId);
+        persistent.putString(ISSUE_KEY, remaining == 0 ? "" : "Склад заполнен — груз сохранён");
     }
 
 }

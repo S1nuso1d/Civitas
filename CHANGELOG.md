@@ -1,5 +1,14 @@
 # Changelog
 
+## Alpha 0.5.0 — управление задачами работников
+
+- Added persistent pause/resume controls for the lumberjack. Pausing stops navigation but preserves the role and carried resources.
+- Added safe role removal: a lumberjack cannot be unassigned while carrying logs.
+- Expanded the worker list with task-state and blocking-issue information.
+- Added diagnostics for a missing warehouse, no nearby trees, unsafe work positions and a full warehouse.
+- Added pause, resume and role-removal controls to the settlement management screen.
+- GitHub Actions compilation and manual in-game checks are pending for this revision.
+
 ## Alpha 0.4.2 — worker management UI
 
 - Added `/civitas workers` to list villagers near the starter settlement and display their Civitas roles.
