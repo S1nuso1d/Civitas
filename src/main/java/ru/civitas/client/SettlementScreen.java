@@ -13,7 +13,7 @@ import net.minecraft.world.item.Items;
 /** Vanilla-inspired settlement dashboard with real Minecraft item icons. */
 public final class SettlementScreen extends Screen {
     private static final int PANEL_WIDTH = 360;
-    private static final int PANEL_HEIGHT = 452;
+    private static final int PANEL_HEIGHT = 480;
     private static final int INNER_WIDTH = 330;
     private static final int BUTTON_WIDTH = 160;
     private static final int GAP = 10;
@@ -21,6 +21,7 @@ public final class SettlementScreen extends Screen {
     private EditBox settlementName;
     private EditBox itemId;
     private EditBox amount;
+    private String pendingBuild = "";
 
     public SettlementScreen() {
         super(Component.translatable("screen.civitas.settlement"));
@@ -83,6 +84,13 @@ public final class SettlementScreen extends Screen {
     private void addButton(String label, int x, int y, int width, String command, net.minecraft.world.item.Item icon) {
         addRenderableWidget(Button.builder(Component.literal(label), button -> {
             String actual = command;
+            if (actual.startsWith("civitas build ")) {
+                if (!actual.equals(pendingBuild)) {
+                    pendingBuild = actual;
+                    return;
+                }
+                pendingBuild = "";
+            }
             if (actual.equals("civitas found") || actual.equals("civitas rename")) {
                 actual = actual + " " + safeName();
             } else if (actual.startsWith("civitas deposit ")) {
@@ -149,7 +157,22 @@ public final class SettlementScreen extends Screen {
         drawSection(graphics, left + 15, top + 323, "СТРОИТЕЛЬСТВО · РЕСУРСЫ СО СКЛАДА");
         super.render(graphics, mouseX, mouseY, partialTick);
         for (IconPosition icon : iconPositions) graphics.renderItem(icon.stack(), icon.x(), icon.y());
-        graphics.drawCenteredString(font, Component.literal("Ответы и ошибки отображаются в чате"), width / 2, top + 435, 0xFF303030);
+        if (!pendingBuild.isEmpty()) {
+            String preview = switch (pendingBuild) {
+                case "civitas build cabin" -> "Дом: 32 доски, 8 брёвен, 4 стекла";
+                case "civitas build farm" -> "Ферма: 49 земли, 24 семени, ведро воды";
+                case "civitas build workshop" -> "Мастерская: 32 доски, 25 булыжника, верстак";
+                default -> "Проверь стоимость и наличие материалов на складе";
+            };
+            graphics.fill(left + 8, top + 433, left + PANEL_WIDTH - 8, top + 464, 0xFF777777);
+            graphics.fill(left + 9, top + 434, left + PANEL_WIDTH - 9, top + 463, 0xFFE7D8A8);
+            graphics.drawCenteredString(font, Component.literal(preview), width / 2, top + 439, 0xFF303030);
+            graphics.drawCenteredString(font, Component.literal("Нажми выбранную постройку ещё раз для заказа"), width / 2, top + 451, 0xFF8A2020);
+        } else {
+            graphics.drawCenteredString(font, Component.literal("Выбери постройку один раз для предпросмотра стоимости"), width / 2, top + 443, 0xFF303030);
+            graphics.drawCenteredString(font, Component.literal("Повторное нажатие спишет ресурсы и поставит её в очередь"), width / 2, top + 455, 0xFF303030);
+        }
+        graphics.drawCenteredString(font, Component.literal("Ответы и ошибки отображаются в чате"), width / 2, top + 468, 0xFF303030);
     }
 
     private void drawSection(GuiGraphics graphics, int x, int y, String title) {

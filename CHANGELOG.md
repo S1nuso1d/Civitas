@@ -134,3 +134,9 @@
 - Added a dashboard action and `/civitas construction cancel` to cancel the first queued order before construction begins.
 - Refunds the full original material cost to the player inventory, dropping overflow nearby.
 - Started orders are protected from cancellation to avoid leaving partial structures and ambiguous refunds.
+
+
+## Alpha 0.9.2 — предпросмотр и подтверждение заказа
+- Added a two-step building action: first click previews required resources, second click confirms the order.
+- Choosing another building replaces the pending selection; no resources are spent on the first click.
+- The server remains responsible for validating stock and charging materials.

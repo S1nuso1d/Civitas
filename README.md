@@ -101,3 +101,11 @@ Assign a resident as builder with `/civitas worker builder` or the in-game settl
 - Отменяется только первый заказ очереди, если строитель ещё не уложил ни одного слоя. Полный комплект материалов возвращается игроку; при заполненном инвентаре предметы выпадают рядом.
 - Начатый заказ нельзя отменить: это предотвращает потерю материалов и оставленные частично построенные здания.
 - GitHub Actions проверяет компиляцию; ручная проверка в Minecraft по-прежнему необходима.
+
+
+## Alpha 0.9.2 — предпросмотр строительства
+
+- Clicking a building once selects it and displays the required materials in the management panel without sending a build command.
+- Clicking the same building again confirms the order and sends the command that charges materials and adds the order to the queue.
+- Selecting a different building replaces the pending selection, reducing accidental resource spending.
+- Build costs are currently shown as a fixed UI preview; server-side warehouse validation remains authoritative.
