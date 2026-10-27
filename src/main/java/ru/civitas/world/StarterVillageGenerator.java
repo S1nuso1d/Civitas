@@ -48,6 +48,9 @@ public final class StarterVillageGenerator {
         placeVillageDecor(level, center);
         spawnVillagers(level, center);
 
+        // Make the generated village the world's actual spawn, not merely a
+        // one-time teleport destination for the first player.
+        level.setDefaultSpawnPos(center.offset(0, 1, 2), 0.0F);
         return center;
     }
 
