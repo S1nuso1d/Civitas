@@ -8,7 +8,8 @@
 - Added owner/operator checks before opening the physical warehouse.
 - Added a safe first-pass migration from Alpha 0.2 virtual resources into available physical slots.
 - Prevented integer overflow when adding resources to the legacy virtual store.
-- Build and in-game persistence checks are pending; this version is not yet marked as verified.
+- GitHub Actions Gradle build succeeded on commit `9798485879cce462cab2d7d52beb72bede929411`; artifact `civitas-0.3.0-forge-1.21.1` was uploaded.
+- Manual in-game tests for persistence, multiplayer permissions and migration are still pending.
 
 ## Alpha 0.2.7
 
