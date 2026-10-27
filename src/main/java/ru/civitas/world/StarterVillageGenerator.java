@@ -5,7 +5,8 @@ import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.npc.Villager;
-import net.minecraft.world.level.Level;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.BedBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.DoorBlock;
@@ -16,9 +17,6 @@ import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.tags.BlockTags;
 import ru.civitas.block.ModBlocks;
-
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Creates one compact starter village in the Overworld. The location is stored
@@ -136,18 +134,33 @@ public final class StarterVillageGenerator {
             level.setBlock(center.offset(0, 0, offset), Blocks.DIRT_PATH.defaultBlockState(), Block.UPDATE_ALL);
             level.setBlock(center.offset(offset, 0, 0), Blocks.DIRT_PATH.defaultBlockState(), Block.UPDATE_ALL);
         }
-        for (int sign : new int[]{-1, 1}) {
-            for (int step = 2; step <= 7; step++) {
-                level.setBlock(center.offset(sign * step, 0, sign * step), Blocks.DIRT_PATH.defaultBlockState(), Block.UPDATE_ALL);
-                level.setBlock(center.offset(-sign * step, 0, sign * step), Blocks.DIRT_PATH.defaultBlockState(), Block.UPDATE_ALL);
+        for (int signX : new int[]{-1, 1}) {
+            for (int signZ : new int[]{-1, 1}) {
+                int houseX = signX * 7;
+                int entranceZ = signZ * 9;
+                for (int x = 0; x <= 7; x++) {
+                    level.setBlock(center.offset(signX * x, 0, entranceZ), Blocks.DIRT_PATH.defaultBlockState(), Block.UPDATE_ALL);
+                }
+                for (int z = 0; z <= 9; z++) {
+                    level.setBlock(center.offset(houseX, 0, signZ * z), Blocks.DIRT_PATH.defaultBlockState(), Block.UPDATE_ALL);
+                }
             }
         }
     }
 
     private static void placeWarehouse(ServerLevel level, BlockPos center) {
         level.setBlock(center, ModBlocks.WAREHOUSE.get().defaultBlockState(), Block.UPDATE_ALL);
-        level.setBlock(center.above(), Blocks.BELL.defaultBlockState(), Block.UPDATE_ALL);
+        level.setBlock(center.offset(1, 0, 0), Blocks.BELL.defaultBlockState(), Block.UPDATE_ALL);
         level.setBlock(center.offset(2, 0, 0), Blocks.BARREL.defaultBlockState(), Block.UPDATE_ALL);
+
+        if (level.getBlockEntity(center) instanceof ru.civitas.block.SettlementWarehouseBlockEntity warehouse) {
+            warehouse.setItem(0, new ItemStack(Items.OAK_LOG, 16));
+            warehouse.setItem(1, new ItemStack(Items.BREAD, 16));
+            warehouse.setItem(2, new ItemStack(Items.WHEAT_SEEDS, 16));
+            warehouse.setItem(3, new ItemStack(Items.COBBLESTONE, 32));
+            warehouse.setItem(4, new ItemStack(Items.TORCH, 16));
+            warehouse.setItem(5, new ItemStack(Items.OAK_SAPLING, 4));
+        }
     }
 
     private static void buildHouse(ServerLevel level, BlockPos center, int offsetX, int offsetZ, Block jobSite) {
@@ -222,7 +235,7 @@ public final class StarterVillageGenerator {
                 continue;
             }
             BlockPos house = center.offset(offset[0], 1, offset[1]);
-            villager.moveTo(house.getX() + 0.5D, house.getY() + 1.0D, house.getZ() + 0.5D,
+            villager.moveTo(house.getX() + 0.5D, house.getY(), house.getZ() + 0.5D,
                     level.random.nextFloat() * 360.0F, 0.0F);
             level.addFreshEntity(villager);
         }
