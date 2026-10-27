@@ -20,6 +20,7 @@ import ru.civitas.item.ModItems;
 import ru.civitas.menu.ModMenus;
 import ru.civitas.world.StarterVillageGenerator;
 import ru.civitas.worker.LumberjackWorkerAI;
+import ru.civitas.worker.ConstructionWorkerAI;
 
 @Mod(CivitasMod.MOD_ID)
 public final class CivitasMod {
@@ -37,6 +38,7 @@ public final class CivitasMod {
         MinecraftForge.EVENT_BUS.addListener(this::onBuildCreativeTab);
         MinecraftForge.EVENT_BUS.addListener(this::onRegisterCommands);
         MinecraftForge.EVENT_BUS.addListener(LumberjackWorkerAI::onLivingTick);
+        MinecraftForge.EVENT_BUS.addListener(ConstructionWorkerAI::onLevelTick);
     }
 
     private void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {

@@ -41,8 +41,10 @@ public final class CivitasSavedData extends SavedData {
     private int villageZ;
     private final Map<String, Integer> resources = new TreeMap<>();
     private final List<BuildingRecord> buildings = new ArrayList<>();
+    private final List<ConstructionOrder> constructionOrders = new ArrayList<>();
 
     public record BuildingRecord(String type, int x, int y, int z) { }
+    public record ConstructionOrder(String type, int x, int y, int z, int progress, int totalLayers) { }
 
     public CivitasSavedData() {
     }
@@ -67,6 +69,14 @@ public final class CivitasSavedData extends SavedData {
         data.villageY = tag.getInt("village_y");
         data.villageZ = tag.getInt("village_z");
 
+        ListTag storedOrders = tag.getList("construction_orders", Tag.TAG_COMPOUND);
+        for (int i = 0; i < storedOrders.size(); i++) {
+            CompoundTag order = storedOrders.getCompound(i);
+            String type = order.getString("type");
+            int total = Math.max(1, order.getInt("total_layers"));
+            int progress = Math.max(0, Math.min(total, order.getInt("progress")));
+            if (!type.isBlank() && progress < total) data.constructionOrders.add(new ConstructionOrder(type, order.getInt("x"), order.getInt("y"), order.getInt("z"), progress, total));
+        }
         ListTag storedBuildings = tag.getList("buildings", Tag.TAG_COMPOUND);
         for (int i = 0; i < storedBuildings.size(); i++) {
             CompoundTag building = storedBuildings.getCompound(i);
@@ -99,6 +109,15 @@ public final class CivitasSavedData extends SavedData {
         tag.putInt("village_y", villageY);
         tag.putInt("village_z", villageZ);
 
+        ListTag storedOrders = new ListTag();
+        for (ConstructionOrder order : constructionOrders) {
+            CompoundTag stored = new CompoundTag();
+            stored.putString("type", order.type());
+            stored.putInt("x", order.x()); stored.putInt("y", order.y()); stored.putInt("z", order.z());
+            stored.putInt("progress", order.progress()); stored.putInt("total_layers", order.totalLayers());
+            storedOrders.add(stored);
+        }
+        tag.put("construction_orders", storedOrders);
         ListTag storedBuildings = new ListTag();
         for (BuildingRecord record : buildings) {
             CompoundTag building = new CompoundTag();
@@ -191,6 +210,19 @@ public final class CivitasSavedData extends SavedData {
         return Collections.unmodifiableMap(new TreeMap<>(resources));
     }
 
+    public void addConstructionOrder(String type, BlockPos position, int totalLayers) {
+        if (type == null || type.isBlank() || position == null || totalLayers < 1) return;
+        constructionOrders.add(new ConstructionOrder(type, position.getX(), position.getY(), position.getZ(), 0, totalLayers));
+        setDirty();
+    }
+    public List<ConstructionOrder> getConstructionOrders() { return Collections.unmodifiableList(new ArrayList<>(constructionOrders)); }
+    public void advanceConstructionOrder(ConstructionOrder order) {
+        int index = constructionOrders.indexOf(order);
+        if (index < 0) return;
+        if (order.progress() + 1 >= order.totalLayers()) constructionOrders.remove(index);
+        else constructionOrders.set(index, new ConstructionOrder(order.type(), order.x(), order.y(), order.z(), order.progress() + 1, order.totalLayers()));
+        setDirty();
+    }
     public void registerBuilding(String type, BlockPos position) {
         if (type == null || type.isBlank() || position == null) return;
         buildings.add(new BuildingRecord(type, position.getX(), position.getY(), position.getZ()));

@@ -1,5 +1,15 @@
 ## Alpha 0.6.0 — строительная система\n\n- Added three placeable settlement structures: cabin, farm and workshop.\n- Building costs are charged from the same physical warehouse used by the inventory UI and storage commands.\n- Build sites are checked before resources are removed; occupied terrain and insufficient materials abort the build.\n- Added building buttons to the settlement management screen.\n- GitHub Actions compilation and manual in-game checks are pending.\n\n# Changelog
 
+## Alpha 0.7.0 — сохранённая очередь строительства
+
+- Building commands now charge the physical warehouse once and enqueue construction instead of placing the entire structure immediately.
+- Cabin, farm and workshop are placed layer by layer by a server-side construction tick handler.
+- Queue entries and progress are saved in world data and survive reloads.
+- Added `/civitas construction` and a settlement-panel button to inspect active orders and layer progress.
+- CI and in-game verification are pending.
+
+
+
 ## Alpha 0.6.1 — постоянный реестр зданий
 
 - Added a world-persistent building registry with type and coordinates stored in Civitas SavedData.

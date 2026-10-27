@@ -1,6 +1,6 @@
-Civitas Alpha 0.6.1 — build status
+Civitas Alpha 0.7.0 — build status
 Target: Minecraft Java Edition 1.21.1 + Forge 52.1.20 + Java 21
 
-New in this revision: persistent building registry, building coordinates saved in world data, /civitas buildings and a management-screen shortcut, basic spacing protection for registered structures.
+New: persisted construction queue, one-layer-per-second progression, saved progress, /civitas construction.
 
-GitHub Actions compilation and manual in-game verification are pending. Do not treat an artifact from an earlier commit as the build for this revision.
+GitHub Actions compilation and manual in-game verification are pending for this revision.

@@ -44,6 +44,7 @@ public final class CivitasCommands {
                                         .executes(CivitasCommands::rename)))
                         .then(Commands.literal("workers").executes(CivitasCommands::workers))
                         .then(Commands.literal("buildings").executes(CivitasCommands::buildings))
+                        .then(Commands.literal("construction").executes(CivitasCommands::construction))
                         .then(Commands.literal("build").then(Commands.literal("cabin").executes(ctx -> build(ctx, BuildingType.CABIN)))
                                 .then(Commands.literal("farm").executes(ctx -> build(ctx, BuildingType.FARM)))
                                 .then(Commands.literal("workshop").executes(ctx -> build(ctx, BuildingType.WORKSHOP))))
@@ -70,6 +71,7 @@ public final class CivitasCommands {
         source.sendSuccess(() -> Component.literal("§e/civitas rename <название> §7— переименовать поселение"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas workers §7— список жителей и их роли"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas buildings §7— реестр построенных зданий"), false);
+        source.sendSuccess(() -> Component.literal("§e/civitas construction §7— очередь и прогресс строительства"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas build cabin|farm|workshop §7— построить здание за ресурсы склада"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas worker lumberjack §7— назначить лесоруба"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas worker pause|resume §7— приостановить/продолжить"), false);
@@ -228,6 +230,16 @@ public final class CivitasCommands {
         }
         context.getSource().sendFailure(Component.literal(result.message()));
         return 0;
+    }
+
+    private static int construction(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        ServerPlayer player=context.getSource().getPlayerOrException(); CivitasSavedData data=CivitasSavedData.get(context.getSource().getServer());
+        if(!ensureOwner(context.getSource(),player,data))return 0;
+        var orders=data.getConstructionOrders();
+        context.getSource().sendSuccess(()->Component.literal("§6§lОчередь строительства: "+orders.size()),false);
+        if(orders.isEmpty()){context.getSource().sendSuccess(()->Component.literal("Активных строительных заказов нет."),false);return Command.SINGLE_SUCCESS;}
+        for(int i=0;i<orders.size();i++){var o=orders.get(i);String label=switch(o.type()){case "cabin"->"Жилой дом";case "farm"->"Ферма";case "workshop"->"Мастерская";default->o.type();};String line=(i+1)+". "+label+" — слой "+(o.progress()+1)+"/"+o.totalLayers()+" ("+o.x()+", "+o.y()+", "+o.z()+")";context.getSource().sendSuccess(()->Component.literal(line),false);}
+        return Command.SINGLE_SUCCESS;
     }
 
     private static int buildings(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
