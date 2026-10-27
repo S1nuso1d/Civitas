@@ -12,14 +12,15 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraftforge.event.RegisterCommandsEvent;
+import ru.civitas.block.SettlementWarehouseBlock;
+import ru.civitas.block.SettlementWarehouseBlockEntity;
 import ru.civitas.data.CivitasSavedData;
-
-import java.util.Map;
 
 public final class CivitasCommands {
     private CivitasCommands() {
@@ -52,10 +53,10 @@ public final class CivitasCommands {
         source.sendSuccess(() -> Component.literal("§e/civitas found <название> §7— основать поселение в текущей точке"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas status §7— состояние поселения"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas rename <название> §7— переименовать поселение"), false);
-        source.sendSuccess(() -> Component.literal("§e/civitas storage §7— содержимое виртуального склада"), false);
+        source.sendSuccess(() -> Component.literal("§e/civitas storage §7— содержимое физического склада"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas deposit <количество> §7— положить предметы из основной руки"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas withdraw <namespace:item> <количество> §7— забрать предметы"), false);
-        source.sendSuccess(() -> Component.literal("§7В этой версии пока один объект поселения на мир. Физическое строительство и жители будут следующими этапами."), false);
+        source.sendSuccess(() -> Component.literal("§7Команды склада и окно склада используют один инвентарь."), false);
         return Command.SINGLE_SUCCESS;
     }
 
@@ -65,13 +66,18 @@ public final class CivitasCommands {
             context.getSource().sendFailure(Component.literal("Поселение ещё не создано. Используй: /civitas found Новая деревня"));
             return 0;
         }
-
         BlockPos pos = data.getCenter();
         context.getSource().sendSuccess(() -> Component.literal("§6§l" + data.getSettlementName()), false);
         context.getSource().sendSuccess(() -> Component.literal("Уровень: " + data.getLevel() + " | Население: " + data.getPopulation()), false);
         context.getSource().sendSuccess(() -> Component.literal("Управляющий: " + data.getOwnerName()), false);
         context.getSource().sendSuccess(() -> Component.literal("Центр: X=" + pos.getX() + " Y=" + pos.getY() + " Z=" + pos.getZ()), false);
-        context.getSource().sendSuccess(() -> Component.literal("Единиц ресурсов на складе: " + data.getResources().values().stream().mapToInt(Integer::intValue).sum()), false);
+        SettlementWarehouseBlockEntity warehouse = findWarehouse(context.getSource(), data);
+        if (warehouse == null) {
+            context.getSource().sendSuccess(() -> Component.literal("Физический склад не найден в центре деревни."), false);
+        } else {
+            int total = countAllItems(warehouse);
+            context.getSource().sendSuccess(() -> Component.literal("Предметов в физическом складе: " + total), false);
+        }
         return Command.SINGLE_SUCCESS;
     }
 
@@ -84,7 +90,7 @@ public final class CivitasCommands {
             return 0;
         }
         context.getSource().sendSuccess(() -> Component.literal("§aПоселение «" + data.getSettlementName() + "» основано!"), false);
-        context.getSource().sendSuccess(() -> Component.literal("Начальное население: 5. Уровень развития: 1. Склад пуст."), false);
+        context.getSource().sendSuccess(() -> Component.literal("Начальное население: 5. Уровень развития: 1."), false);
         context.getSource().sendSuccess(() -> Component.literal("Следующий шаг: §e/civitas help"), false);
         return Command.SINGLE_SUCCESS;
     }
@@ -100,8 +106,7 @@ public final class CivitasCommands {
             context.getSource().sendFailure(Component.literal("Переименовать поселение может только управляющий или администратор."));
             return 0;
         }
-        String name = StringArgumentType.getString(context, "name");
-        if (!data.rename(name)) {
+        if (!data.rename(StringArgumentType.getString(context, "name"))) {
             context.getSource().sendFailure(Component.literal("Название не может быть пустым."));
             return 0;
         }
@@ -109,29 +114,40 @@ public final class CivitasCommands {
         return Command.SINGLE_SUCCESS;
     }
 
-    private static int storage(CommandContext<CommandSourceStack> context) {
+    private static int storage(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        ServerPlayer player = context.getSource().getPlayerOrException();
         CivitasSavedData data = CivitasSavedData.get(context.getSource().getServer());
-        if (!data.isFounded()) {
-            context.getSource().sendFailure(Component.literal("Сначала создай поселение: /civitas found <название>"));
+        if (!ensureOwner(context.getSource(), player, data)) return 0;
+        SettlementWarehouseBlockEntity warehouse = findWarehouse(context.getSource(), data);
+        if (warehouse == null) {
+            context.getSource().sendFailure(Component.literal("Физический склад не найден. Проверь центральный склад деревни."));
             return 0;
         }
-        Map<String, Integer> resources = data.getResources();
-        context.getSource().sendSuccess(() -> Component.literal("§6§lСклад поселения «" + data.getSettlementName() + "»"), false);
-        if (resources.isEmpty()) {
-            context.getSource().sendSuccess(() -> Component.literal("Склад пуст. Держи предметы в основной руке и используй /civitas deposit <количество>"), false);
-        } else {
-            resources.forEach((itemId, amount) -> context.getSource().sendSuccess(
-                    () -> Component.literal("• " + itemId + " × " + amount), false));
+        SettlementWarehouseBlock.migrateLegacyResources(data, warehouse);
+        context.getSource().sendSuccess(() -> Component.literal("§6§lСклад «" + data.getSettlementName() + "»"), false);
+        for (int slot = 0; slot < warehouse.getContainerSize(); slot++) {
+            ItemStack stack = warehouse.getItem(slot);
+            if (!stack.isEmpty()) {
+                String itemId = BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
+                int amount = stack.getCount();
+                context.getSource().sendSuccess(() -> Component.literal("• " + itemId + " × " + amount), false);
+            }
         }
+        int total = countAllItems(warehouse);
+        context.getSource().sendSuccess(() -> Component.literal("Всего предметов: " + total + " / " + (warehouse.getContainerSize() * 64)), false);
         return Command.SINGLE_SUCCESS;
     }
 
     private static int deposit(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
         ServerPlayer player = context.getSource().getPlayerOrException();
         CivitasSavedData data = CivitasSavedData.get(context.getSource().getServer());
-        if (!ensureOwner(context.getSource(), player, data)) {
+        if (!ensureOwner(context.getSource(), player, data)) return 0;
+        SettlementWarehouseBlockEntity warehouse = findWarehouse(context.getSource(), data);
+        if (warehouse == null) {
+            context.getSource().sendFailure(Component.literal("Физический склад не найден. Положить предметы некуда."));
             return 0;
         }
+        SettlementWarehouseBlock.migrateLegacyResources(data, warehouse);
 
         int amount = IntegerArgumentType.getInteger(context, "amount");
         ItemStack held = player.getMainHandItem();
@@ -144,26 +160,60 @@ public final class CivitasCommands {
             return 0;
         }
         if (!held.getComponentsPatch().isEmpty()) {
-            context.getSource().sendFailure(Component.literal("Прототип склада принимает только обычные предметы без имени, повреждений, зачарований и других индивидуальных свойств."));
+            context.getSource().sendFailure(Component.literal("Склад принимает только обычные предметы без индивидуальных свойств."));
+            return 0;
+        }
+
+        int capacity = 0;
+        for (int slot = 0; slot < warehouse.getContainerSize(); slot++) {
+            ItemStack existing = warehouse.getItem(slot);
+            if (existing.isEmpty()) {
+                capacity += Math.min(64, held.getMaxStackSize());
+            } else if (ItemStack.isSameItemSameComponents(existing, held)) {
+                capacity += Math.max(0, existing.getMaxStackSize() - existing.getCount());
+            }
+            if (capacity >= amount) break;
+        }
+        if (capacity < amount) {
+            context.getSource().sendFailure(Component.literal("В физическом складе недостаточно свободного места. Для этого предмета свободно: " + capacity + "."));
             return 0;
         }
 
         String itemId = BuiltInRegistries.ITEM.getKey(held.getItem()).toString();
-        if (!data.addResource(itemId, amount)) {
-            context.getSource().sendFailure(Component.literal("Не удалось положить предметы на склад."));
-            return 0;
+        int remaining = amount;
+        for (int slot = 0; slot < warehouse.getContainerSize() && remaining > 0; slot++) {
+            ItemStack existing = warehouse.getItem(slot);
+            if (!existing.isEmpty() && ItemStack.isSameItemSameComponents(existing, held)) {
+                int moved = Math.min(remaining, existing.getMaxStackSize() - existing.getCount());
+                if (moved > 0) {
+                    existing.grow(moved);
+                    warehouse.setChanged();
+                    remaining -= moved;
+                }
+            }
+        }
+        for (int slot = 0; slot < warehouse.getContainerSize() && remaining > 0; slot++) {
+            if (warehouse.getItem(slot).isEmpty()) {
+                int moved = Math.min(remaining, held.getMaxStackSize());
+                warehouse.setItem(slot, held.copyWithCount(moved));
+                remaining -= moved;
+            }
         }
         held.shrink(amount);
-        context.getSource().sendSuccess(() -> Component.literal("На склад добавлено: " + itemId + " × " + amount), false);
+        context.getSource().sendSuccess(() -> Component.literal("На физический склад добавлено: " + itemId + " × " + amount), false);
         return Command.SINGLE_SUCCESS;
     }
 
     private static int withdraw(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
         ServerPlayer player = context.getSource().getPlayerOrException();
         CivitasSavedData data = CivitasSavedData.get(context.getSource().getServer());
-        if (!ensureOwner(context.getSource(), player, data)) {
+        if (!ensureOwner(context.getSource(), player, data)) return 0;
+        SettlementWarehouseBlockEntity warehouse = findWarehouse(context.getSource(), data);
+        if (warehouse == null) {
+            context.getSource().sendFailure(Component.literal("Физический склад не найден."));
             return 0;
         }
+        SettlementWarehouseBlock.migrateLegacyResources(data, warehouse);
 
         ResourceLocation id = ResourceLocationArgument.getId(context, "item");
         int amount = IntegerArgumentType.getInteger(context, "amount");
@@ -176,23 +226,51 @@ public final class CivitasCommands {
             context.getSource().sendFailure(Component.literal("Нельзя забрать пустой предмет."));
             return 0;
         }
-        String itemId = BuiltInRegistries.ITEM.getKey(item).toString();
-        if (!data.removeResource(itemId, amount)) {
-            context.getSource().sendFailure(Component.literal("На складе недостаточно " + itemId + "."));
+        int available = 0;
+        for (int slot = 0; slot < warehouse.getContainerSize(); slot++) {
+            ItemStack stack = warehouse.getItem(slot);
+            if (!stack.isEmpty() && stack.getItem() == item) available += stack.getCount();
+        }
+        if (available < amount) {
+            context.getSource().sendFailure(Component.literal("На физическом складе только " + available + " предмет(ов) " + id + "."));
             return 0;
         }
 
         int remaining = amount;
-        while (remaining > 0) {
-            int batchSize = Math.min(remaining, item.getDefaultMaxStackSize());
-            ItemStack stack = new ItemStack(item, batchSize);
-            if (!player.getInventory().add(stack)) {
-                player.drop(stack, false);
-            }
-            remaining -= batchSize;
+        for (int slot = 0; slot < warehouse.getContainerSize() && remaining > 0; slot++) {
+            ItemStack stack = warehouse.getItem(slot);
+            if (stack.isEmpty() || stack.getItem() != item) continue;
+            int moved = Math.min(remaining, stack.getCount());
+            stack.shrink(moved);
+            if (stack.isEmpty()) warehouse.setItem(slot, ItemStack.EMPTY);
+            else warehouse.setChanged();
+            remaining -= moved;
         }
-        context.getSource().sendSuccess(() -> Component.literal("Со склада выдано: " + itemId + " × " + amount), false);
+
+        int toGive = amount;
+        while (toGive > 0) {
+            int batchSize = Math.min(toGive, item.getDefaultMaxStackSize());
+            ItemStack stack = new ItemStack(item, batchSize);
+            if (!player.getInventory().add(stack)) player.drop(stack, false);
+            toGive -= batchSize;
+        }
+        context.getSource().sendSuccess(() -> Component.literal("С физического склада выдано: " + id + " × " + amount), false);
         return Command.SINGLE_SUCCESS;
+    }
+
+    private static int countAllItems(SettlementWarehouseBlockEntity warehouse) {
+        int total = 0;
+        for (int slot = 0; slot < warehouse.getContainerSize(); slot++) {
+            total += warehouse.getItem(slot).getCount();
+        }
+        return total;
+    }
+
+    private static SettlementWarehouseBlockEntity findWarehouse(CommandSourceStack source, CivitasSavedData data) {
+        ServerLevel overworld = source.getServer().overworld();
+        BlockPos pos = data.hasStarterVillage() ? data.getStarterVillageCenter() : data.getCenter();
+        if (overworld.getBlockEntity(pos) instanceof SettlementWarehouseBlockEntity warehouse) return warehouse;
+        return null;
     }
 
     private static boolean ensureOwner(CommandSourceStack source, ServerPlayer player, CivitasSavedData data) {
