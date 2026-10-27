@@ -1,5 +1,15 @@
 # Changelog
 
+## Alpha 0.4.0 — starter village and first worker
+
+- Added a persistent starter village and set the world's spawn point to its square.
+- Added player respawn redirection to the village.
+- Added starter resources to the physical warehouse.
+- Added a persistent lumberjack role on a vanilla villager.
+- Added a first worker loop: search nearby tree logs, navigate, chop with a short delay, carry up to eight logs and deposit them into the physical warehouse.
+- Added migration for villages created by earlier Civitas versions.
+- Latest CI and manual in-game verification are pending.
+
 ## Alpha 0.3.1 — starter village
 
 - Added a one-time starter village generator near the world spawn.

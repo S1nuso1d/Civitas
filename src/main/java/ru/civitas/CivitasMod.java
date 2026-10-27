@@ -19,6 +19,7 @@ import ru.civitas.data.CivitasSavedData;
 import ru.civitas.item.ModItems;
 import ru.civitas.menu.ModMenus;
 import ru.civitas.world.StarterVillageGenerator;
+import ru.civitas.worker.LumberjackWorkerAI;
 
 @Mod(CivitasMod.MOD_ID)
 public final class CivitasMod {
@@ -35,6 +36,7 @@ public final class CivitasMod {
         MinecraftForge.EVENT_BUS.addListener(this::onPlayerRespawn);
         MinecraftForge.EVENT_BUS.addListener(this::onBuildCreativeTab);
         MinecraftForge.EVENT_BUS.addListener(this::onRegisterCommands);
+        MinecraftForge.EVENT_BUS.addListener(LumberjackWorkerAI::onLivingTick);
     }
 
     private void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
@@ -53,6 +55,7 @@ public final class CivitasMod {
         }
 
         BlockPos village = data.getStarterVillageCenter();
+        LumberjackWorkerAI.ensureWorkerExists(overworld, village);
         if (!player.getPersistentData().getBoolean(VILLAGE_SPAWN_DONE_KEY)) {
             player.teleportTo(overworld, village.getX() + 0.5D, village.getY() + 1.0D, village.getZ() + 2.5D, 0.0F, 0.0F);
             player.getPersistentData().putBoolean(VILLAGE_SPAWN_DONE_KEY, true);

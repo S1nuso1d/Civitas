@@ -2,14 +2,16 @@ package ru.civitas.worker;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.tags.BlockTags;
 import net.minecraftforge.event.entity.living.LivingEvent;
@@ -32,6 +34,44 @@ public final class LumberjackWorkerAI {
     private LumberjackWorkerAI() {
     }
 
+    /**
+     * Assign one resident as lumberjack. This also upgrades older worlds without
+     * rebuilding their starter village.
+     */
+    public static void ensureWorkerExists(ServerLevel level, BlockPos villageCenter) {
+        AABB area = new AABB(
+                villageCenter.getX() - 24, villageCenter.getY() - 12, villageCenter.getZ() - 24,
+                villageCenter.getX() + 24, villageCenter.getY() + 12, villageCenter.getZ() + 24
+        );
+        java.util.List<Villager> villagers = level.getEntitiesOfClass(Villager.class, area);
+        Villager chosen = null;
+        double nearestDistance = Double.MAX_VALUE;
+        for (Villager villager : villagers) {
+            if ("lumberjack".equals(villager.getPersistentData().getString(ROLE_KEY))) {
+                return;
+            }
+            double distance = villager.distanceToSqr(
+                    villageCenter.getX() + 0.5D, villageCenter.getY() + 1.0D, villageCenter.getZ() + 0.5D);
+            if (distance < nearestDistance) {
+                chosen = villager;
+                nearestDistance = distance;
+            }
+        }
+        if (chosen == null) {
+            chosen = EntityType.VILLAGER.create(level);
+            if (chosen == null) {
+                return;
+            }
+            chosen.moveTo(villageCenter.getX() + 0.5D, villageCenter.getY() + 1.0D,
+                    villageCenter.getZ() + 2.5D, 0.0F, 0.0F);
+            level.addFreshEntity(chosen);
+        }
+        chosen.getPersistentData().putString(ROLE_KEY, "lumberjack");
+        chosen.setCustomName(Component.literal("Лесоруб Civitas"));
+        chosen.setCustomNameVisible(true);
+        chosen.setPersistenceRequired();
+    }
+
     public static void onLivingTick(LivingEvent.LivingTickEvent event) {
         LivingEntity entity = event.getEntity();
         if (!(entity instanceof Villager villager) || villager.level().isClientSide) {
@@ -48,7 +88,7 @@ public final class LumberjackWorkerAI {
 
     private static void tickWorker(ServerLevel level, Villager villager) {
         CivitasSavedData worldData = CivitasSavedData.get(level.getServer());
-        if (!worldData.hasStarterVillage() || level.dimension() != LevelKeys.OVERWORLD) {
+        if (!worldData.hasStarterVillage() || level.dimension() != Level.OVERWORLD) {
             return;
         }
 
@@ -227,8 +267,4 @@ public final class LumberjackWorkerAI {
         persistent.putString(CARRIED_ITEM_KEY, remaining == 0 ? "" : itemId);
     }
 
-    private static final class LevelKeys {
-        private static final net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level> OVERWORLD =
-                net.minecraft.world.level.Level.OVERWORLD;
-    }
 }
