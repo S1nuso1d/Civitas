@@ -1,3 +1,11 @@
+# Changelog
+
+## 0.2.4 — In-game management panel
+- Added the first Civitas settlement management screen, opened by using the Civilization Codex.
+- Added UI actions to found a settlement, view settlement status, open storage information, and view help without manually typing commands.
+- Kept the existing server-side command validation and persistent settlement data.
+- This is an initial UI shell; settlement values are still returned through chat and a fully synchronized live dashboard is planned next.
+
 # Журнал изменений Civitas
 
 ## Alpha 0.2.3
