@@ -65,6 +65,11 @@ public final class SettlementScreen extends Screen {
                 sendCommand("civitas withdraw " + safeItemId() + " " + safeAmount()))
                 .bounds(left + buttonWidth + gap, top + 151, buttonWidth, 20).build());
 
+        addRenderableWidget(Button.builder(Component.literal("Жители и профессии"), button ->
+                sendCommand("civitas workers")).bounds(left, top + 205, buttonWidth, 20).build());
+        addRenderableWidget(Button.builder(Component.literal("Назначить лесоруба"), button ->
+                sendCommand("civitas worker lumberjack")).bounds(left + buttonWidth + gap, top + 205, buttonWidth, 20).build());
+
         addRenderableWidget(Button.builder(Component.literal("Помощь"), button ->
                 sendCommand("civitas help")).bounds(left, top + 178, buttonWidth, 20).build());
         addRenderableWidget(Button.builder(Component.literal("Закрыть"), button ->
@@ -108,8 +113,9 @@ public final class SettlementScreen extends Screen {
         graphics.drawCenteredString(this.font, Component.literal("Управление поселением"), this.width / 2, top + 23, 0xFFFFFFFF);
         graphics.drawString(this.font, Component.literal("Название поселения"), left + 15, top + 36, 0xFFD7DCE4, false);
         graphics.drawString(this.font, Component.literal("Предмет и количество для склада"), left + 15, top + 110, 0xFFD7DCE4, false);
-        graphics.drawCenteredString(this.font, Component.literal("Действия проверяются сервером"), this.width / 2, top + 244, 0xFFB8C0CC);
-        graphics.drawCenteredString(this.font, Component.literal("Ответы сервера появятся в чате"), this.width / 2, top + 258, 0xFFB8C0CC);
+        graphics.drawCenteredString(this.font, Component.literal("Жители и профессии"), this.width / 2, top + 233, 0xFFB8C0CC);
+        graphics.drawCenteredString(this.font, Component.literal("Действия проверяются сервером"), this.width / 2, top + 248, 0xFFB8C0CC);
+        graphics.drawCenteredString(this.font, Component.literal("Ответы сервера появятся в чате"), this.width / 2, top + 262, 0xFFB8C0CC);
         super.render(graphics, mouseX, mouseY, partialTick);
     }
 
