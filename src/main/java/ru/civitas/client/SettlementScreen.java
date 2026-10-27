@@ -90,7 +90,9 @@ public final class SettlementScreen extends Screen {
     private void addButton(String label, int x, int y, int width, String command, net.minecraft.world.item.Item icon) {
         addRenderableWidget(Button.builder(Component.literal(label), button -> {
             String actual = command;
-            if (actual.equals("civitas construction cancel selected")) {\n                actual = "civitas construction cancel " + safeOrderIndex();\n            }\n            if (actual.startsWith("civitas build ")) {
+            if (actual.equals("civitas construction cancel selected")) {
+                actual = "civitas construction cancel " + safeOrderIndex();
+            }\n            if (actual.startsWith("civitas build ")) {
                 if (!actual.equals(pendingBuild)) {
                     pendingBuild = actual;
                     return;
@@ -123,7 +125,12 @@ public final class SettlementScreen extends Screen {
         return value.matches("[a-z0-9_.-]+:[a-z0-9_./-]+") ? value : "minecraft:oak_log";
     }
 
-    private String safeOrderIndex() {\n        try { return Integer.toString(Math.max(1, Math.min(999, Integer.parseInt(orderIndex.getValue())))); }\n        catch (NumberFormatException exception) { return "1"; }\n    }\n\n    private String safeAmount() {
+    private String safeOrderIndex() {
+        try { return Integer.toString(Math.max(1, Math.min(999, Integer.parseInt(orderIndex.getValue())))); }
+        catch (NumberFormatException exception) { return "1"; }
+    }
+
+    private String safeAmount() {
         try {
             int value = Integer.parseInt(amount.getValue());
             return Integer.toString(Math.max(1, Math.min(2304, value)));
