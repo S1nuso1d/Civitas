@@ -16,11 +16,13 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
+import net.minecraft.world.entity.npc.Villager;
+import net.minecraft.world.phys.AABB;
 import net.minecraftforge.event.RegisterCommandsEvent;
 import ru.civitas.block.SettlementWarehouseBlock;
 import ru.civitas.block.SettlementWarehouseBlockEntity;
 import ru.civitas.data.CivitasSavedData;
+import ru.civitas.worker.LumberjackWorkerAI;
 
 public final class CivitasCommands {
     private CivitasCommands() {
@@ -37,6 +39,9 @@ public final class CivitasCommands {
                         .then(Commands.literal("rename")
                                 .then(Commands.argument("name", StringArgumentType.greedyString())
                                         .executes(CivitasCommands::rename)))
+                        .then(Commands.literal("workers").executes(CivitasCommands::workers))
+                        .then(Commands.literal("worker")
+                                .then(Commands.literal("lumberjack").executes(CivitasCommands::assignLumberjack)))
                         .then(Commands.literal("storage").executes(CivitasCommands::storage))
                         .then(Commands.literal("deposit")
                                 .then(Commands.argument("amount", IntegerArgumentType.integer(1, 2304))
@@ -53,6 +58,8 @@ public final class CivitasCommands {
         source.sendSuccess(() -> Component.literal("§e/civitas found <название> §7— основать поселение в текущей точке"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas status §7— состояние поселения"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas rename <название> §7— переименовать поселение"), false);
+        source.sendSuccess(() -> Component.literal("§e/civitas workers §7— список жителей и их роли"), false);
+        source.sendSuccess(() -> Component.literal("§e/civitas worker lumberjack §7— назначить ближайшего жителя лесорубом"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas storage §7— содержимое физического склада"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas deposit <количество> §7— положить предметы из основной руки"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas withdraw <namespace:item> <количество> §7— забрать предметы"), false);
@@ -112,6 +119,49 @@ public final class CivitasCommands {
         }
         context.getSource().sendSuccess(() -> Component.literal("Поселение переименовано в «" + data.getSettlementName() + "»."), false);
         return Command.SINGLE_SUCCESS;
+    }
+
+    private static int workers(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        ServerPlayer player = context.getSource().getPlayerOrException();
+        CivitasSavedData data = CivitasSavedData.get(context.getSource().getServer());
+        if (!ensureOwner(context.getSource(), player, data)) return 0;
+        ServerLevel overworld = context.getSource().getServer().overworld();
+        BlockPos center = data.hasStarterVillage() ? data.getStarterVillageCenter() : data.getCenter();
+        AABB area = new AABB(center).inflate(24, 12, 24);
+        java.util.List<Villager> villagers = overworld.getEntitiesOfClass(Villager.class, area);
+        if (villagers.isEmpty()) {
+            context.getSource().sendFailure(Component.literal("В окрестностях поселения не найдено жителей."));
+            return 0;
+        }
+        context.getSource().sendSuccess(() -> Component.literal("§6§lЖители поселения: " + villagers.size()), false);
+        int index = 1;
+        for (Villager villager : villagers) {
+            final int number = index++;
+            String role = LumberjackWorkerAI.getWorkerRole(villager);
+            String displayRole = "lumberjack".equals(role) ? "Лесоруб" : "Без назначения";
+            String name = villager.getCustomName() == null
+                    ? villager.getName().getString()
+                    : villager.getCustomName().getString();
+            String line = number + ". " + name + " — " + displayRole;
+            context.getSource().sendSuccess(() -> Component.literal(line), false);
+        }
+        context.getSource().sendSuccess(() -> Component.literal("Назначить ближайшего жителя: /civitas worker lumberjack"), false);
+        return Command.SINGLE_SUCCESS;
+    }
+
+    private static int assignLumberjack(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        ServerPlayer player = context.getSource().getPlayerOrException();
+        CivitasSavedData data = CivitasSavedData.get(context.getSource().getServer());
+        if (!ensureOwner(context.getSource(), player, data)) return 0;
+        ServerLevel overworld = context.getSource().getServer().overworld();
+        BlockPos center = data.hasStarterVillage() ? data.getStarterVillageCenter() : data.getCenter();
+        if (LumberjackWorkerAI.assignNearestLumberjack(overworld, center)) {
+            context.getSource().sendSuccess(() -> Component.literal("§aПрофессия «Лесоруб Civitas» назначена ближайшему жителю."), false);
+            context.getSource().sendSuccess(() -> Component.literal("Проверь список командой /civitas workers."), false);
+            return Command.SINGLE_SUCCESS;
+        }
+        context.getSource().sendFailure(Component.literal("Не удалось найти жителя для назначения. Проверь, что жители есть рядом с деревней."));
+        return 0;
     }
 
     private static int storage(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
