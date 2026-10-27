@@ -11,8 +11,10 @@ import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import ru.civitas.block.ModBlocks;
+import ru.civitas.block.ModBlockEntities;
 import ru.civitas.command.CivitasCommands;
 import ru.civitas.item.ModItems;
+import ru.civitas.menu.ModMenus;
 
 @Mod(CivitasMod.MOD_ID)
 public final class CivitasMod {
@@ -21,7 +23,9 @@ public final class CivitasMod {
 
     public CivitasMod(FMLJavaModLoadingContext context) {
         ModBlocks.BLOCKS.register(context.getModEventBus());
+        ModBlockEntities.BLOCK_ENTITIES.register(context.getModEventBus());
         ModItems.ITEMS.register(context.getModEventBus());
+        ModMenus.MENUS.register(context.getModEventBus());
         MinecraftForge.EVENT_BUS.addListener(this::onPlayerLoggedIn);
         MinecraftForge.EVENT_BUS.addListener(this::onBuildCreativeTab);
         MinecraftForge.EVENT_BUS.addListener(this::onRegisterCommands);
