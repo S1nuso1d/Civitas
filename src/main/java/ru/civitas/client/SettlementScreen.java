@@ -61,7 +61,7 @@ public final class SettlementScreen extends Screen {
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        renderBackground(graphics);
+        renderBackground(graphics, mouseX, mouseY, partialTick);
         int left = this.width / 2 - 135;
         int top = this.height / 2 - 110;
         graphics.fill(left, top, left + 270, top + 190, 0xE820252D);
