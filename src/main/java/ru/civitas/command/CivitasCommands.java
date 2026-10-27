@@ -133,7 +133,8 @@ public final class CivitasCommands {
             context.getSource().sendFailure(Component.literal("В окрестностях поселения не найдено жителей."));
             return 0;
         }
-        context.getSource().sendSuccess(() -> Component.literal("§6§lЖители поселения: " + villagers.size()), false);
+        final int villagerCount = villagers.size();
+        context.getSource().sendSuccess(() -> Component.literal("§6§lЖители поселения: " + villagerCount), false);
         int index = 1;
         for (Villager villager : villagers) {
             final int number = index++;
