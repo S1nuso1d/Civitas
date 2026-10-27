@@ -1,28 +1,37 @@
 # Changelog
 
+## Alpha 0.3.0 — in progress
+
+- Added a 27-slot physical warehouse block entity.
+- Added a server-side container menu and client-side screen registration.
+- Added Shift-click transfer between warehouse and player inventory.
+- Added owner/operator checks before opening the physical warehouse.
+- Added a safe first-pass migration from Alpha 0.2 virtual resources into available physical slots.
+- Prevented integer overflow when adding resources to the legacy virtual store.
+- Build and in-game persistence checks are pending; this version is not yet marked as verified.
+
 ## Alpha 0.2.7
 
 - Added the Settlement Warehouse to Minecraft's Functional Blocks creative tab.
 - Updated the build script, documentation, and CI artifact name.
-- GitHub Actions build completed successfully for commit `b593e4f8b79a59fd9fdce96160ead41bc69fe47f`; the artifact is available from the Actions run.
-- The warehouse is still a management-panel entry point, not a slot-based container.
+- GitHub Actions build completed successfully for commit `b593e4f8b79a59fd9fdce96160ead41bc69fe47f`.
+- The warehouse was a management-panel entry point without a slot-based container.
 
 ## Alpha 0.2.6
 
 - Added a placeable Settlement Warehouse block using Minecraft's barrel textures.
-- Interacting with the warehouse opens the Civitas management panel.
+- Interacting with the warehouse opened the Civitas management panel.
 - Added English and Russian names for the warehouse.
 
 ## Alpha 0.2.5
 
 - Added rename, deposit, and withdraw actions to the in-game management panel.
-- Added input fields for a settlement name, resource item ID, and amount.
-- Added client-side validation for item IDs and quantity bounds; server-side command checks remain authoritative.
-- Added GitHub Actions compilation on pushes and pull requests.
+- Added input fields for settlement name, item ID, and amount.
+- Added input validation and server-side command checks.
 
 ## Alpha 0.2.4
 
-- Added the first Civitas settlement management screen, opened by using the Civilization Codex.
+- Added the first settlement management screen, opened by using the Civilization Codex.
 - Added UI actions to found a settlement, view status, inspect storage, and view help.
 
 ## Alpha 0.2.3
@@ -31,7 +40,7 @@
 
 ## Alpha 0.2.2
 
-- Added `pack.mcmeta` with `pack_format: 34` for Minecraft 1.21–1.21.1.
+- Added `pack.mcmeta` for Minecraft 1.21.1.
 
 ## Alpha 0.2.1
 
