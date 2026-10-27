@@ -1,8 +1,10 @@
-Civitas Alpha 0.2.5 — build status
+Civitas Alpha 0.2.6 — build status
 Target: Minecraft Java Edition 1.21.1 + Forge 52.1.20 + Java 21
 
 Changes:
-- Expanded SettlementScreen with UI actions for founding/renaming, status, storage, deposit, and withdraw.
+- Added a placeable Settlement Warehouse block that opens the management GUI.
+- Registered the warehouse block/item and added English/Russian localization.
+- Existing SettlementScreen supports founding/renaming, status, storage, deposit, and withdraw.
 - Added input validation for item IDs and stack quantities; server-side checks remain authoritative.
 - Added GitHub Actions workflow at .github/workflows/build.yml to run Gradle build and upload the resulting JAR.
 - Updated version and installation documentation.
@@ -15,11 +17,11 @@ Validation performed:
 Build locally:
 1. Use 64-bit Java 21.
 2. Run build.bat from the project root or .\\tools\\gradle-run.ps1 build in PowerShell.
-3. Expected JAR: build/libs/civitas-0.2.5.jar.
+3. Expected JAR: build/libs/civitas-0.2.6.jar.
 4. Close Minecraft, remove older Civitas JARs from the profile's mods folder, and copy the new JAR there.
 5. Launch Minecraft 1.21.1 with Forge 52.x and use the Civilization Codex to open the management panel.
 
 Known limitations:
-- No physical warehouse block or worker NPC yet.
+- Warehouse has no slot-based container yet; worker NPCs are not implemented.
 - Settlement/storage responses are still sent to in-game chat rather than rendered as a live synchronized dashboard.
 - Compilation and runtime behavior are not claimed until the GitHub Actions run and in-game test complete.
