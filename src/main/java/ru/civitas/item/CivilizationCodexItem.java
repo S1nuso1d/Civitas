@@ -1,6 +1,5 @@
 package ru.civitas.item;
 
-import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResultHolder;
@@ -10,7 +9,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.fml.DistExecutor;
-import ru.civitas.client.SettlementScreen;
+import ru.civitas.client.ClientHooks;
 
 /** In-game guide and entry point to the Civitas management interface. */
 public final class CivilizationCodexItem extends Item {
@@ -22,10 +21,9 @@ public final class CivilizationCodexItem extends Item {
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
         if (level.isClientSide) {
-            DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
-                    () -> () -> Minecraft.getInstance().setScreen(new SettlementScreen()));
+            DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> ClientHooks::openSettlementScreen);
         } else {
-            player.sendSystemMessage(Component.literal("Civitas: открываю панель управления поселением."));
+            player.sendSystemMessage(Component.literal("Civitas: панель управления поселением доступна через Кодекс цивилизации."));
         }
         return InteractionResultHolder.sidedSuccess(stack, level.isClientSide);
     }
