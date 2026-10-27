@@ -2,5 +2,7 @@
   "item.civitas.civilization_codex": "Civilization Codex",
   "block.civitas.warehouse": "Settlement Warehouse",
   "item.civitas.warehouse": "Settlement Warehouse",
+  "block.civitas.warehouse": "Settlement Warehouse",
+  "item.civitas.warehouse": "Settlement Warehouse",
   "message.civitas.welcome": "Welcome to Civitas! The Civilization Codex will guide you through the basics of settlement management."
 }
