@@ -120,7 +120,7 @@ public final class SettlementBuildingManager {
             else if (dx==0 && dz==0) set(level, ground.offset(dx,1,dz), Blocks.WATER);
             else {
                 set(level, ground.offset(dx,1,dz), Blocks.FARMLAND);
-                set(level, ground.offset(dx,2,dz), Blocks.WHEAT.defaultBlockState().setValue(net.minecraft.world.level.block.CropBlock.AGE, 0));
+                level.setBlock(ground.offset(dx,2,dz), Blocks.WHEAT.defaultBlockState().setValue(net.minecraft.world.level.block.CropBlock.AGE, 0), 3);
             }
         }
         set(level, ground.offset(0,1,-3), Blocks.AIR);
