@@ -28,6 +28,7 @@ public final class SettlementScreen extends Screen {
 
     @Override
     protected void init() {
+        iconPositions.clear();
         int panelLeft = (width - PANEL_WIDTH) / 2;
         int left = panelLeft + 15;
         int top = (height - PANEL_HEIGHT) / 2;
@@ -39,8 +40,8 @@ public final class SettlementScreen extends Screen {
         settlementName.setHint(Component.translatable("screen.civitas.name_hint"));
         addRenderableWidget(settlementName);
 
-        addButton("   Основать поселение", left, top + 67, BUTTON_WIDTH, "civitas found " + safeNamePlaceholder(), Items.BELL);
-        addButton("   Переименовать", right, top + 67, BUTTON_WIDTH, "civitas rename " + safeNamePlaceholder(), Items.NAME_TAG);
+        addButton("   Основать поселение", left, top + 67, BUTTON_WIDTH, "civitas found", Items.BELL);
+        addButton("   Переименовать", right, top + 67, BUTTON_WIDTH, "civitas rename", Items.NAME_TAG);
 
         addButton("   Обзор поселения", left, top + 108, BUTTON_WIDTH, "civitas status", Items.WRITABLE_BOOK);
         addButton("   Склад поселения", right, top + 108, BUTTON_WIDTH, "civitas storage", Items.CHEST);
@@ -81,8 +82,8 @@ public final class SettlementScreen extends Screen {
     private void addButton(String label, int x, int y, int width, String command, net.minecraft.world.item.Item icon) {
         addRenderableWidget(Button.builder(Component.literal(label), button -> {
             String actual = command;
-            if (actual.startsWith("civitas found ") || actual.startsWith("civitas rename ")) {
-                actual = actual.substring(0, actual.lastIndexOf(' ') + 1) + safeName();
+            if (actual.equals("civitas found") || actual.equals("civitas rename")) {
+                actual = actual + " " + safeName();
             } else if (actual.startsWith("civitas deposit ")) {
                 actual = "civitas deposit " + safeAmount();
             } else if (actual.startsWith("civitas withdraw ")) {
@@ -96,8 +97,6 @@ public final class SettlementScreen extends Screen {
     private final java.util.List<IconPosition> iconPositions = new java.util.ArrayList<>();
 
     private record IconPosition(int x, int y, ItemStack stack) {}
-
-    private String safeNamePlaceholder() { return "Новая деревня"; }
 
     private String safeName() {
         String value = settlementName.getValue().trim().replace('\n', ' ').replace('\r', ' ');
