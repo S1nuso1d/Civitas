@@ -36,7 +36,7 @@ public final class CivitasMod {
         }
         player.getPersistentData().putBoolean(CODEX_RECEIVED_KEY, true);
         player.sendSystemMessage(Component.translatable("message.civitas.welcome"));
-        player.sendSystemMessage(Component.literal("Подсказка: используй /civitas help, чтобы увидеть команды прототипа."));
+        player.sendSystemMessage(Component.literal("Подсказка: используй Кодекс цивилизации в инвентаре, чтобы открыть панель управления."));
     }
 
     private void onRegisterCommands(RegisterCommandsEvent event) {
