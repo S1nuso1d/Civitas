@@ -810,7 +810,7 @@ public final class SettlementScreen extends Screen {
                 new Achievement("РАЗВИТИЕ", "XXI. Городская жизнь", "Население не менее 15", snapshot.population() >= 15, 3)
         );
         int totalUnlocked = (int) tree.stream().filter(Achievement::unlocked).count();
-        drawLine(contentY + 2, "ДЕРЕВО ДОСТИЖЕНИЙ · 7 направлений развития", 0xFF303030, contentWidth);
+        drawLine(contentY + 2, "ДЕРЕВО ДОСТИЖЕНИЙ · 9 направлений развития", 0xFF303030, contentWidth);
         drawLine(contentY + 16, "Открыто " + totalUnlocked + "/" + tree.size()
                 + " · листай ветви кнопками ниже", 0xFF555555, contentWidth);
 
