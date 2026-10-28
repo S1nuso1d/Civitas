@@ -1,14 +1,15 @@
-Civitas Alpha 0.22.0 — Diplomacy GUI
+Civitas Alpha 0.23.0 — Physical Neighbor Settlements
 Target: Minecraft Java Edition 1.21.1 + Forge 52.1.20 + Java 21
 
 Added:
-- Vanilla-style diplomacy screen opened from the settlement dashboard.
-- Paginated list of neighbouring civilizations with population, territory, food, stability and reputation.
-- Direct selection of neutral, allied, rival and war stances.
-- Server-authoritative packet validation by civilization UUID and settlement ownership.
-- Alliance requires trade reputation of at least 60; war blocks new caravans from that civilization.
-- Network protocol version 4.
+- Persistent physical locations for neighboring civilization profiles.
+- Safe-site search checks a 15x15 footprint for solid, dry ground and clear build volume before changing blocks.
+- A compact vanilla settlement: two cabins, bell, gravel paths, crafting tables, barrels, torches and three persistent villagers.
+- Diplomacy screen "Посетить" button and commands /civitas visit <number> and /civitas return.
+- Return position saved in player persistent data; settlement site and generated state saved in world data.
+- Server validates owner and civilization UUID before teleporting.
+- Network protocol version 5; unit test covers location save/load.
 
 Validation:
-- GitHub Actions compile, tests and JAR packaging must be checked for the exact release commit.
-- Manual in-game and multiplayer testing has not been performed in this environment.
+- Exact release commit must pass GitHub Actions compile, tests and JAR packaging.
+- Manual in-game checks have not been performed in this environment. Test different biomes, repeat visits, return, multiplayer, and ensure generated sites do not overlap player structures.
