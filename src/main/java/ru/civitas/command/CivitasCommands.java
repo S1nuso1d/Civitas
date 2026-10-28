@@ -27,6 +27,8 @@ import ru.civitas.worker.LumberjackWorkerAI;
 import ru.civitas.world.BuildingDefinition;
 import ru.civitas.world.SettlementBuildingManager;
 
+import java.util.Map;
+
 public final class CivitasCommands {
     private CivitasCommands() {
     }
