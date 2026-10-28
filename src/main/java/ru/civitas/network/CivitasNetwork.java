@@ -581,7 +581,7 @@ public final class CivitasNetwork {
         if (!data.isFounded()) return;
         for (ServerPlayer player : level.getServer().getPlayerList().getPlayers()) {
             if (player.level() == level && data.isOwner(player)) {
-                sendSnapshot(player, "Прогресс поселения обновлён.");
+                sendSnapshot(player, "Прогресс поселения обновлён.", false);
                 break;
             }
         }
@@ -592,6 +592,14 @@ public final class CivitasNetwork {
     }
 
     private static void sendSnapshot(ServerPlayer player, String statusMessage) {
+        sendSnapshot(player, statusMessage, true);
+    }
+
+    /**
+     * Builds a fresh authoritative snapshot and evaluates achievements. Periodic background
+     * checks pass sendPacket=false to avoid chat/status noise and unnecessary network traffic.
+     */
+    private static void sendSnapshot(ServerPlayer player, String statusMessage, boolean sendPacket) {
         MinecraftServer server = player.getServer();
         if (server == null) {
             return;
@@ -780,9 +788,38 @@ public final class CivitasNetwork {
                 data.getUnlockedAchievementRecords());
         long worldDay = Math.max(0L, level.getDayTime() / 24000L);
         for (String achievementId : achievedMilestones(snapshot)) {
-            data.unlockAchievement(achievementId, worldDay);
+            if (hasAchievementPrerequisites(achievementId, data.getUnlockedAchievementIds())) {
+                data.unlockAchievement(achievementId, worldDay);
+            }
         }
-        send(player, snapshot.withUnlockedAchievements(data.getUnlockedAchievementRecords()));
+        if (sendPacket) {
+            send(player, snapshot.withUnlockedAchievements(data.getUnlockedAchievementRecords()));
+        }
+    }
+
+    /**
+     * Explicit progression gates for the achievement tree. Conditions are still evaluated
+     * from the live snapshot, while these gates prevent later milestones from unlocking
+     * before their foundational milestones. IDs are permanent save keys; keep them stable.
+     */
+    private static boolean hasAchievementPrerequisites(String id, List<String> unlockedIds) {
+        List<String> required = switch (id) {
+            case "population_5", "first_house" -> List.of("settlement_founded");
+            case "population_10", "beds_cover_population" -> List.of("population_5");
+            case "farm_built", "workshop_built", "three_buildings" -> List.of("first_house");
+            case "all_professions" -> List.of("farm_built", "workshop_built");
+            case "level_2" -> List.of("settlement_founded");
+            case "level_3" -> List.of("level_2");
+            case "five_buildings" -> List.of("three_buildings");
+            case "food_3_days", "warehouse_half", "positive_resource_balance" -> List.of("farm_built");
+            case "level_3_center" -> List.of("level_3");
+            case "city_structure" -> List.of("population_10", "five_buildings");
+            case "three_workers" -> List.of("all_professions");
+            case "no_idle_residents", "no_hunger" -> List.of("three_workers");
+            case "population_15" -> List.of("city_structure");
+            default -> List.of();
+        };
+        return unlockedIds.containsAll(required);
     }
 
     /** Evaluate the same stable milestone IDs shown in the achievements tab. */
