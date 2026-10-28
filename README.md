@@ -1,4 +1,9 @@
-# Civitas — Alpha 0.40.1 (Forge 1.21.1)
+# Civitas — Alpha 0.40.2 (Forge 1.21.1)
+
+## Alpha 0.40.2 — Blueprint Catalog
+- Added `/civitas blueprints` to list available building blueprints, dimensions, construction stages, and material costs in game.
+- The command points players to the existing preview and confirmed-build commands; it does not bypass site, territory, or warehouse checks.
+- This is a catalog/command workflow improvement, not yet a translucent client-side ghost renderer. Build and in-game verification are pending.
 
 ## Alpha 0.40.1 — Optional Mod Integration
 - Added `/civitas addons` to report whether Biomes O' Plenty, Signpost, Xaero's Minimap and Dynamic Lights are loaded, and to warn when Biomes O' Plenty's GlitchCore or TerraBlender dependencies are missing.
