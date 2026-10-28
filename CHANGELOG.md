@@ -146,3 +146,12 @@
 - Added indexed cancellation: `/civitas construction cancel <number>`.
 - Added a queue index field to the dashboard, so players can target a specific not-yet-started order.
 - Full refunds are retained; partially constructed orders cannot be cancelled.
+
+
+## Alpha 0.10.0 — единая сводка поселения
+
+- Added `/civitas overview` as a single command for a strategic snapshot.
+- Summarizes nearby residents and assigned roles, registered building types, construction queue, and physical warehouse occupancy.
+- Warns when the warehouse is full or construction orders are waiting without a builder.
+- Aligned project version, Windows build output, and CI artifact name to 0.10.0.
+- Successful compilation and in-game verification are pending.

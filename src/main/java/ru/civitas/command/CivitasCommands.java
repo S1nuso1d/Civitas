@@ -36,6 +36,7 @@ public final class CivitasCommands {
                 Commands.literal("civitas")
                         .then(Commands.literal("help").executes(context -> help(context.getSource())))
                         .then(Commands.literal("status").executes(CivitasCommands::status))
+                        .then(Commands.literal("overview").executes(CivitasCommands::overview))
                         .then(Commands.literal("found")
                                 .then(Commands.argument("name", StringArgumentType.greedyString())
                                         .executes(CivitasCommands::found)))
@@ -74,6 +75,7 @@ public final class CivitasCommands {
         source.sendSuccess(() -> Component.literal("§6§lCivitas — команды прототипа"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas found <название> §7— основать поселение в текущей точке"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas status §7— состояние поселения"), false);
+        source.sendSuccess(() -> Component.literal("§e/civitas overview §7— сводка поселения: жители, здания, стройка и склад"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas rename <название> §7— переименовать поселение"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas workers §7— список жителей и их роли"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas buildings §7— реестр построенных зданий"), false);
@@ -108,6 +110,103 @@ public final class CivitasCommands {
             int total = countAllItems(warehouse);
             context.getSource().sendSuccess(() -> Component.literal("Предметов в физическом складе: " + total), false);
         }
+        return Command.SINGLE_SUCCESS;
+    }
+
+    /**
+     * Combined strategic snapshot intended as a single entry point for the next dashboard iteration.
+     * All values are derived from the authoritative server world and saved settlement data.
+     */
+    private static int overview(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        ServerPlayer player = context.getSource().getPlayerOrException();
+        CivitasSavedData data = CivitasSavedData.get(context.getSource().getServer());
+        if (!ensureOwner(context.getSource(), player, data)) return 0;
+
+        ServerLevel level = context.getSource().getServer().overworld();
+        BlockPos center = data.hasStarterVillage() ? data.getStarterVillageCenter() : data.getCenter();
+        AABB residentArea = new AABB(center).inflate(24, 12, 24);
+        java.util.List<Villager> residents = level.getEntitiesOfClass(Villager.class, residentArea);
+        int lumberjacks = 0;
+        int builders = 0;
+        int idle = 0;
+        for (Villager villager : residents) {
+            String role = villager.getPersistentData().getString("civitas.worker_role");
+            if ("lumberjack".equals(role)) lumberjacks++;
+            else if ("builder".equals(role)) builders++;
+            else idle++;
+        }
+
+        int cabins = 0;
+        int farms = 0;
+        int workshops = 0;
+        for (CivitasSavedData.BuildingRecord building : data.getBuildings()) {
+            switch (building.type()) {
+                case "cabin" -> cabins++;
+                case "farm" -> farms++;
+                case "workshop" -> workshops++;
+                default -> { }
+            }
+        }
+
+        var orders = data.getConstructionOrders();
+        int totalItems = 0;
+        int occupiedSlots = 0;
+        SettlementWarehouseBlockEntity warehouse = findWarehouse(context.getSource(), data);
+        if (warehouse != null) {
+            for (int slot = 0; slot < warehouse.getContainerSize(); slot++) {
+                ItemStack stack = warehouse.getItem(slot);
+                if (!stack.isEmpty()) {
+                    totalItems += stack.getCount();
+                    occupiedSlots++;
+                }
+            }
+        }
+
+        context.getSource().sendSuccess(() -> Component.literal("§6§lСводка Civitas — " + data.getSettlementName()), false);
+        context.getSource().sendSuccess(() -> Component.literal("Развитие: уровень " + data.getLevel()
+                + " | зарегистрировано зданий: " + data.getBuildings().size()
+                + " | в очереди: " + orders.size()), false);
+        context.getSource().sendSuccess(() -> Component.literal("Жители в радиусе 24 блоков: " + residents.size()
+                + " | лесорубы: " + lumberjacks + " | строители: " + builders + " | без профессии: " + idle), false);
+        context.getSource().sendSuccess(() -> Component.literal("Здания: дома " + cabins + " | фермы " + farms
+                + " | мастерские " + workshops), false);
+        if (warehouse == null) {
+            context.getSource().sendSuccess(() -> Component.literal("§cСклад недоступен: проверь центральный блок склада."), false);
+        } else {
+            final int items = totalItems;
+            final int slots = occupiedSlots;
+            context.getSource().sendSuccess(() -> Component.literal("Склад: " + items + " предметов, занято слотов "
+                    + slots + "/" + warehouse.getContainerSize()), false);
+            if (slots >= warehouse.getContainerSize()) {
+                context.getSource().sendSuccess(() -> Component.literal("§eПредупреждение: склад заполнен; работники могут не суметь сдать ресурсы."), false);
+            }
+        }
+
+        if (orders.isEmpty()) {
+            context.getSource().sendSuccess(() -> Component.literal("Строительство: очередь пуста."), false);
+        } else {
+            for (int i = 0; i < Math.min(3, orders.size()); i++) {
+                var order = orders.get(i);
+                int progress = Math.min(100, order.progress() * 100 / Math.max(1, order.totalLayers()));
+                String type = switch (order.type()) {
+                    case "cabin" -> "Дом";
+                    case "farm" -> "Ферма";
+                    case "workshop" -> "Мастерская";
+                    default -> order.type();
+                };
+                String line = "Стройка #" + (i + 1) + ": " + type + " — " + progress + "%";
+                context.getSource().sendSuccess(() -> Component.literal(line), false);
+            }
+            if (orders.size() > 3) {
+                int remaining = orders.size() - 3;
+                context.getSource().sendSuccess(() -> Component.literal("И ещё заказов: " + remaining
+                        + ". Полный список: /civitas construction"), false);
+            }
+            if (builders == 0) {
+                context.getSource().sendSuccess(() -> Component.literal("§eВнимание: назначь строителя командой /civitas worker builder."), false);
+            }
+        }
+        context.getSource().sendSuccess(() -> Component.literal("Подробности: /civitas workers, /civitas buildings, /civitas construction"), false);
         return Command.SINGLE_SUCCESS;
     }
 

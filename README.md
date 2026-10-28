@@ -1,4 +1,4 @@
-# Civitas — Alpha 0.9.0 (Forge 1.21.1)
+# Civitas — Alpha 0.10.0 (Forge 1.21.1)
 
 Civitas — модификация Minecraft Java Edition о развитии поселения от деревни до цивилизации. Игрок начинает в поселении, управляет ресурсами и постепенно открывает новые возможности. Долгосрочная цель — физически работающие жители, строительство, экономика и соперничающие цивилизации.
 
@@ -116,3 +116,10 @@ Assign a resident as builder with `/civitas worker builder` or the in-game settl
 - Added `/civitas construction cancel <номер>`; the number follows the current queue order shown by `/civitas construction`.
 - The dashboard now accepts an order number for cancellation rather than only targeting the first order.
 - Only orders with zero construction progress can be cancelled. The original material set is refunded; begun orders remain protected.
+
+
+## Alpha 0.10.0 — сводка поселения
+
+Добавлена команда `/civitas overview`: единая сводка выводит число жителей рядом с поселением, распределение ролей, число зарегистрированных домов/ферм/мастерских, очередь строительства и заполненность физического склада. Если склад заполнен или в очереди есть строительство без строителя, сводка показывает предупреждение. Данные рассчитываются на сервере; это промежуточный шаг перед сетевой синхронизацией полноценного интерфейса.
+
+Текущая сборка: Minecraft Java 1.21.1, Forge 52.1.20, Java 21. Имя CI-артефакта: `civitas-0.10.0-forge-1.21.1`.
