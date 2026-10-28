@@ -1,18 +1,19 @@
-Civitas Alpha 0.29.0 — Claimed Territory Protection
+Civitas Alpha 0.30.0 — Territory Protection Hardening
 Target: Minecraft Java Edition 1.21.1 + Forge 52.1.20 + Java 21
 
-Added:
-- Non-owners cannot break/place blocks or right-click blocks in claimed overworld chunks; the settlement owner retains access.
-- Building validation checks every column in the rotated footprint against influence and claimed-chunk boundaries.
-- Automatic building sites use the same validation as manual sites before resource reservation or vegetation clearing.
-- Clearance uses the rotated footprint dimensions.
-- Fixed the ChunkPos import that caused compilation errors in Alpha 0.28.0.
+Implemented:
+- Non-owners cannot break/place blocks or right-click blocks in claimed overworld chunks; warning messages are rate-limited.
+- Explosions cannot remove blocks inside claimed overworld chunks.
+- Manual and automatic building orders validate the complete rotated footprint against territory influence and claimed chunks before reserving resources or clearing replaceable vegetation.
+- Every construction layer rechecks that the complete plot is still inside the settlement's current influence and claimed chunks. Invalidated orders pause without spending the next layer's resources or placing its blocks.
+- Rotated clearance dimensions match the rotated footprint.
+- CivitasCommands uses net.minecraft.world.level.ChunkPos, fixing the earlier incorrect import.
 
 Known limitations:
-- Protection does not currently cancel explosions, natural updates, mob changes, or changes made by other mods.
-- The world still has one player settlement; rival territory ownership is not implemented.
+- Protection does not comprehensively stop fire/fluid spread, mob griefing, natural updates, or changes made by third-party mods.
+- The world still has one player settlement; rival territory ownership and claim-conflict resolution are not implemented.
 - Manual multiplayer gameplay testing has not been performed.
 
 Validation:
-- The exact Alpha 0.29.0 commit has not yet been verified with a local build, tests, or JAR packaging.
-- Check GitHub Actions status before treating this release as build-verified.
+- The exact Alpha 0.30.0 commit has not been verified by a local Gradle build or in-game test.
+- Check GitHub Actions and build/libs before treating the release as build-verified or distributing a JAR.
