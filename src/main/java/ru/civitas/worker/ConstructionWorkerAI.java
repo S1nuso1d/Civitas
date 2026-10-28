@@ -26,6 +26,7 @@ public final class ConstructionWorkerAI {
     private static final String TARGET_X_KEY = "civitas.builder_target_x";
     private static final String TARGET_Y_KEY = "civitas.builder_target_y";
     private static final String TARGET_Z_KEY = "civitas.builder_target_z";
+    private static final String BLOCKED_REASON_KEY = "civitas.builder_blocked_reason";
 
     private static final int WORKER_SCAN_XZ = 96;
     private static final int WORKER_SCAN_Y = 32;
@@ -111,7 +112,14 @@ public final class ConstructionWorkerAI {
 
             builder.getNavigation().stop();
             if (level.getGameTime() % TICKS_BETWEEN_LAYERS == 0) {
-                SettlementBuildingManager.placeConstructionLayer(level, data, order);
+                SettlementBuildingManager.BuildResult result =
+                        SettlementBuildingManager.placeConstructionLayer(level, data, order);
+                if (result.success()) {
+                    builder.getPersistentData().remove(BLOCKED_REASON_KEY);
+                } else {
+                    builder.getPersistentData().putString(BLOCKED_REASON_KEY, result.message());
+                }
+                prepareBuilder(builder);
             }
         }
     }
@@ -156,9 +164,13 @@ public final class ConstructionWorkerAI {
     }
 
     private static void prepareBuilder(Villager builder) {
+        boolean blocked = !builder.getPersistentData().getString(BLOCKED_REASON_KEY).isBlank();
+        String displayName = blocked
+                ? "Строитель Civitas — ждёт снабжение"
+                : "Строитель Civitas";
         if (builder.getCustomName() == null
-                || !builder.getCustomName().getString().equals("Строитель Civitas")) {
-            builder.setCustomName(Component.literal("Строитель Civitas"));
+                || !builder.getCustomName().getString().equals(displayName)) {
+            builder.setCustomName(Component.literal(displayName));
         }
         builder.setCustomNameVisible(true);
         builder.setPersistenceRequired();
