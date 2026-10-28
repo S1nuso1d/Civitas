@@ -72,9 +72,20 @@ public final class CivitasMod {
 
 
     private static void onAchievementProgressTick(net.minecraftforge.event.TickEvent.LevelTickEvent event) {
-        if (event.phase == net.minecraftforge.event.TickEvent.Phase.END
-                && event.level instanceof ServerLevel level) {
-            CivitasNetwork.tickAchievementProgress(level);
+        if (event.phase != net.minecraftforge.event.TickEvent.Phase.END
+                || !(event.level instanceof ServerLevel level)
+                || !level.dimension().equals(net.minecraft.world.level.Level.OVERWORLD)) {
+            return;
+        }
+
+        CivitasNetwork.tickAchievementProgress(level);
+
+        // Building wear is evaluated exactly once at each in-game day boundary.
+        long gameTime = level.getGameTime();
+        if (gameTime > 0L && gameTime % 24000L == 0L) {
+            long day = gameTime / 24000L;
+            CivitasSavedData.get(level.getServer()).tickBuildingWear(
+                    day, level.isRaining(), level.isThundering());
         }
     }
 
