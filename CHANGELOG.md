@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.35.0] - Background achievement progress
+
+### Added
+- Server periodically evaluates settlement milestones every 200 overworld ticks while the owner is online, regardless of dashboard visibility.
+- Reuses the existing server-authoritative snapshot and persistent unlock logic; protocol version remains 8.
+
+### Notes
+- This periodic pass also sends a refreshed snapshot to the owner, so dashboard data stays current. Build and in-game behavior require local verification.
+
+
 ## [0.34.0] - Achievement history
 
 ### Added
