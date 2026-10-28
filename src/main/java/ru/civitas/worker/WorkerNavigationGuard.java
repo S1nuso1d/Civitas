@@ -58,7 +58,7 @@ final class WorkerNavigationGuard {
         if (dx * dx + dy * dy + dz * dz < MIN_PROGRESS_SQUARED) {
             int stagnant = tag.getInt(stagnantKey) + 1;
             tag.putInt(stagnantKey, stagnant);
-            if (WorkerNavigationPolicy.hasStalled(stagnant) || stagnant >= stagnantChecksLimit) {
+            if (WorkerNavigationPolicy.hasStalled(stagnant, stagnantChecksLimit)) {
                 tag.putInt(stagnantKey, 0);
                 villager.getNavigation().stop();
                 return countFailedAttempt(tag, retriesKey, exhaustedKey, retryLimit);
@@ -73,7 +73,7 @@ final class WorkerNavigationGuard {
             CompoundTag tag, String retriesKey, String exhaustedKey, int retryLimit) {
         int retries = tag.getInt(retriesKey) + 1;
         tag.putInt(retriesKey, retries);
-        if (WorkerNavigationPolicy.hasExhaustedRetries(retries) || retries >= retryLimit) {
+        if (WorkerNavigationPolicy.hasExhaustedRetries(retries, retryLimit)) {
             tag.putBoolean(exhaustedKey, true);
             return Outcome.EXHAUSTED;
         }

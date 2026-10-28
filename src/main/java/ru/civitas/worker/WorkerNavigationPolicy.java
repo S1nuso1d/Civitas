@@ -11,11 +11,11 @@ final class WorkerNavigationPolicy {
     private WorkerNavigationPolicy() {
     }
 
-    static boolean hasStalled(int stagnantChecks) {
-        return stagnantChecks >= STAGNANT_CHECK_LIMIT;
+    static boolean hasStalled(int stagnantChecks, int limit) {
+        return stagnantChecks >= limit;
     }
 
-    static boolean hasExhaustedRetries(int retries) {
-        return retries >= MAX_RETRIES;
+    static boolean hasExhaustedRetries(int retries, int limit) {
+        return retries >= limit;
     }
 }
