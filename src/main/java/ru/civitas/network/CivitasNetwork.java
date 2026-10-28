@@ -55,7 +55,7 @@ import java.util.regex.Pattern;
 public final class CivitasNetwork {
     public static final SimpleChannel CHANNEL = ChannelBuilder
             .named(ResourceLocation.fromNamespaceAndPath(CivitasMod.MOD_ID, "main"))
-            .networkProtocolVersion(6)
+            .networkProtocolVersion(7)
             .simpleChannel();
 
     private static final Pattern ITEM_ID_PATTERN =
