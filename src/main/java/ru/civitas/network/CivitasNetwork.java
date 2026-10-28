@@ -147,12 +147,10 @@ public final class CivitasNetwork {
         // Commands remain the authoritative validation layer for ownership,
         // warehouse stock, placement, worker availability and refunds.
         MinecraftServer server = player.getServer();
-        int commandResult = server.getCommands().performPrefixedCommand(
+        server.getCommands().performPrefixedCommand(
                 player.createCommandSourceStack(), command);
-        String statusMessage = commandResult > 0
-                ? "Действие выполнено; состояние поселения обновлено."
-                : "Действие не выполнено. Подробности доступны в чате.";
-        sendSnapshot(player, statusMessage);
+        sendSnapshot(player,
+                "Данные поселения синхронизированы. Ответ команды — в чате.");
         context.setPacketHandled(true);
     }
 
