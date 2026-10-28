@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.37.0] - Achievement progression gates
+
+### Added
+- Achievement unlocks now respect prerequisite milestones, so later milestones cannot unlock before their foundational achievements.
+- Periodic background checks evaluate achievement progress silently without sending a status snapshot every 10 seconds.
+- Manual dashboard refreshes still send snapshots normally; save keys and network protocol remain unchanged.
+
+### Validation
+- Source committed; run build, tests and in-game achievement checks locally.
+
+
 ## [0.36.0] - Achievement progress display
 
 ### Added
