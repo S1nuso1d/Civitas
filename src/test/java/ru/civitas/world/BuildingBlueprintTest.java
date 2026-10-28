@@ -1,7 +1,10 @@
 package ru.civitas.world;
 
+import net.minecraft.SharedConstants;
 import net.minecraft.core.BlockPos;
+import net.minecraft.server.Bootstrap;
 import net.minecraft.world.level.block.Blocks;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.util.HashSet;
@@ -11,6 +14,12 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.*;
 
 class BuildingBlueprintTest {
+    @BeforeAll
+    static void bootstrapMinecraftRegistries() {
+        SharedConstants.tryDetectVersion();
+        Bootstrap.bootStrap();
+    }
+
     @Test
     void everyBuildingHasAValidBlueprintForEveryLayer() {
         for (BuildingDefinition definition : BuildingDefinition.all()) {
