@@ -302,13 +302,13 @@ public final class SettlementBuildingManager {
                 }
             }
 
-            // Stock and all outstanding reservations were checked before this
-            // loop. Server ticks are single-threaded, so deductions are atomic
-            // with respect to other Civitas build/withdraw commands.
-            for (Map.Entry<String, Integer> entry : layerCost.entrySet()) {
-                if (!remove(warehouse, entry.getKey(), entry.getValue())) {
-                    return new BuildResult(false, "Не удалось списать материалы для слоя " + layer + "; строительство остановлено.");
-                }
+            // Snapshot the complete inventory before changing it. A failed
+            // deduction restores every slot exactly, so a partial transaction
+            // cannot consume materials without placing the corresponding layer.
+            if (!removeLayerCostsAtomically(warehouse, layerCost)) {
+                return new BuildResult(false,
+                        "Не удалось атомарно списать материалы для слоя " + layer
+                                + ". Склад восстановлен; слой не построен.");
             }
         }
 
@@ -390,6 +390,45 @@ public final class SettlementBuildingManager {
 
     private static int count(SettlementWarehouseBlockEntity warehouse, String id) {
         return inventoryCounts(warehouse).getOrDefault(id, 0);
+    }
+
+    /**
+     * Removes a layer's material cost as one transaction. If any individual
+     * removal fails, every warehouse slot is restored from a pre-operation
+     * snapshot before the caller can attempt to place blocks.
+     */
+    static boolean removeLayerCostsAtomically(
+            SettlementWarehouseBlockEntity warehouse, Map<String, Integer> costs) {
+        if (warehouse == null || costs == null || costs.isEmpty()) {
+            return costs != null && costs.isEmpty();
+        }
+
+        ItemStack[] snapshot = new ItemStack[warehouse.getContainerSize()];
+        for (int slot = 0; slot < snapshot.length; slot++) {
+            snapshot[slot] = warehouse.getItem(slot).copy();
+        }
+
+        for (Map.Entry<String, Integer> entry : costs.entrySet()) {
+            if (entry.getKey() == null || entry.getKey().isBlank()
+                    || entry.getValue() == null || entry.getValue() < 0
+                    || !BuiltInRegistries.ITEM.containsKey(ResourceLocation.parse(entry.getKey()))) {
+                restoreWarehouseSnapshot(warehouse, snapshot);
+                return false;
+            }
+            if (entry.getValue() > 0 && !remove(warehouse, entry.getKey(), entry.getValue())) {
+                restoreWarehouseSnapshot(warehouse, snapshot);
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static void restoreWarehouseSnapshot(
+            SettlementWarehouseBlockEntity warehouse, ItemStack[] snapshot) {
+        for (int slot = 0; slot < snapshot.length; slot++) {
+            warehouse.setItem(slot, snapshot[slot].copy());
+        }
+        warehouse.setChanged();
     }
 
     private static boolean remove(SettlementWarehouseBlockEntity warehouse, String id, int amount) {
