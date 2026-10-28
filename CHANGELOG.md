@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.37.2] - Worker Search Backoff
+
+### Changed
+- Cache unsuccessful lumberjack tree searches for five seconds (100 game ticks) instead of rescanning the full search volume every work interval. Successful searches clear the retry delay immediately.
+
+### Validation
+- Source committed; run build, tests and in-game checks locally.
+
+
 ## [0.37.1] - Quality Pass
 
 ### Added
