@@ -47,9 +47,6 @@ public final class ConstructionWorkerAI {
 
         CivitasSavedData data = CivitasSavedData.get(level.getServer());
         List<CivitasSavedData.ConstructionOrder> orders = data.getConstructionOrders();
-        if (orders.isEmpty()) {
-            return;
-        }
 
         BlockPos settlementCenter = data.hasStarterVillage()
                 ? data.getStarterVillageCenter() : data.getCenter();
@@ -77,6 +74,11 @@ public final class ConstructionWorkerAI {
                 builder.getNavigation().stop();
                 prepareBuilder(builder);
             }
+        }
+
+        // Also run stale-target cleanup when the final order was completed or cancelled.
+        if (orders.isEmpty()) {
+            return;
         }
 
         Set<UUID> assignedThisTick = new HashSet<>();
