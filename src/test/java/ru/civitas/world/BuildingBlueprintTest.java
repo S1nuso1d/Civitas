@@ -122,6 +122,33 @@ class BuildingBlueprintTest {
     }
 
     @Test
+    void cabinBedGeometryKeepsBothHalvesAdjacentForEveryRotation() {
+        int[] rotations = {0, 90, 180, 270};
+        BlockPos[] expectedFoot = {
+                new BlockPos(-1, 2, 1),
+                new BlockPos(-1, 2, -1),
+                new BlockPos(1, 2, -1),
+                new BlockPos(1, 2, 1)
+        };
+        BlockPos[] expectedHead = {
+                new BlockPos(-1, 2, 0),
+                new BlockPos(0, 2, -1),
+                new BlockPos(1, 2, 0),
+                new BlockPos(0, 2, 1)
+        };
+
+        for (int i = 0; i < rotations.length; i++) {
+            var placements = BuildingBlueprint.layer(BuildingDefinition.Type.CABIN, 1, rotations[i]);
+            List<BuildingBlueprint.Placement> beds = placements.stream()
+                    .filter(p -> p.blockId().equals("minecraft:red_bed")).toList();
+            assertEquals(2, beds.size(), "A cabin must have exactly two bed halves");
+            assertTrue(beds.stream().anyMatch(p -> p.relativePosition().equals(expectedFoot[i])));
+            assertTrue(beds.stream().anyMatch(p -> p.relativePosition().equals(expectedHead[i])));
+            assertEquals(1, expectedFoot[i].distManhattan(expectedHead[i]));
+        }
+    }
+
+    @Test
     void invalidLayerIsRejected() {
         assertThrows(IllegalArgumentException.class,
                 () -> BuildingBlueprint.layer(BuildingDefinition.Type.CABIN, 0));
