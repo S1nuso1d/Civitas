@@ -21,6 +21,14 @@ class NeighborCivilizationTest {
         assertEquals(original.food(), loaded.food());
         assertEquals(original.lastSimulatedDay(), loaded.lastSimulatedDay());
     }
+    @Test void physicalSettlementLocationSurvivesSaveLoad() {
+        NeighborCivilization original = create();
+        original.setSite(new net.minecraft.core.BlockPos(1234, 72, -456), true);
+        NeighborCivilization loaded = NeighborCivilization.load(original.save());
+        assertTrue(loaded.hasSite());
+        assertTrue(loaded.siteGenerated());
+        assertEquals(new net.minecraft.core.BlockPos(1234, 72, -456), loaded.site());
+    }
     @Test void warDisablesTradeAndPeaceRestoresIt() {
         NeighborCivilization c = create();
         assertTrue(c.permitsTrade());
