@@ -85,7 +85,8 @@ public final class CivitasNetwork {
         DEPOSIT,
         WITHDRAW,
         BUILD_AT,
-        PREVIEW_BUILD
+        PREVIEW_BUILD,
+        UPGRADE_HOUSE
     }
 
     public static void register() {
@@ -515,6 +516,9 @@ public final class CivitasNetwork {
             case PREVIEW_BUILD -> manualBuildCommand(value, packet.amount(), true);
             case CANCEL_ORDER -> packet.amount() >= 1 && packet.amount() <= 999
                     ? "civitas construction cancel " + packet.amount()
+                    : null;
+            case UPGRADE_HOUSE -> packet.amount() >= 1 && packet.amount() <= 128
+                    ? "civitas buildings upgrade " + packet.amount()
                     : null;
             case ASSIGN_LUMBERJACK -> "civitas worker lumberjack";
             case ASSIGN_BUILDER -> "civitas worker builder";
