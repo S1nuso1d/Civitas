@@ -3,6 +3,11 @@ package ru.civitas.worker;
 import java.util.Map;
 import java.util.Set;
 import net.minecraft.core.BlockPos;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.ai.attributes.AttributeInstance;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
@@ -23,6 +28,9 @@ public final class WorkerLifeCycle {
     private static final String NIGHT_KEY = "civitas.worker_night_rest";
     private static final String LAST_CHAT_KEY = "civitas.worker_last_chat";
     private static final String LAST_SOUND_KEY = "civitas.worker_last_sound";
+    private static final ResourceLocation ROAD_SPEED_ID = ResourceLocation.fromNamespaceAndPath("civitas", "road_speed");
+    private static final Set<Block> ROAD_BLOCKS = Set.of(Blocks.DIRT_PATH, Blocks.GRAVEL, Blocks.STONE_BRICKS,
+            Blocks.COBBLESTONE, Blocks.POLISHED_ANDESITE, Blocks.OAK_PLANKS, Blocks.SPRUCE_PLANKS);
     private static final Set<String> ROLES = Set.of("lumberjack", "builder", "farmer");
     private static final Map<String, String[]> CHAT = Map.of(
             "lumberjack", new String[]{"Крепкое дерево попалось.", "Ещё немного — и на склад.", "Работы в лесу хватает."},
@@ -31,6 +39,29 @@ public final class WorkerLifeCycle {
     );
 
     private WorkerLifeCycle() { }
+
+    /** Adds one stable +35% base-speed modifier on roads and removes it elsewhere. */
+    public static void updateRoadSpeed(Villager villager) {
+        AttributeInstance speed = villager.getAttribute(Attributes.MOVEMENT_SPEED);
+        if (speed == null) return;
+        BlockPos below = villager.blockPosition().below();
+        boolean onRoad = villager.level().hasChunkAt(below)
+                && ROAD_BLOCKS.contains(villager.level().getBlockState(below).getBlock());
+        boolean hasModifier = speed.hasModifier(ROAD_SPEED_ID);
+        if (onRoad && !hasModifier) {
+            speed.addTransientModifier(new AttributeModifier(ROAD_SPEED_ID, 0.35D,
+                    AttributeModifier.Operation.ADD_MULTIPLIED_BASE));
+        } else if (!onRoad && hasModifier) {
+            speed.removeModifier(ROAD_SPEED_ID);
+        }
+    }
+
+    public static void onLivingTick(net.minecraftforge.event.entity.living.LivingEvent.LivingTickEvent event) {
+        if (event.getEntity() instanceof Villager villager && !villager.level().isClientSide
+                && ROLES.contains(villager.getPersistentData().getString("civitas.worker_role"))) {
+            updateRoadSpeed(villager);
+        }
+    }
 
     public static boolean isNight(ServerLevel level) {
         long time = Math.floorMod(level.getDayTime(), 24_000L);
