@@ -1,40 +1,16 @@
-Civitas Alpha 0.40.2 — Blueprint Catalog
-Previous slice: Alpha 0.40.1 — Optional Mod Integration
-Previous slice: Alpha 0.40.0 — Reliability & Polish Pass (first slice)
+Civitas Alpha 0.42.0 — Living Systems Pass (first implementation slice)
 Target: Minecraft Java Edition 1.21.1 + Forge 52.1.20 + Java 21
 
 Implemented in source:
-- Alpha 0.40.2: `/civitas blueprints` lists registered building definitions, dimensions, stages and material costs. It guides the player through preview and confirmation; transparent client ghost rendering is not yet implemented. Build/test/gameplay validation pending.
-- Alpha 0.40.1: `/civitas addons` reports optional mod presence and checks Biomes O' Plenty's required GlitchCore/TerraBlender dependencies; `/civitas map` prints settlement coordinates for a manual Xaero waypoint. No third-party compile dependencies added. Build/runtime verification for this new commit is pending.
-- Alpha 0.40.0: shared stuck-route watchdog for assigned workers, distance-based worker decision cadence, chunk-aware lumberjack/farmer target waiting, visible profession equipment, and client-only name-tag decluttering. Added LOD policy tests. Existing save format and network protocol are unchanged.
-- Alpha 0.40.0 limitations: backup-before-save, save-version migrations, safe NBT recovery, GUI navigation, resident highlighting, and building damage are not included in this first slice.
-- Alpha 0.39.0: persistent personal orders are available through /civitas order <resident> <follow|stay|home|guard|reset> [position]; follow targets the issuing player when available. Orders override lumberjack/farmer/builder routines and preserve their saved task state; route updates and bed searches are throttled.
-- Alpha 0.39.0 scope note: health/illness, social/family relationships and interior-comfort scoring are not implemented yet.
-- Alpha 0.38.0: assigned workers rest during the night window while retaining task/cargo data; road movement uses a single +35% base-speed modifier that is removed when leaving roads or losing the role.
-- Alpha 0.38.0: role-specific work sounds and particles are throttled to work intervals; occasional chatter is only sent to nearby players.
-- Alpha 0.38.0: workers can open adjacent unpowered doors while moving and close their tracked door after passage when the doorway is clear.
-- Alpha 0.38.0: rain reduces farmer harvest progress by 25%; lumberjacks receive a small cumulative chopping bonus in dry weather.
-- Lumberjack tree-search misses are cached for 100 game ticks (5 seconds), reducing repeated full-volume scans when no harvestable trees are available. A successful search clears the backoff immediately.
-- Lumberjacks replant supported tree species after successful harvest when the base position is empty and suitable soil is present. Replanting is configurable and enabled by default.
-- Lumberjack cargo delivery is triggered at its existing capacity limit or after 200 ticks since the last harvest; it no longer needs to wait for another full load.
-- New population-growth residents receive procedural names generated from syllable lists.
-- Economy UI estimates food-stock depletion from the seven-day trend and warns when stock is below three days of current daily demand. EconomyHistory also exposes daysUntilDepletion for food, wood and stone.
-- Settlement UI includes Buildings and Achievements tabs. Buildings supports paging, displays registered indices and cabin levels, and shows upgrade costs.
-- Achievement tree presents 21 milestone conditions across eight development areas. Stable IDs and first-unlock world days are persisted and sent through protocol version 8. Unlocked milestones show their first-unlock day; locked milestones show a percentage calculated from current settlement stats. Server-side prerequisite gates enforce progression order. Achievement reward effects are not implemented.
-- Background achievement checks run every 200 overworld ticks while the owner is online without sending a status message or a full snapshot; normal dashboard refreshes still synchronize the UI.
-- Registered Civitas cabins can be upgraded to level 2 or 3 through the owner-only /civitas buildings upgrade <index> command or the Buildings tab.
-- Level 2 adds a porch with slabs, supported fence railings, stairs and lantern. Level 3 adds a brick chimney through the roof.
-- Building records persist upgrade level and rotation; old saves default to level 1 and rotation 0.
-- Upgrade validation checks claimed chunks, settlement influence, block occupancy, fluids and loaded chunks. Free warehouse stock is used, not reserved construction materials.
-- Builders face the worksite and swing while working; lumberjacks visibly chop; farmers use a timed harvest cycle before consuming a seed.
-- Added automated tests for house upgrade blueprint geometry and invalid parameters.
+- F4 client-only realtime HUD backed by the existing server snapshot: population and roles, food reserve estimate, seven-day resource deltas, construction queue, building count, warehouse occupancy and settlement status.
+- Targeted villager inspection panel with current display/custom status, movement state, health and Minecraft profession.
+- No network packet fields or persistent save fields were added in this slice.
 
-Known limitations:
-- The starter-village houses are not yet registered as upgradeable Civitas buildings; the upgrade system currently targets registered cabins built through Civitas construction.
-- Achievement conditions are checked every 200 overworld ticks (10 seconds) while the settlement owner is online, even with the dashboard closed. The background scan is silent. Achievement rewards are not implemented.
-- Full daily resident schedules, social behavior, rest and happiness are not implemented.
-- Fire/fluid spread, mob griefing and third-party world changes are not comprehensively protected.
+Not yet implemented from the larger 0.42 plan:
+- Needs-based autonomous decisions (hunger/tool replacement/shelter) and authoritative need simulation.
+- Persistent traditions, festivals, generations and culture.
+- Advancement triggers, trend charts, ambient soundscapes and dynamic music.
+- Third-party profession/blueprint API, accessibility configuration, export/profiler/save validator.
 
 Validation:
-- Source committed; no local build, test execution or in-game verification is confirmed for this exact release.
-- Run Gradle build and test tasks, inspect build/libs, then manually test upgrade persistence and block/resource rollback in a disposable world before distributing a JAR.
+- Source change is committed; CI build/tests and in-game rendering remain unverified until GitHub Actions completes and the mod is tested in Minecraft.
