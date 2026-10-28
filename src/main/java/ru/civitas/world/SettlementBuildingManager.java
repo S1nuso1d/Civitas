@@ -416,10 +416,113 @@ public final class SettlementBuildingManager {
         BuildingBlueprint.placeLayer(level, ground, type, layer, order.rotationDegrees());
         data.advanceConstructionOrder(order);
         if (layer >= BuildingDefinition.get(type).totalLayers()) {
-            data.registerBuilding(order.type(), ground);
+            data.registerBuilding(order.type(), ground, order.rotationDegrees());
         }
         return new BuildResult(true, "Слой " + layer + " завершён.");
     }
+    /**
+     * Upgrades a registered cabin in place. Costs are paid from free warehouse
+     * stock only; reserved construction materials are never consumed.
+     */
+    public static BuildResult upgradeHouse(ServerLevel level, CivitasSavedData data,
+                                            SettlementWarehouseBlockEntity warehouse, int buildingIndex) {
+        if (warehouse == null) {
+            return new BuildResult(false, "Центральный склад не найден или не загружен.");
+        }
+        var buildings = data.getBuildings();
+        if (buildingIndex < 1 || buildingIndex > buildings.size()) {
+            return new BuildResult(false, "Дом №" + buildingIndex + " не найден. Проверь /civitas buildings.");
+        }
+        CivitasSavedData.BuildingRecord building = buildings.get(buildingIndex - 1);
+        if (!"cabin".equals(building.type())) {
+            return new BuildResult(false, "Улучшать можно только жилые дома.");
+        }
+        if (building.upgradeLevel() >= 3) {
+            return new BuildResult(false, "Этот дом уже достиг максимального уровня (3).");
+        }
+
+        int nextLevel = building.upgradeLevel() + 1;
+        Map<String, Integer> costs = nextLevel == 2
+                ? Map.of("minecraft:oak_slab", 3, "minecraft:oak_fence", 4, "minecraft:lantern", 1)
+                : Map.of("minecraft:bricks", 4, "minecraft:lantern", 2);
+        Map<String, Integer> stock = inventoryCounts(warehouse);
+        Map<String, Integer> reserved = data.getWarehouseReservedResources();
+        for (Map.Entry<String, Integer> entry : costs.entrySet()) {
+            int free = stock.getOrDefault(entry.getKey(), 0) - reserved.getOrDefault(entry.getKey(), 0);
+            if (free < entry.getValue()) {
+                return new BuildResult(false, "Для улучшения дома до уровня " + nextLevel
+                        + " не хватает " + entry.getKey() + " × " + (entry.getValue() - Math.max(0, free))
+                        + ". Зарезервированные материалы недоступны.");
+            }
+        }
+
+        BlockPos ground = new BlockPos(building.x(), building.y(), building.z());
+        if (!BuildingBlueprint.canPlaceHouseUpgrade(level, ground, nextLevel, building.rotationDegrees())) {
+            return new BuildResult(false,
+                    "Нельзя улучшить дом: внешние блоки улучшения заняты, затоплены или чанки не загружены.");
+        }
+
+        if (!removeLayerCostsAtomically(warehouse, costs)) {
+            return new BuildResult(false, "Не удалось списать материалы улучшения; склад восстановлен.");
+        }
+        try {
+            BuildingBlueprint.placeHouseUpgrade(level, ground, nextLevel, building.rotationDegrees());
+            if (!data.upgradeBuilding(buildingIndex - 1, building.upgradeLevel())) {
+                // This should only happen if the building record changed during this operation.
+                for (Map.Entry<String, Integer> entry : costs.entrySet()) {
+                    Item item = BuiltInRegistries.ITEM.get(ResourceLocation.parse(entry.getKey()));
+                    insertWarehouseItems(warehouse, item, entry.getValue());
+                }
+                return new BuildResult(false, "Дом изменился во время улучшения; материалы возвращены на склад.");
+            }
+        } catch (RuntimeException exception) {
+            // Do not silently charge for a failed blueprint. Best-effort restore
+            // the paid materials; block placements are validated before mutation.
+            for (Map.Entry<String, Integer> entry : costs.entrySet()) {
+                Item item = BuiltInRegistries.ITEM.get(ResourceLocation.parse(entry.getKey()));
+                insertWarehouseItems(warehouse, item, entry.getValue());
+            }
+            return new BuildResult(false, "Улучшение не завершено: " + exception.getMessage());
+        }
+        return new BuildResult(true, "Дом №" + buildingIndex + " улучшен до уровня " + nextLevel + ".");
+    }
+
+    private static void insertWarehouseItems(SettlementWarehouseBlockEntity warehouse, Item item, int count) {
+        int remaining = count;
+        for (int slot = 0; slot < warehouse.getContainerSize() && remaining > 0; slot++) {
+            ItemStack existing = warehouse.getItem(slot);
+            if (existing.isEmpty()) {
+                int amount = Math.min(remaining, item.getDefaultMaxStackSize());
+                warehouse.setItem(slot, new ItemStack(item, amount));
+                remaining -= amount;
+            } else if (existing.is(item) && existing.getCount() < existing.getMaxStackSize()) {
+                int amount = Math.min(remaining, existing.getMaxStackSize() - existing.getCount());
+                existing.grow(amount);
+                warehouse.setChanged();
+                remaining -= amount;
+            }
+        }
+        // All upgrades preflight available resources, so rollback normally fits
+        // in the slots just freed by the corresponding deduction.
+        if (remaining > 0) {
+            levelDropFallback(warehouse, item, remaining);
+        }
+    }
+
+    private static void levelDropFallback(SettlementWarehouseBlockEntity warehouse, Item item, int remaining) {
+        // A defensive fallback for a concurrently changed inventory; avoid item loss.
+        var level = warehouse.getLevel();
+        var pos = warehouse.getBlockPos();
+        if (level == null || level.isClientSide) return;
+        while (remaining > 0) {
+            int amount = Math.min(remaining, item.getDefaultMaxStackSize());
+            level.addFreshEntity(new net.minecraft.world.entity.item.ItemEntity(
+                    level, pos.getX() + 0.5D, pos.getY() + 1.0D, pos.getZ() + 0.5D,
+                    new ItemStack(item, amount)));
+            remaining -= amount;
+        }
+    }
+
     private static BuildResult validateOrderTerritory(
             ServerLevel level, CivitasSavedData data, BlockPos ground,
             BuildingDefinition definition, int rotationDegrees) {
