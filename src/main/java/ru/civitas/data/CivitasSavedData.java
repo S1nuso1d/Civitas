@@ -12,6 +12,7 @@ import net.minecraft.util.datafix.DataFixTypes;
 import ru.civitas.CivitasConfig;
 import ru.civitas.trade.TradePartner;
 import ru.civitas.trade.TradeCaravan;
+import ru.civitas.trade.NeighborCivilization;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -53,6 +54,7 @@ public final class CivitasSavedData extends SavedData {
     private final List<BuildingRecord> buildings = new ArrayList<>();
     private final List<ConstructionOrder> constructionOrders = new ArrayList<>();
     private final Map<UUID, TradePartner> tradePartners = new HashMap<>();
+    private final Map<UUID, NeighborCivilization> neighborCivilizations = new HashMap<>();
     private final Map<UUID, Integer> tradeReputation = new HashMap<>();
     private final List<TradeCaravan> activeTradeCaravans = new ArrayList<>();
     private final List<String> tradeHistory = new ArrayList<>();
@@ -270,6 +272,18 @@ public final class CivitasSavedData extends SavedData {
                 data.tradeReputation.put(id, Math.max(0, Math.min(100, reputationTags.getInt(key))));
             } catch (IllegalArgumentException ignored) { }
         }
+        CompoundTag civilizationTags = tag.getCompound("neighbor_civilizations");
+        for (String key : civilizationTags.getAllKeys()) {
+            try {
+                NeighborCivilization civilization = NeighborCivilization.load(civilizationTags.getCompound(key));
+                data.neighborCivilizations.put(civilization.id(), civilization);
+            } catch (RuntimeException ignored) { }
+        }
+        // Migration for worlds saved before neighbouring civilizations existed.
+        for (TradePartner partner : data.tradePartners.values()) {
+            data.neighborCivilizations.computeIfAbsent(partner.id(),
+                    id -> new NeighborCivilization(partner, id.getLeastSignificantBits()));
+        }
         ListTag caravanTags = tag.getList("trade_caravans", Tag.TAG_COMPOUND);
         for (int i = 0; i < Math.min(8, caravanTags.size()); i++) {
             try { data.activeTradeCaravans.add(TradeCaravan.load(caravanTags.getCompound(i))); }
@@ -346,6 +360,9 @@ public final class CivitasSavedData extends SavedData {
         CompoundTag partnerTags = new CompoundTag();
         tradePartners.forEach((id, partner) -> partnerTags.put(id.toString(), partner.save()));
         tag.put("trade_partners", partnerTags);
+        CompoundTag civilizationTags = new CompoundTag();
+        neighborCivilizations.forEach((id, civilization) -> civilizationTags.put(id.toString(), civilization.save()));
+        tag.put("neighbor_civilizations", civilizationTags);
         CompoundTag reputationTags = new CompoundTag();
         tradeReputation.forEach((id, value) -> reputationTags.putInt(id.toString(), Math.max(0, Math.min(100, value))));
         tag.put("trade_reputation", reputationTags);
@@ -585,7 +602,20 @@ public final class CivitasSavedData extends SavedData {
         if (partner == null) return;
         tradePartners.put(partner.id(), partner);
         tradeReputation.putIfAbsent(partner.id(), 50);
+        neighborCivilizations.computeIfAbsent(partner.id(),
+                id -> new NeighborCivilization(partner, id.getLeastSignificantBits()));
         setDirty();
+    }
+    public Map<UUID, NeighborCivilization> getNeighborCivilizations() {
+        return Collections.unmodifiableMap(new HashMap<>(neighborCivilizations));
+    }
+    public NeighborCivilization getNeighborCivilization(UUID id) { return neighborCivilizations.get(id); }
+    public boolean setNeighborStance(UUID id, NeighborCivilization.Stance stance) {
+        NeighborCivilization civilization = neighborCivilizations.get(id);
+        if (civilization == null || stance == null) return false;
+        civilization.setStance(stance);
+        setDirty();
+        return true;
     }
     public int getTradeReputation(UUID id) { return Math.max(0, Math.min(100, tradeReputation.getOrDefault(id, 50))); }
     public int addTradeReputation(UUID id, int delta) {

@@ -27,6 +27,7 @@ import net.minecraftforge.fml.config.ModConfig;
 import ru.civitas.economy.SettlementEconomyAI;
 import ru.civitas.trade.TradeCaravanManager;
 import ru.civitas.trade.TradeCaravan;
+import ru.civitas.trade.NeighborCivilizationManager;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.event.entity.living.LivingHurtEvent;
 import net.minecraft.world.entity.npc.Villager;
@@ -55,6 +56,7 @@ public final class CivitasMod {
         MinecraftForge.EVENT_BUS.addListener(FarmerWorkerAI::onLivingDeath);
         MinecraftForge.EVENT_BUS.addListener(SettlementEconomyAI::onLevelTick);
         MinecraftForge.EVENT_BUS.addListener(TradeCaravanManager::onLevelTick);
+        MinecraftForge.EVENT_BUS.addListener(NeighborCivilizationManager::onLevelTick);
         MinecraftForge.EVENT_BUS.addListener(TradeCaravanManager::onLivingDeath);
         MinecraftForge.EVENT_BUS.addListener(this::onTradeInteract);
         MinecraftForge.EVENT_BUS.addListener(this::onTradeHurt);

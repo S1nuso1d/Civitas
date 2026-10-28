@@ -116,6 +116,11 @@ public final class TradeCaravanManager {
 
     private static void spawn(ServerLevel level, CivitasSavedData data, BlockPos center, BlockPos tradePoint, long now) {
         TradePartner partner = choosePartner(data, now);
+        if (partner == null) {
+            data.setNextCaravanTick(now + 24000L);
+            data.recordTrade("Караваны не отправлены: со всеми известными цивилизациями идёт война");
+            return;
+        }
         Random random = new Random(partner.id().getMostSignificantBits() ^ now);
         double angle = random.nextDouble() * Math.PI * 2.0D;
         BlockPos rough = center.offset((int)(Math.cos(angle) * ARRIVAL_DISTANCE), 0,
@@ -161,8 +166,16 @@ public final class TradeCaravanManager {
         Random random = new Random(now ^ 0x435649544153L);
         if (!existing.isEmpty() && random.nextDouble() < 0.6D) {
             List<TradePartner> list = new ArrayList<>(existing.values());
-            return list.get(random.nextInt(list.size()));
+            list.removeIf(candidate -> {
+                NeighborCivilization civilization = data.getNeighborCivilization(candidate.id());
+                return civilization != null && !civilization.permitsTrade();
+            });
+            if (!list.isEmpty()) return list.get(random.nextInt(list.size()));
         }
+        if (!existing.isEmpty() && existing.values().stream().allMatch(candidate -> {
+            NeighborCivilization civilization = data.getNeighborCivilization(candidate.id());
+            return civilization != null && !civilization.permitsTrade();
+        })) return null;
         TradePersonality[] personalities = TradePersonality.values();
         TradePersonality personality = personalities[random.nextInt(personalities.length)];
         TradePartner partner = new TradePartner(UUID.randomUUID(), TradePartner.generateName(random),

@@ -1,3 +1,17 @@
+## [0.21.0] - Neighbor Civilizations
+
+### Added
+- Existing trade partners now have persistent civilization profiles: population, food, timber, stone, iron, territory and stability.
+- Bounded abstract economy advances on in-game day boundaries without spawning remote villagers or loading distant chunks.
+- Diplomacy commands: `/civitas diplomacy` and `/civitas diplomacy stance <index> <neutral|allied|rival|war>`.
+- War suspends new caravans with the civilization; peaceful stances restore trade eligibility.
+- Old 0.20.x saves migrate existing partners to civilization profiles automatically.
+- Added unit tests for persistence, trade eligibility, bounded simulation and invalid saved values.
+
+### Limitations
+- Diplomacy currently uses commands; a dedicated GUI and physically visitable/generated neighbouring settlements are future work.
+- Manual in-game and multiplayer testing is still required.
+
 ## [0.20.1] - Worker safety hotfix
 
 ### Fixed

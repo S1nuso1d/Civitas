@@ -29,6 +29,9 @@ import ru.civitas.worker.ConstructionWorkerAI;
 import ru.civitas.worker.LumberjackWorkerAI;
 import ru.civitas.world.BuildingDefinition;
 import ru.civitas.world.SettlementBuildingManager;
+import ru.civitas.trade.NeighborCivilization;
+import java.util.ArrayList;
+import java.util.Comparator;
 
 import java.util.Map;
 
@@ -40,6 +43,16 @@ public final class CivitasCommands {
         event.getDispatcher().register(
                 Commands.literal("civitas")
                         .then(Commands.literal("help").executes(context -> help(context.getSource())))
+                        .then(Commands.literal("diplomacy")
+                                .executes(CivitasCommands::diplomacy)
+                                .then(Commands.literal("stance")
+                                        .then(Commands.argument("index", IntegerArgumentType.integer(1, 100))
+                                                .then(Commands.argument("stance", StringArgumentType.word())
+                                                        .suggests((context, builder) -> {
+                                                            for (String value : new String[]{"neutral", "allied", "rival", "war"}) builder.suggest(value);
+                                                            return builder.buildFuture();
+                                                        })
+                                                        .executes(CivitasCommands::setDiplomaticStance)))))
                         .then(Commands.literal("status").executes(CivitasCommands::status))
                         .then(Commands.literal("overview").executes(CivitasCommands::overview))
                         .then(Commands.literal("found")
@@ -695,6 +708,52 @@ public final class CivitasCommands {
                 context.getSource().sendSuccess(() -> Component.literal(line), false);
             }
         }
+        return Command.SINGLE_SUCCESS;
+    }
+
+
+    private static int diplomacy(CommandContext<CommandSourceStack> context) {
+        CivitasSavedData data = CivitasSavedData.get(context.getSource().getServer());
+        var civilizations = new ArrayList<>(data.getNeighborCivilizations().values());
+        civilizations.sort(Comparator.comparing(NeighborCivilization::name, String.CASE_INSENSITIVE_ORDER));
+        if (civilizations.isEmpty()) {
+            context.getSource().sendSuccess(() -> Component.literal("Соседних цивилизаций пока нет. Дождись первого торгового каравана."), false);
+            return Command.SINGLE_SUCCESS;
+        }
+        context.getSource().sendSuccess(() -> Component.literal("=== Соседние цивилизации ==="), false);
+        for (int i = 0; i < civilizations.size(); i++) {
+            NeighborCivilization c = civilizations.get(i);
+            String line = (i + 1) + ". " + c.name() + " — " + c.stance().displayName()
+                    + " | население " + c.population() + " | территория " + c.territory()
+                    + " | еда " + c.food() + " | дерево " + c.timber() + " | камень " + c.stone()
+                    + " | железо " + c.iron() + " | стабильность " + c.stability() + "%";
+            context.getSource().sendSuccess(() -> Component.literal(line), false);
+        }
+        context.getSource().sendSuccess(() -> Component.literal("Изменить отношения: /civitas diplomacy stance <номер> <neutral|allied|rival|war>"), false);
+        return Command.SINGLE_SUCCESS;
+    }
+
+    private static int setDiplomaticStance(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        ServerPlayer player = context.getSource().getPlayerOrException();
+        CivitasSavedData data = CivitasSavedData.get(context.getSource().getServer());
+        if (!ensureOwner(context.getSource(), player, data)) return 0;
+        var civilizations = new ArrayList<>(data.getNeighborCivilizations().values());
+        civilizations.sort(Comparator.comparing(NeighborCivilization::name, String.CASE_INSENSITIVE_ORDER));
+        int index = IntegerArgumentType.getInteger(context, "index") - 1;
+        if (index < 0 || index >= civilizations.size()) {
+            context.getSource().sendFailure(Component.literal("Цивилизация с таким номером не найдена. Выполни /civitas diplomacy."));
+            return 0;
+        }
+        String raw = StringArgumentType.getString(context, "stance").toLowerCase(java.util.Locale.ROOT);
+        if (!java.util.Set.of("neutral", "allied", "ally", "rival", "war").contains(raw)) {
+            context.getSource().sendFailure(Component.literal("Допустимые отношения: neutral, allied, rival, war."));
+            return 0;
+        }
+        NeighborCivilization civilization = civilizations.get(index);
+        NeighborCivilization.Stance stance = NeighborCivilization.Stance.parse(raw);
+        data.setNeighborStance(civilization.id(), stance);
+        data.recordTrade("Дипломатия: с «" + civilization.name() + "» установлено отношение «" + stance.displayName() + "»");
+        context.getSource().sendSuccess(() -> Component.literal("Отношения с «" + civilization.name() + "»: " + stance.displayName() + "."), false);
         return Command.SINGLE_SUCCESS;
     }
 
