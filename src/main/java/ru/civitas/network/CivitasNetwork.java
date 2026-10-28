@@ -649,22 +649,28 @@ public final class CivitasNetwork {
         int cabins = 0;
         int farms = 0;
         int workshops = 0;
-        for (CivitasSavedData.BuildingRecord building : data.getBuildings()) {
-            BuildingDefinition definition = BuildingDefinition.find(building.type()).orElse(null);
-            if (definition != null) {
+        List<CivitasSavedData.BuildingRecord> buildingRecords = data.getBuildings();
+        for (int buildingIndex = 0; buildingIndex < buildingRecords.size(); buildingIndex++) {
+            CivitasSavedData.BuildingRecord building = buildingRecords.get(buildingIndex);
+            final String prefix = (buildingIndex + 1) + ". ";
+            BuildingDefinition.find(building.type()).ifPresentOrElse(definition -> {
                 switch (definition.type()) {
                     case CABIN -> cabins++;
                     case FARM -> farms++;
                     case WORKSHOP -> workshops++;
                 }
                 if (buildingLines.size() < 128) {
-                    buildingLines.add(definition.displayName() + " — "
+                    String levelText = definition.type() == BuildingDefinition.Type.CABIN
+                            ? " · уровень " + building.upgradeLevel() + "/3" : "";
+                    buildingLines.add(prefix + definition.displayName() + levelText + " — "
                             + building.x() + ", " + building.y() + ", " + building.z());
                 }
-            } else if (buildingLines.size() < 128) {
-                buildingLines.add(building.type() + " — "
-                        + building.x() + ", " + building.y() + ", " + building.z());
-            }
+            }, () -> {
+                if (buildingLines.size() < 128) {
+                    buildingLines.add(prefix + building.type() + " — "
+                            + building.x() + ", " + building.y() + ", " + building.z());
+                }
+            });
         }
 
         List<String> constructionLines = new ArrayList<>();
