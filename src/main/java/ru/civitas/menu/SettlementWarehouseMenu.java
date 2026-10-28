@@ -11,7 +11,6 @@ import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.Container;
 import net.minecraft.world.level.Level;
-import net.minecraftforge.common.util.LazyOptional;
 import ru.civitas.block.ModBlocks;
 import ru.civitas.block.SettlementWarehouseBlockEntity;
 import ru.civitas.data.CivitasSavedData;
@@ -112,7 +111,7 @@ public final class SettlementWarehouseMenu extends AbstractContainerMenu {
         int physical = 0;
         for (int slot = 0; slot < warehouse.getContainerSize(); slot++) {
             ItemStack stored = warehouse.getItem(slot);
-            if (!stored.isEmpty() && ItemStack.isSameItemSameComponents(stored, stack)) {
+            if (!stored.isEmpty() && stored.getItem() == stack.getItem()) {
                 physical += stored.getCount();
             }
         }
