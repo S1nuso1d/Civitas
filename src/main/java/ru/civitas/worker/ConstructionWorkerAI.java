@@ -73,7 +73,9 @@ public final class ConstructionWorkerAI {
             BlockPos target = readTarget(builder);
             if (target != null && !activeSites.contains(target)) {
                 clearTarget(builder);
+                builder.getPersistentData().remove(BLOCKED_REASON_KEY);
                 builder.getNavigation().stop();
+                prepareBuilder(builder);
             }
         }
 
