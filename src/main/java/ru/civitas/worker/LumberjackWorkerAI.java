@@ -8,6 +8,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.item.ItemEntity;
@@ -519,6 +520,9 @@ public final class LumberjackWorkerAI {
         int progress = persistent.getInt(CHOP_PROGRESS_KEY) + 1;
         persistent.putInt(CHOP_PROGRESS_KEY, Math.min(progress, requiredSeconds));
         updateChoppingName(villager, Math.min(progress, requiredSeconds), requiredSeconds);
+        villager.getLookControl().setLookAt(
+                treeLog.getX() + 0.5D, treeLog.getY() + 0.5D, treeLog.getZ() + 0.5D);
+        villager.swing(InteractionHand.MAIN_HAND);
         if (progress < requiredSeconds) {
             return;
         }
