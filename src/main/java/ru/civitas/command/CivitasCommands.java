@@ -75,7 +75,7 @@ public final class CivitasCommands {
                         .then(Commands.literal("buildings").executes(CivitasCommands::buildings)
                                 .then(Commands.literal("upgrade")
                                         .then(Commands.argument("index", IntegerArgumentType.integer(1, 128))
-                                                .executes(CivitasCommands::upgradeBuilding)))
+                                                .executes(CivitasCommands::upgradeBuilding))))
                         .then(Commands.literal("construction")
                                 .executes(CivitasCommands::construction)
                                 .then(Commands.literal("cancel")
@@ -858,7 +858,8 @@ public final class CivitasCommands {
             String label = BuildingDefinition.find(building.type())
                     .map(BuildingDefinition::displayName)
                     .orElse(building.type());
-            String line = (i + 1) + ". " + label + " — " + building.x() + ", " + building.y() + ", " + building.z();
+            String level = "cabin".equals(building.type()) ? " · уровень " + building.upgradeLevel() + "/3" : "";
+            String line = (i + 1) + ". " + label + level + " — " + building.x() + ", " + building.y() + ", " + building.z();
             context.getSource().sendSuccess(() -> Component.literal(line), false);
         }
         return Command.SINGLE_SUCCESS;
