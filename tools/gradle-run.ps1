@@ -1,4 +1,4 @@
-﻿param(
+param(
     [Parameter(ValueFromRemainingArguments = $true)]
     [string[]] $GradleArgs
 )
@@ -8,6 +8,24 @@ $GradleVersion = '8.8'
 $CacheRoot = Join-Path $env:LOCALAPPDATA 'CivitasBuildTools'
 $GradleHome = Join-Path $CacheRoot "gradle-$GradleVersion"
 $GradleExecutable = Join-Path $GradleHome 'bin\gradle.bat'
+
+# Gradle writes worker classpaths under GRADLE_USER_HOME\.tmp. On some
+# Windows systems a non-ASCII profile path can make the worker JVM unable
+# to read that classpath file (GradleWorkerMain ClassNotFoundException).
+# Keep Gradle's user home on an ASCII-only path unless the caller already
+# configured a safe ASCII-only GRADLE_USER_HOME.
+$ConfiguredGradleUserHome = $env:GRADLE_USER_HOME
+if ([string]::IsNullOrWhiteSpace($ConfiguredGradleUserHome) -or
+    $ConfiguredGradleUserHome -match '[^\x00-\x7F]') {
+    $PublicRoot = $env:PUBLIC
+    if ([string]::IsNullOrWhiteSpace($PublicRoot) -or $PublicRoot -match '[^\x00-\x7F]') {
+        $PublicRoot = $env:SystemDrive
+    }
+    $ConfiguredGradleUserHome = Join-Path $PublicRoot 'CivitasGradleHome'
+    $env:GRADLE_USER_HOME = $ConfiguredGradleUserHome
+}
+New-Item -ItemType Directory -Path $env:GRADLE_USER_HOME -Force | Out-Null
+Write-Host "Gradle user home: $env:GRADLE_USER_HOME" -ForegroundColor DarkGray
 
 if (-not (Get-Command java -ErrorAction SilentlyContinue)) {
     Write-Host 'Java was not found. Install a 64-bit JDK 21 and add java to PATH.' -ForegroundColor Red
