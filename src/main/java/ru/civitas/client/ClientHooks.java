@@ -10,4 +10,8 @@ public final class ClientHooks {
     public static void openSettlementScreen() {
         Minecraft.getInstance().setScreen(new SettlementScreen());
     }
+
+    public static void openBlueprintCatalog() {
+        Minecraft.getInstance().setScreen(new BlueprintCatalogScreen());
+    }
 }
