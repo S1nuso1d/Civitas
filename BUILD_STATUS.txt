@@ -1,22 +1,22 @@
-Civitas Alpha 0.31.0 — Construction Integrity Checks
+Civitas Alpha 0.32.0 — Living Settlement
 Target: Minecraft Java Edition 1.21.1 + Forge 52.1.20 + Java 21
 
-Included territory and construction protections:
-- Non-owners cannot break/place blocks or right-click blocks in claimed overworld chunks; warning messages are rate-limited.
-- Explosions cannot remove blocks inside claimed overworld chunks.
-- Manual and automatic building orders validate the complete rotated footprint against territory influence and claimed chunks before resources are reserved or replaceable vegetation is cleared.
-- Every construction layer rechecks that the complete plot remains inside the settlement's influence and claimed chunks.
-- Rotated clearance dimensions match the rotated footprint.
-
-Added automated blueprint regression coverage:
-- Checks every building type, layer, and supported rotation for duplicate positions and footprint bounds.
-- Checks that 360° normalizes to 0° and 450° normalizes to 90°.
-- Checks legacy cancellation refund calculations, fully completed orders, clamped progress, and immutable refund results.
+Added:
+- Responsive settlement UI now includes a Buildings tab and an achievement-tree tab.
+- Building list displays stable 1-based indices and cabin upgrade levels.
+- Owner-only /civitas buildings upgrade <index> upgrades registered cabins to level 2 or 3.
+- Level 2 adds a porch, fence railings and lantern; level 3 adds a brick chimney and lanterns.
+- Upgrade materials are withdrawn from free warehouse stock only; resources reserved by construction orders are not available.
+- Building upgrade metadata (level and rotation) is persisted. Existing world data defaults to level 1 and rotation 0.
+- Upgrade placement is prevalidated and has a rollback path for upgrade blocks and materials.
+- Construction workers perform a visible main-hand swing while work progress advances.
+- Added tests for house upgrade footprint, unique positions and invalid parameters.
 
 Known limitations:
-- Fire/fluid spread, mob griefing, natural updates, and third-party mod changes are not comprehensively prevented.
-- Rival territory ownership and claim-conflict resolution are not implemented.
-- No local build, test execution, or manual in-game test has been confirmed for this exact commit.
+- Achievement unlocks are derived from saved settlement state and shown in the UI; this release does not add a separate claimable reward system.
+- Resident behavior improvements are incremental: this release adds visible construction work animation, not a full daily schedule or needs simulation.
+- Fire/fluid spread, mob griefing and third-party world changes are not comprehensively protected.
+- The exact release has not been verified with a local Gradle build, tests or manual Minecraft play.
 
 Validation:
-- Run the Gradle build and test tasks and inspect build/libs before distributing a JAR.
+- Run build and test tasks, inspect build/libs, then manually verify upgrades, persistence and UI in a disposable world before distributing a JAR.
