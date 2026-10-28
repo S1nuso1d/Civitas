@@ -34,7 +34,7 @@ public final class BlueprintCatalogScreen extends Screen {
     protected void init() {
         int panelWidth = Math.min(360, width - 20);
         int left = (width - panelWidth) / 2;
-        int top = Math.max(12, (height - 270) / 2);
+        int top = Math.max(12, (height - 300) / 2);
         int buttonWidth = (panelWidth - 24) / 3;
 
         cabinButton = addRenderableWidget(Button.builder(Component.literal("Дом"), b -> select(BuildingDefinition.Type.CABIN))
@@ -100,7 +100,7 @@ public final class BlueprintCatalogScreen extends Screen {
         int panelWidth = Math.min(360, width - 20);
         int left = (width - panelWidth) / 2;
         int top = Math.max(12, (height - 270) / 2);
-        graphics.fill(left, top, left + panelWidth, top + 282, 0xE820242B);
+        graphics.fill(left, top, left + panelWidth, top + 302, 0xE820242B);
         graphics.fill(left, top, left + panelWidth, top + 2, 0xFF8DAD83);
         graphics.drawCenteredString(font, "Чертежи Civitas", width / 2, top + 10, 0xFFFFFFFF);
 
@@ -124,7 +124,7 @@ public final class BlueprintCatalogScreen extends Screen {
         String targetText = target == null ? "Площадка: не выбрана"
                 : "Площадка: " + target.getX() + ", " + target.getY() + ", " + target.getZ();
         graphics.drawString(font, targetText, left + 10, top + 154, 0xFFB7D9FF, false);
-        graphics.drawString(font, status, left + 10, top + 270, 0xFFD6D6D6, false);
+        graphics.drawString(font, status, left + 10, top + 282, 0xFFD6D6D6, false);
         super.render(graphics, mouseX, mouseY, partialTick);
     }
 
