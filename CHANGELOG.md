@@ -1,3 +1,17 @@
+## [0.24.0] - Diplomacy Has Economic Consequences
+
+### Added
+- Diplomatic stances now affect the neighbor civilization's daily simulation rather than only trade eligibility.
+- Alliances add food reserves, improve stability and lower the threshold for territorial expansion.
+- Rivalry gradually reduces stability and can consume timber in larger territories.
+- War reduces stability and food reserves and consumes timber and, for larger populations, iron.
+- Effects are applied only on bounded daily simulation steps; no per-tick work was added.
+- Added a unit test comparing allied and wartime outcomes from identical starting profiles.
+
+### Validation
+- Build, tests and JAR packaging must be verified for this exact commit.
+- In-game balance and multiplayer behavior still require manual testing.
+
 ## [0.23.0] - Visit-able Neighbor Settlements
 
 ### Added
