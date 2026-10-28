@@ -58,7 +58,7 @@ public final class CivitasNetwork {
     }
 
     public static void register() {
-        int id = 0;
+        int id = 1;
 
         CHANNEL.messageBuilder(RequestSnapshotPacket.class, id++)
                 .direction(PacketFlow.SERVERBOUND)
