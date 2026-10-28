@@ -138,13 +138,18 @@ class BuildingBlueprintTest {
         };
 
         for (int i = 0; i < rotations.length; i++) {
+            BlockPos foot = expectedFoot[i];
+            BlockPos head = expectedHead[i];
             var placements = BuildingBlueprint.layer(BuildingDefinition.Type.CABIN, 1, rotations[i]);
             List<BuildingBlueprint.Placement> beds = placements.stream()
                     .filter(p -> p.blockId().equals("minecraft:red_bed")).toList();
             assertEquals(2, beds.size(), "A cabin must have exactly two bed halves");
-            assertTrue(beds.stream().anyMatch(p -> p.relativePosition().equals(expectedFoot[i])));
-            assertTrue(beds.stream().anyMatch(p -> p.relativePosition().equals(expectedHead[i])));
-            assertEquals(1, expectedFoot[i].distManhattan(expectedHead[i]));
+            assertTrue(beds.stream().anyMatch(p -> p.relativePosition().equals(foot)));
+            assertTrue(beds.stream().anyMatch(p -> p.relativePosition().equals(head)));
+            int manhattanDistance = Math.abs(foot.getX() - head.getX())
+                    + Math.abs(foot.getY() - head.getY())
+                    + Math.abs(foot.getZ() - head.getZ());
+            assertEquals(1, manhattanDistance);
         }
     }
 
