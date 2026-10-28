@@ -59,21 +59,28 @@ public final class CivitasSavedData extends SavedData {
             int totalLayers,
             Map<String, Integer> reservedResources,
             List<Map<String, Integer>> layerCosts,
-            boolean materialsReservedInWarehouse
+            boolean materialsReservedInWarehouse,
+            int rotationDegrees
     ) {
+        public ConstructionOrder(String type, int x, int y, int z, int progress, int totalLayers,
+                                 Map<String, Integer> reservedResources, List<Map<String, Integer>> layerCosts,
+                                 boolean materialsReservedInWarehouse) {
+            this(type, x, y, z, progress, totalLayers, reservedResources, layerCosts,
+                    materialsReservedInWarehouse, 0);
+        }
         public ConstructionOrder(String type, int x, int y, int z, int progress, int totalLayers) {
-            this(type, x, y, z, progress, totalLayers, Map.of(), List.of(), false);
+            this(type, x, y, z, progress, totalLayers, Map.of(), List.of(), false, 0);
         }
 
         public ConstructionOrder(String type, int x, int y, int z, int progress,
                                  int totalLayers, Map<String, Integer> reservedResources) {
-            this(type, x, y, z, progress, totalLayers, reservedResources, List.of(), false);
+            this(type, x, y, z, progress, totalLayers, reservedResources, List.of(), false, 0);
         }
 
         public ConstructionOrder(String type, int x, int y, int z, int progress,
                                  int totalLayers, Map<String, Integer> reservedResources,
                                  List<Map<String, Integer>> layerCosts) {
-            this(type, x, y, z, progress, totalLayers, reservedResources, layerCosts, false);
+            this(type, x, y, z, progress, totalLayers, reservedResources, layerCosts, false, 0);
         }
 
         public ConstructionOrder {
@@ -207,7 +214,8 @@ public final class CivitasSavedData extends SavedData {
                 boolean materialsReservedInWarehouse = order.getBoolean("materials_in_warehouse");
                 ConstructionOrder loaded = new ConstructionOrder(
                         type, order.getInt("x"), order.getInt("y"), order.getInt("z"),
-                        progress, total, reservedResources, layerCosts, materialsReservedInWarehouse);
+                        progress, total, reservedResources, layerCosts, materialsReservedInWarehouse,
+                        order.contains("rotation_degrees") ? order.getInt("rotation_degrees") : 0);
                 data.constructionOrders.add(loaded);
             }
         }
@@ -262,6 +270,7 @@ public final class CivitasSavedData extends SavedData {
                 stored.put("layer_costs", storedLayerCosts);
             }
             stored.putBoolean("materials_in_warehouse", order.materialsReservedInWarehouse());
+            stored.putInt("rotation_degrees", Math.floorMod(order.rotationDegrees(), 360));
             storedOrders.add(stored);
         }
         tag.put("construction_orders", storedOrders);
@@ -376,6 +385,14 @@ public final class CivitasSavedData extends SavedData {
             String type, BlockPos position, int totalLayers,
             Map<String, Integer> reservedResources, List<Map<String, Integer>> layerCosts,
             boolean materialsReservedInWarehouse) {
+        addConstructionOrder(type, position, totalLayers, reservedResources, layerCosts,
+                materialsReservedInWarehouse, 0);
+    }
+
+    public void addConstructionOrder(
+            String type, BlockPos position, int totalLayers,
+            Map<String, Integer> reservedResources, List<Map<String, Integer>> layerCosts,
+            boolean materialsReservedInWarehouse, int rotationDegrees) {
         if (type == null || type.isBlank() || position == null || totalLayers < 1) return;
         Map<String, Integer> reservation = new TreeMap<>();
         if (reservedResources != null) {
@@ -387,7 +404,7 @@ public final class CivitasSavedData extends SavedData {
         }
         ConstructionOrder order = new ConstructionOrder(
                 type, position.getX(), position.getY(), position.getZ(), 0, totalLayers,
-                reservation, layerCosts, materialsReservedInWarehouse);
+                reservation, layerCosts, materialsReservedInWarehouse, Math.floorMod(rotationDegrees, 360));
         if (materialsReservedInWarehouse && !order.hasValidLayerCosts()) {
             // Do not create an unpaid order without a complete stage cost plan.
             return;
@@ -468,7 +485,7 @@ public final class CivitasSavedData extends SavedData {
             constructionOrders.set(index, new ConstructionOrder(
                     order.type(), order.x(), order.y(), order.z(),
                     order.progress() + 1, order.totalLayers(),
-                    order.reservedResources(), order.layerCosts(), order.materialsReservedInWarehouse()));
+                    order.reservedResources(), order.layerCosts(), order.materialsReservedInWarehouse(), order.rotationDegrees()));
         }
         setDirty();
     }
