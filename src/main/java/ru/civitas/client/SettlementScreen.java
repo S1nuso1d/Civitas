@@ -28,7 +28,9 @@ public final class SettlementScreen extends Screen {
         RESIDENTS("Жители"),
         CONSTRUCTION("Стройка"),
         STORAGE("Склад"),
-        ECONOMY("Экономика");
+        ECONOMY("Экономика"),
+        BUILDINGS("Дома"),
+        ACHIEVEMENTS("Достижения");
 
         private final String title;
 
@@ -62,6 +64,7 @@ public final class SettlementScreen extends Screen {
     private EditBox buildY;
     private EditBox buildZ;
     private EditBox buildRotation;
+    private EditBox buildingIndex;
 
     private String settlementNameValue = "Новая деревня";
     private String itemIdValue = "minecraft:oak_log";
@@ -71,6 +74,7 @@ public final class SettlementScreen extends Screen {
     private String buildYValue = "~-1";
     private String buildZValue = "~";
     private String buildRotationValue = "0";
+    private String buildingIndexValue = "1";
     private String pendingBuild = "";
     private String selectedResidentId = "";
 
@@ -111,6 +115,8 @@ public final class SettlementScreen extends Screen {
                 case CONSTRUCTION -> "Стр.";
                 case STORAGE -> "Скл.";
                 case ECONOMY -> "Эк.";
+                case BUILDINGS -> "Дома";
+                case ACHIEVEMENTS -> "Достиж.";
             } : tab.title;
             if (tab == activeTab) tabLabel = "» " + tabLabel;
             addRenderableWidget(Button.builder(Component.literal(tabLabel), button -> switchTab(selected))
@@ -124,6 +130,8 @@ public final class SettlementScreen extends Screen {
             case CONSTRUCTION -> initConstruction();
             case STORAGE -> initStorage();
             case ECONOMY -> { }
+            case BUILDINGS -> initBuildings();
+            case ACHIEVEMENTS -> { }
         }
 
         int footerButtonY = panelY + panelHeight - 30;
@@ -356,6 +364,34 @@ public final class SettlementScreen extends Screen {
         return value != null && value.trim().matches("(?:-?\\d+|~(?:-?\\d+)?)");
     }
 
+    private void initBuildings() {
+        int startY = contentY + 22;
+        int footerY = contentBottom - 24;
+        int rows = Math.max(1, (footerY - startY) / 13);
+        List<String> buildings = snapshot == null ? List.of() : snapshot.buildings();
+        listOffset = Math.min(listOffset, Math.max(0, buildings.size() - rows));
+        for (int i = 0; i < rows && listOffset + i < buildings.size(); i++) {
+            final int offset = listOffset;
+            addButton(buildings.get(offset + i), contentX, startY + i * 13,
+                    contentWidth, 13, () -> {
+                        buildingIndexValue = Integer.toString(offset + i + 1);
+                        rebuildWidgets();
+                    }, null, true);
+        }
+        int navY = footerY;
+        buildingIndex = new EditBox(font, contentX, navY, 42, 20, Component.literal("№"));
+        buildingIndex.setMaxLength(3);
+        buildingIndex.setValue(buildingIndexValue);
+        buildingIndex.setFilter(value -> value.isEmpty() || value.chars().allMatch(Character::isDigit));
+        addRenderableWidget(buildingIndex);
+        addButton("Улучшить дом", contentX + 46, navY,
+                Math.max(60, contentWidth - 46), 20, () -> {
+                    rememberInputs();
+                    sendAction(CivitasNetwork.Action.UPGRADE_HOUSE, "",
+                            safeInteger(buildingIndexValue, 1, 128, 1));
+                }, Items.OAK_PLANKS);
+    }
+
     private void initStorage() {
         int amountWidth = Math.min(72, Math.max(40, contentWidth / 4));
         int itemWidth = Math.max(40, contentWidth - amountWidth - 6);
@@ -497,6 +533,7 @@ public final class SettlementScreen extends Screen {
         if (buildY != null) buildYValue = buildY.getValue();
         if (buildZ != null) buildZValue = buildZ.getValue();
         if (buildRotation != null) buildRotationValue = buildRotation.getValue();
+        if (buildingIndex != null) buildingIndexValue = buildingIndex.getValue();
     }
 
     private static String cleanText(String value, int maxLength) {
@@ -582,6 +619,8 @@ public final class SettlementScreen extends Screen {
             case CONSTRUCTION -> renderConstruction();
             case STORAGE -> renderStorage();
             case ECONOMY -> renderEconomy();
+            case BUILDINGS -> renderBuildings();
+            case ACHIEVEMENTS -> renderAchievements();
         }
 
         super.render(graphics, mouseX, mouseY, partialTick);
@@ -708,6 +747,63 @@ public final class SettlementScreen extends Screen {
             drawLine(contentBottom - 12, "Выбери здание выше, затем «Чертёж» или «Строить здесь».",
                     0xFF303030, contentWidth);
         }
+    }
+
+    private void renderBuildings() {
+        if (snapshot == null) {
+            drawLine(contentY + 28, "Загружаю список зданий…", 0xFF777777, contentWidth);
+            return;
+        }
+        drawLine(contentY + 3, "Выбери дом в списке или введи его номер ниже.", 0xFF303030, contentWidth);
+        if (snapshot.buildings().isEmpty()) {
+            drawLine(contentY + 28, "Пока нет зарегистрированных построек.", 0xFF777777, contentWidth);
+        }
+        int startY = contentY + 22;
+        int footerY = contentBottom - 24;
+        int rows = Math.max(1, (footerY - startY) / 13);
+        int maxOffset = Math.max(0, snapshot.buildings().size() - rows);
+        listOffset = Math.min(listOffset, maxOffset);
+        for (int i = 0; i < rows && listOffset + i < snapshot.buildings().size(); i++) {
+            drawLine(startY + i * 13, snapshot.buildings().get(listOffset + i),
+                    0xFF303030, contentWidth);
+        }
+    }
+
+    private void renderAchievements() {
+        if (snapshot == null) {
+            drawLine(contentY + 28, "Загружаю прогресс цивилизации…", 0xFF777777, contentWidth);
+            return;
+        }
+        record Achievement(String name, String condition, boolean unlocked, int tier) { }
+        List<Achievement> tree = List.of(
+                new Achievement("I. Первое поселение", "Основано поселение", snapshot.founded(), 1),
+                new Achievement("II. Первые руки", "Население: не менее 5 жителей", snapshot.population() >= 5, 1),
+                new Achievement("III. Своя крыша", "Построен хотя бы один дом", snapshot.cabinCount() >= 1, 1),
+                new Achievement("IV. Хлеб насущный", "Построена ферма", snapshot.farmCount() >= 1, 2),
+                new Achievement("V. Ремесло", "Построена мастерская", snapshot.workshopCount() >= 1, 2),
+                new Achievement("VI. Специализация", "Есть лесоруб, строитель и фермер",
+                        snapshot.lumberjacks() >= 1 && snapshot.builders() >= 1 && snapshot.farmers() >= 1, 2),
+                new Achievement("VII. Растущая деревня", "Население: не менее 10 жителей",
+                        snapshot.population() >= 10, 3),
+                new Achievement("VIII. Каменный фундамент", "Уровень поселения: не менее 3",
+                        snapshot.level() >= 3, 3),
+                new Achievement("IX. Большое поселение", "Построено не менее 5 зданий",
+                        snapshot.cabinCount() + snapshot.farmCount() + snapshot.workshopCount() >= 5, 3)
+        );
+        drawLine(contentY + 3, "Ветка развития · выполненные условия открыты", 0xFF303030, contentWidth);
+        int startY = contentY + 22;
+        int rows = visibleRows(startY, 14);
+        int unlocked = 0;
+        for (int i = 0; i < Math.min(rows, tree.size()); i++) {
+            Achievement achievement = tree.get(i);
+            if (achievement.unlocked()) unlocked++;
+            String line = (achievement.unlocked() ? "✓ " : "○ ")
+                    + achievement.name() + " — " + achievement.condition();
+            drawLine(startY + i * 14, line,
+                    achievement.unlocked() ? 0xFF236B36 : 0xFF777777, contentWidth);
+        }
+        drawLine(contentBottom - 12, "Открыто: " + unlocked + "/" + tree.size()
+                + " · прогресс рассчитывается из сохранённого состояния мира", 0xFF303030, contentWidth);
     }
 
     private void renderStorage() {
