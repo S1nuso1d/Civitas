@@ -157,7 +157,7 @@ public final class SettlementBuildingManager {
         BlockPos ground = new BlockPos(order.x(), order.y(), order.z());
         int progress = Math.max(0, Math.min(order.progress(), order.totalLayers()));
         for (int layer = progress; layer >= 1; layer--) {
-            BuildingBlueprint.removeLayer(level, ground, type, layer);
+            BuildingBlueprint.removeLayer(level, ground, type, layer, order.rotationDegrees());
         }
     }
 
@@ -198,7 +198,7 @@ public final class SettlementBuildingManager {
         if (layer < 1 || layer > BuildingDefinition.get(type).totalLayers()) {
             return new BuildResult(false, "У заказа некорректный номер слоя; строительство остановлено без списания ресурсов.");
         }
-        if (!BuildingBlueprint.canPlaceLayer(level, ground, type, layer)) {
+        if (!BuildingBlueprint.canPlaceLayer(level, ground, type, layer, order.rotationDegrees())) {
             return new BuildResult(false,
                     "Слой " + layer + " пока нельзя безопасно построить: участок занят или часть чанков не загружена. Материалы не списаны.");
         }
@@ -238,7 +238,7 @@ public final class SettlementBuildingManager {
             }
         }
 
-        BuildingBlueprint.placeLayer(level, ground, type, layer);
+        BuildingBlueprint.placeLayer(level, ground, type, layer, order.rotationDegrees());
         data.advanceConstructionOrder(order);
         if (layer >= BuildingDefinition.get(type).totalLayers()) {
             data.registerBuilding(order.type(), ground);
