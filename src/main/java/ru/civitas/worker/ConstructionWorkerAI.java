@@ -14,6 +14,7 @@ import net.minecraft.world.phys.AABB;
 import net.minecraftforge.event.TickEvent;
 import ru.civitas.data.CivitasSavedData;
 import ru.civitas.ai.AiLodController;
+import ru.civitas.ai.DecisionEngine;
 import ru.civitas.ai.StuckDetector;
 import ru.civitas.worker.PersonalOrders;
 import ru.civitas.world.BuildingDefinition;
@@ -74,9 +75,15 @@ public final class ConstructionWorkerAI {
         }
 
         // Clear obsolete assignments before returning when the queue becomes empty.
+        Set<UUID> decisionBusy = new HashSet<>();
         for (Villager builder : builders) {
             if (PersonalOrders.get(builder) != PersonalOrders.Order.NONE) {
                 PersonalOrders.tickOverride(level, builder);
+                decisionBusy.add(builder.getUUID());
+                continue;
+            }
+            if (DecisionEngine.tick(level, builder)) {
+                decisionBusy.add(builder.getUUID());
                 continue;
             }
             BlockPos target = readTarget(builder);
@@ -91,7 +98,7 @@ public final class ConstructionWorkerAI {
             return;
         }
 
-        Set<UUID> assignedThisTick = new HashSet<>();
+        Set<UUID> assignedThisTick = new HashSet<>(decisionBusy);
         for (CivitasSavedData.ConstructionOrder order : orders) {
             BlockPos site = new BlockPos(order.x(), order.y(), order.z());
             if (!level.hasChunkAt(site)) {
