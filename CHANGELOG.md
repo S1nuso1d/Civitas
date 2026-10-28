@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.31.0] - Construction Integrity Checks
+
+### Improved
+- Expanded blueprint tests across all building types and all four supported rotations.
+- Added footprint-bound assertions for every generated layer, guarding against rotated blocks escaping the declared building dimensions.
+- Added regression tests for normalized rotation values (360° equals 0°, 450° equals 90°).
+
+### Validation
+- Tests have been added to source control but have not yet been executed locally; run the full Gradle build and test tasks before treating this release as verified.
+
 ## [0.30.0] - Territory Protection Hardening
 
 ### Added
