@@ -134,26 +134,112 @@ public final class LumberjackWorkerAI {
         return false;
     }
 
+    /** Assigns the explicitly selected villager, without stealing another worker's active cargo. */
+    public static boolean assignLumberjackTo(ServerLevel level, BlockPos villageCenter, Villager chosen) {
+        if (chosen == null || chosen.level() != level) return false;
+        if ("lumberjack".equals(getWorkerRole(chosen))
+                && chosen.getPersistentData().getInt(CARRIED_COUNT_KEY) > 0) {
+            return true;
+        }
+
+        AABB area = new AABB(villageCenter).inflate(24, 12, 24);
+        if (!area.contains(chosen.getX(), chosen.getY(), chosen.getZ())) return false;
+        java.util.List<Villager> residents = level.getEntitiesOfClass(Villager.class, area);
+        for (Villager resident : residents) {
+            if (resident != chosen && "lumberjack".equals(getWorkerRole(resident))
+                    && resident.getPersistentData().getInt(CARRIED_COUNT_KEY) > 0) {
+                return false;
+            }
+        }
+
+        // Keep a single lumberjack until multi-worker forestry is added. A
+        // worker carrying logs cannot be reassigned before its delivery.
+        for (Villager resident : residents) {
+            if (resident != chosen && "lumberjack".equals(getWorkerRole(resident))) {
+                releaseLumberjackRole(resident);
+            }
+        }
+        if ("builder".equals(getWorkerRole(chosen))) {
+            ConstructionWorkerAI.releaseBuilderRole(chosen);
+        }
+        clearTreeTarget(chosen.getPersistentData());
+        chosen.getPersistentData().putInt(CHOP_PROGRESS_KEY, 0);
+        chosen.getPersistentData().putString(ISSUE_KEY, "");
+        chosen.getPersistentData().putBoolean(PAUSED_KEY, false);
+        chosen.getPersistentData().putString(ROLE_KEY, "lumberjack");
+        updateWorkerName(chosen, "");
+        return true;
+    }
+
+    /** Releases an idle lumberjack, preserving cargo that has not been delivered. */
+    public static boolean releaseLumberjackRole(Villager villager) {
+        if (villager == null) return false;
+        var persistent = villager.getPersistentData();
+        if ("lumberjack".equals(getWorkerRole(villager))
+                && persistent.getInt(CARRIED_COUNT_KEY) > 0) {
+            return false;
+        }
+        persistent.putString(ROLE_KEY, "");
+        persistent.putBoolean(PAUSED_KEY, false);
+        persistent.putString(ISSUE_KEY, "");
+        persistent.putInt(CHOP_PROGRESS_KEY, 0);
+        clearTreeTarget(persistent);
+        villager.getNavigation().stop();
+        if (villager.getCustomName() != null
+                && villager.getCustomName().getString().startsWith("Лесоруб Civitas")) {
+            villager.setCustomName(null);
+            villager.setCustomNameVisible(false);
+        }
+        return true;
+    }
+
     public static boolean clearLumberjackRole(ServerLevel level, BlockPos villageCenter) {
         AABB area = new AABB(villageCenter).inflate(24, 12, 24);
         for (Villager villager : level.getEntitiesOfClass(Villager.class, area)) {
-            if (!"lumberjack".equals(getWorkerRole(villager))) continue;
-            if (villager.getPersistentData().getInt(CARRIED_COUNT_KEY) > 0) return false;
-            villager.getPersistentData().putString(ROLE_KEY, "");
-            villager.getPersistentData().putBoolean(PAUSED_KEY, false);
-            villager.getPersistentData().putString(ISSUE_KEY, "");
-            villager.getNavigation().stop();
-            if (villager.getCustomName() != null && "Лесоруб Civitas".equals(villager.getCustomName().getString())) {
-                villager.setCustomName(null);
-                villager.setCustomNameVisible(false);
+            if ("lumberjack".equals(getWorkerRole(villager))) {
+                return releaseLumberjackRole(villager);
             }
-            return true;
         }
         return false;
     }
 
     /**
-     * Assigns the nearest resident to the lumberjack role and removes that role
+     * Assigns the nearest free resident. Existing builders are never silently
+     * stripped of an active construction assignment.
+     */
+    public static boolean assignNearestLumberjack(ServerLevel level, BlockPos villageCenter) {
+        AABB area = new AABB(villageCenter).inflate(24, 12, 24);
+        java.util.List<Villager> villagers = level.getEntitiesOfClass(Villager.class, area);
+        if (villagers.isEmpty()) {
+            ensureWorkerExists(level, villageCenter);
+            villagers = level.getEntitiesOfClass(Villager.class, area);
+        }
+        if (villagers.isEmpty()) return false;
+
+        for (Villager villager : villagers) {
+            if ("lumberjack".equals(getWorkerRole(villager))
+                    && villager.getPersistentData().getInt(CARRIED_COUNT_KEY) > 0) {
+                return true;
+            }
+        }
+
+        Villager chosen = null;
+        double nearestDistance = Double.MAX_VALUE;
+        for (Villager villager : villagers) {
+            String role = getWorkerRole(villager);
+            if (!role.isBlank() && !"lumberjack".equals(role)) continue;
+            double distance = villager.distanceToSqr(
+                    villageCenter.getX() + 0.5D, villageCenter.getY() + 1.0D,
+                    villageCenter.getZ() + 0.5D);
+            if (distance < nearestDistance) {
+                chosen = villager;
+                nearestDistance = distance;
+            }
+        }
+        return chosen != null && assignLumberjackTo(level, villageCenter, chosen);
+    }
+
+ and removes that role
      * from any other resident in the starter-village area.
      */
     public static boolean assignNearestLumberjack(ServerLevel level, BlockPos villageCenter) {
