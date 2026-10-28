@@ -1,6 +1,7 @@
 package ru.civitas.worker;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.npc.Villager;
@@ -178,22 +179,28 @@ public final class ConstructionWorkerAI {
         var persistent = builder.getPersistentData();
         boolean blocked = !persistent.getString(BLOCKED_REASON_KEY).isBlank();
         int progressTicks = Math.max(0, Math.min(WORK_PROGRESS_TICKS, persistent.getInt(WORK_PROGRESS_KEY)));
-        String displayName;
+        Component displayName;
         if (blocked) {
-            displayName = "Строитель Civitas — ожидание";
+            displayName = Component.literal("Строитель Civitas — ожидание")
+                    .withStyle(ChatFormatting.RED);
         } else if (progressTicks > 0) {
             int filled = Math.max(0, Math.min(10,
                     (int) Math.ceil(progressTicks * 10.0D / WORK_PROGRESS_TICKS)));
-            displayName = "Строитель Civitas §e[" + "■".repeat(filled) + "§7"
-                    + "□".repeat(10 - filled) + "§e] " + (progressTicks / WORK_UPDATE_TICKS) + "/3 сек";
+            displayName = Component.literal("Строитель Civitas ")
+                    .append(Component.literal("[").withStyle(ChatFormatting.YELLOW))
+                    .append(Component.literal("■".repeat(filled)).withStyle(ChatFormatting.GREEN))
+                    .append(Component.literal("□".repeat(10 - filled)).withStyle(ChatFormatting.DARK_GRAY))
+                    .append(Component.literal("] " + (progressTicks / WORK_UPDATE_TICKS) + "/3 сек")
+                            .withStyle(ChatFormatting.YELLOW));
         } else if (!builder.getNavigation().isDone()) {
-            displayName = "Строитель Civitas — идёт на площадку";
+            displayName = Component.literal("Строитель Civitas — идёт на площадку")
+                    .withStyle(ChatFormatting.GRAY);
         } else {
-            displayName = "Строитель Civitas";
+            displayName = Component.literal("Строитель Civitas");
         }
         if (builder.getCustomName() == null
-                || !builder.getCustomName().getString().equals(displayName)) {
-            builder.setCustomName(Component.literal(displayName));
+                || !builder.getCustomName().getString().equals(displayName.getString())) {
+            builder.setCustomName(displayName);
         }
         builder.setCustomNameVisible(true);
         builder.setPersistenceRequired();
