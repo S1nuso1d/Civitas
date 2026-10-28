@@ -5,7 +5,8 @@
 - Assigned workers gain a non-stacking +35% base movement-speed modifier while standing on supported road blocks; it is removed when they leave the road or lose their job.
 - Lumberjacks, builders, and farmers rest during the night window while retaining their saved task and cargo state.
 - Work cycles now emit throttled role-specific sounds and particles; nearby players may hear occasional worker chatter.
-- Rain reduces farmer harvest progress by 25%.
+- Rain reduces farmer harvest progress by 25%; dry weather gives lumberjacks a small cumulative chopping bonus.
+- Workers open adjacent unpowered doors during travel and close tracked doors after 30 ticks when no villager is nearby.
 
 Validation: source changes committed; Gradle build, automated tests, and in-game behavior still require verification.
 
