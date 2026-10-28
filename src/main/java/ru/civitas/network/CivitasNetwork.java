@@ -757,12 +757,12 @@ public final class CivitasNetwork {
                 data.getEconomyHistory().deltaWood(7), data.getEconomyHistory().deltaStone(7),
                 data.getEconomyHistory().deltaFood(7), statusMessage, eventLines, economyLines,
                 residentNames, residentUuids, residentRoles, residentStatuses, buildingLines, constructionLines, storageLines,
-                data.getUnlockedAchievementIds());
+                data.getUnlockedAchievementRecords());
         long worldDay = Math.max(0L, level.getDayTime() / 24000L);
         for (String achievementId : achievedMilestones(snapshot)) {
             data.unlockAchievement(achievementId, worldDay);
         }
-        send(player, snapshot.withUnlockedAchievements(data.getUnlockedAchievementIds()));
+        send(player, snapshot.withUnlockedAchievements(data.getUnlockedAchievementRecords()));
     }
 
     /** Evaluate the same stable milestone IDs shown in the achievements tab. */
