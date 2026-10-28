@@ -24,6 +24,7 @@ import ru.civitas.data.CivitasSavedData;
 import ru.civitas.world.BuildingDefinition;
 import ru.civitas.worker.LumberjackWorkerAI;
 import ru.civitas.worker.ConstructionWorkerAI;
+import ru.civitas.worker.FarmerWorkerAI;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -60,6 +61,7 @@ public final class CivitasNetwork {
         ASSIGN_BUILDER,
         ASSIGN_LUMBERJACK_TO,
         ASSIGN_BUILDER_TO,
+        ASSIGN_FARMER_TO,
         PAUSE_SELECTED,
         RESUME_SELECTED,
         RELEASE_SELECTED,
@@ -174,6 +176,7 @@ public final class CivitasNetwork {
     private static boolean isResidentAction(Action action) {
         return action == Action.ASSIGN_LUMBERJACK_TO
                 || action == Action.ASSIGN_BUILDER_TO
+                || action == Action.ASSIGN_FARMER_TO
                 || action == Action.PAUSE_SELECTED
                 || action == Action.RESUME_SELECTED
                 || action == Action.RELEASE_SELECTED;
@@ -246,6 +249,12 @@ public final class CivitasNetwork {
                             : "Не удалось назначить лесоруба: другой лесоруб может ещё доставлять груз.";
                 }
             }
+            case ASSIGN_FARMER_TO -> {
+                succeeded = FarmerWorkerAI.assignFarmerTo(level, center, villager);
+                message = succeeded
+                        ? "Житель «" + name + "» назначен фермером."
+                        : "Нельзя назначить фермером: сначала сними текущую профессию и доставь груз.";
+            }
             case ASSIGN_BUILDER_TO -> {
                 int carried = villager.getPersistentData().getInt("civitas.worker_carried_count");
                 String cargoError = ResidentAssignmentRules.cargoErrorForBuilder(carried);
@@ -277,6 +286,11 @@ public final class CivitasNetwork {
                     message = succeeded
                             ? "Профессия снята с жителя «" + name + "»."
                             : "Сначала дождись доставки всех брёвен на склад.";
+                } else if ("farmer".equals(role)) {
+                    succeeded = FarmerWorkerAI.releaseFarmerRole(villager);
+                    message = succeeded
+                            ? "Профессия фермера снята с жителя «" + name + "»."
+                            : "Сначала дождись доставки урожая на склад.";
                 } else if ("builder".equals(role)) {
                     succeeded = ConstructionWorkerAI.releaseBuilderRole(villager);
                     message = succeeded
@@ -422,6 +436,8 @@ public final class CivitasNetwork {
             } else if ("builder".equals(role)) {
                 builders++;
                 roleLabel = "Строитель";
+            } else if ("farmer".equals(role)) {
+                roleLabel = "Фермер";
             } else {
                 idle++;
                 roleLabel = "Без назначения";
@@ -431,7 +447,8 @@ public final class CivitasNetwork {
                 String name = villager.getCustomName() == null
                         ? villager.getName().getString()
                         : villager.getCustomName().getString();
-                String residentStatus = LumberjackWorkerAI.getWorkerStatus(villager);
+                String residentStatus = "farmer".equals(role)
+                        ? FarmerWorkerAI.getStatus(villager) : LumberjackWorkerAI.getWorkerStatus(villager);
                 residentNames.add(name);
                 residentUuids.add(villager.getUUID().toString());
                 residentRoles.add(role);

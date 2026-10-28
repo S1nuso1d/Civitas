@@ -173,9 +173,16 @@ public final class SettlementScreen extends Screen {
             addButton(lumberjackLabel, contentX, actionY, half, 20,
                     () -> sendSelectedResidentAction(CivitasNetwork.Action.ASSIGN_LUMBERJACK_TO),
                     Items.IRON_AXE, hasSelection);
-            addButton(builderLabel, contentX + half + 4, actionY, contentWidth - half - 4, 20,
+            int third = (contentWidth - 8) / 3;
+            addButton("Лесоруб", contentX, actionY, third, 20,
+                    () -> sendSelectedResidentAction(CivitasNetwork.Action.ASSIGN_LUMBERJACK_TO),
+                    Items.IRON_AXE, hasSelection);
+            addButton("Строитель", contentX + third + 4, actionY, third, 20,
                     () -> sendSelectedResidentAction(CivitasNetwork.Action.ASSIGN_BUILDER_TO),
                     Items.IRON_PICKAXE, hasSelection);
+            addButton("Фермер", contentX + (third + 4) * 2, actionY, contentWidth - (third + 4) * 2, 20,
+                    () -> sendSelectedResidentAction(CivitasNetwork.Action.ASSIGN_FARMER_TO),
+                    Items.WHEAT, hasSelection);
         } else {
             int third = (contentWidth - 8) / 3;
             boolean selectedLumberjack = hasSelection && "lumberjack".equals(selectedRole);
@@ -451,6 +458,7 @@ public final class SettlementScreen extends Screen {
         return switch (role == null ? "" : role) {
             case "lumberjack" -> "Лесоруб";
             case "builder" -> "Строитель";
+            case "farmer" -> "Фермер";
             default -> "Без назначения";
         };
     }

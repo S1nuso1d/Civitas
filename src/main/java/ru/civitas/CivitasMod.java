@@ -22,6 +22,7 @@ import ru.civitas.network.CivitasNetwork;
 import ru.civitas.world.StarterVillageGenerator;
 import ru.civitas.worker.LumberjackWorkerAI;
 import ru.civitas.worker.ConstructionWorkerAI;
+import ru.civitas.worker.FarmerWorkerAI;
 
 @Mod(CivitasMod.MOD_ID)
 public final class CivitasMod {
@@ -42,6 +43,7 @@ public final class CivitasMod {
         MinecraftForge.EVENT_BUS.addListener(LumberjackWorkerAI::onLivingTick);
         MinecraftForge.EVENT_BUS.addListener(LumberjackWorkerAI::onLivingDeath);
         MinecraftForge.EVENT_BUS.addListener(ConstructionWorkerAI::onLevelTick);
+        MinecraftForge.EVENT_BUS.addListener(FarmerWorkerAI::onLivingTick);
     }
 
     private void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
