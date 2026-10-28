@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.37.1] - Quality Pass
+
+### Added
+- Lumberjacks replant supported species after harvesting a tree when the trunk base is empty and sits above dirt, grass block or podzol; the behavior is configurable and enabled by default.
+- Lumberjacks deliver their partial load after 200 ticks since the last harvest, as well as at their existing cargo limit.
+- Procedural resident names are generated for population-growth arrivals.
+- Economy history can estimate days until depletion for food, wood and stone from the seven-day net trend; the Economy tab shows a food-stock forecast and a low-reserve warning.
+
+### Validation
+- Source committed; run build, tests and in-game checks locally.
+
+
 ## [0.37.0] - Achievement progression gates
 
 ### Added
