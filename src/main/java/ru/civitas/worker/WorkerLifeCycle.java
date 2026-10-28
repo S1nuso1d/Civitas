@@ -45,7 +45,8 @@ public final class WorkerLifeCycle {
         AttributeInstance speed = villager.getAttribute(Attributes.MOVEMENT_SPEED);
         if (speed == null) return;
         BlockPos below = villager.blockPosition().below();
-        boolean onRoad = villager.level().hasChunkAt(below)
+        boolean assignedWorker = ROLES.contains(villager.getPersistentData().getString("civitas.worker_role"));
+        boolean onRoad = assignedWorker && villager.level().hasChunkAt(below)
                 && ROAD_BLOCKS.contains(villager.level().getBlockState(below).getBlock());
         boolean hasModifier = speed.hasModifier(ROAD_SPEED_ID);
         if (onRoad && !hasModifier) {
@@ -57,9 +58,12 @@ public final class WorkerLifeCycle {
     }
 
     public static void onLivingTick(net.minecraftforge.event.entity.living.LivingEvent.LivingTickEvent event) {
-        if (event.getEntity() instanceof Villager villager && !villager.level().isClientSide
-                && ROLES.contains(villager.getPersistentData().getString("civitas.worker_role"))) {
-            updateRoadSpeed(villager);
+        if (event.getEntity() instanceof Villager villager && !villager.level().isClientSide) {
+            String role = villager.getPersistentData().getString("civitas.worker_role");
+            AttributeInstance speed = villager.getAttribute(Attributes.MOVEMENT_SPEED);
+            if (ROLES.contains(role) || (speed != null && speed.hasModifier(ROAD_SPEED_ID))) {
+                updateRoadSpeed(villager);
+            }
         }
     }
 
@@ -110,9 +114,6 @@ public final class WorkerLifeCycle {
     public static int progressIncrement(ServerLevel level, Villager villager, String role, int normal) {
         if ("farmer".equals(role) && level.isRainingAt(villager.blockPosition())) {
             return Math.max(1, (int) Math.floor(normal * 0.75D));
-        }
-        if ("lumberjack".equals(role) && !level.isRainingAt(villager.blockPosition())) {
-            return Math.max(normal, (int) Math.ceil(normal * 1.10D));
         }
         return normal;
     }
