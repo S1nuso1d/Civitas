@@ -188,10 +188,11 @@ public final class CivitasCommands {
             context.getSource().sendFailure(Component.literal("Для приказа guard укажи координаты: /civitas order <житель> guard <позиция>."));
             return 0;
         }
-        PersonalOrders.set(villager, order, target);
+        java.util.UUID ownerId = context.getSource().getEntity() instanceof ServerPlayer issuer ? issuer.getUUID() : null;
+        PersonalOrders.set(villager, order, target, ownerId);
         String message = switch (order) {
             case NONE -> "Приказ снят: житель вернётся к обычному поведению.";
-            case FOLLOW -> "Приказ принят: житель будет следовать за ближайшим игроком.";
+            case FOLLOW -> "Приказ принят: житель будет следовать за тобой.";
             case STAY -> "Приказ принят: житель останется на месте.";
             case GO_HOME -> "Приказ принят: житель ищет ближайшую кровать.";
             case GUARD -> "Приказ принят: житель охраняет указанную точку.";
