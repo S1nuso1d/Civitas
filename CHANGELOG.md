@@ -22,7 +22,7 @@
 - House upgrades use free warehouse stock only; resources reserved by construction orders are excluded. The upgrade blueprint is validated before material deduction and has a block/resource rollback path.
 - Building records now persist upgrade level and orientation while old saves default to level 1 and rotation 0.
 - Added an achievement-tree tab derived from persistent settlement progress: founding, population, houses, farm, workshop, worker specializations and settlement development.
-- Construction residents now swing their main hand while visibly progressing through a building layer.
+- Builders face the worksite and swing while visibly progressing through a building layer; lumberjacks visibly chop and farmers spend three seconds harvesting before consuming a seed.
 - Added blueprint regression tests for upgrade footprint bounds, duplicate coordinates and invalid inputs.
 
 ### Validation
