@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.40.1] - Optional Mod Integration
+
+### Added
+- Added `/civitas addons` to detect optional Biomes O' Plenty, Signpost, Xaero's Minimap and Dynamic Lights installs and to check Biomes O' Plenty's GlitchCore/TerraBlender dependencies.
+- Added `/civitas map` to print the settlement center coordinates for manual waypoint creation in Xaero's Minimap.
+- No compile-time dependency on the add-on mods was introduced; Civitas remains optional-mod safe.
+
+### Validation
+- JAR metadata inspection confirms the Biomes O' Plenty, Signpost and Xaero files target Forge/Minecraft 1.21.1. Biomes O' Plenty declares GlitchCore and TerraBlender as required dependencies.
+- The supplied Dynamic Lights JAR declares Forge loader compatibility but has not been launched under Forge 52.1.20; runtime compatibility remains unverified.
+- This source commit still requires CI build/tests and in-game validation.
+
 ## [0.40.0] - Reliability & Polish Pass (first slice)
 
 ### Added
