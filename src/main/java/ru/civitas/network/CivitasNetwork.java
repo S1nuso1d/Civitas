@@ -1,6 +1,5 @@
 package ru.civitas.network;
 
-import net.minecraft.commands.Commands;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.resources.ResourceLocation;
@@ -33,7 +32,7 @@ import java.util.regex.Pattern;
  * Client packets contain typed actions, never arbitrary command strings.
  */
 public final class CivitasNetwork {
-    private static final SimpleChannel CHANNEL = ChannelBuilder
+    public static final SimpleChannel CHANNEL = ChannelBuilder
             .named(ResourceLocation.fromNamespaceAndPath(CivitasMod.MOD_ID, "main"))
             .networkProtocolVersion(1)
             .simpleChannel();
@@ -90,11 +89,14 @@ public final class CivitasNetwork {
     }
 
     public static void requestSnapshot() {
-        CHANNEL.sendToServer(new RequestSnapshotPacket());
+        DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
+                () -> () -> ClientNetworkHandler.sendPacket(new RequestSnapshotPacket()));
     }
 
     public static void sendAction(Action action, String value, int amount) {
-        CHANNEL.sendToServer(new ActionPacket(action, value == null ? "" : value, amount));
+        DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
+                () -> () -> ClientNetworkHandler.sendPacket(
+                        new ActionPacket(action, value == null ? "" : value, amount)));
     }
 
     private static void handleSnapshotRequest(RequestSnapshotPacket packet, CustomPayloadEvent.Context context) {
