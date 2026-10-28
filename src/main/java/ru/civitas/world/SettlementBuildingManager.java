@@ -39,7 +39,8 @@ public final class SettlementBuildingManager {
             }
         }
         cost.forEach((id, amount) -> remove(warehouse, id, amount));
-        data.addConstructionOrder(definition.id(), site, definition.totalLayers(), definition.costs());
+        data.addConstructionOrder(definition.id(), site, definition.totalLayers(),
+                definition.costs(), definition.layerCosts());
         return new BuildResult(true, "Заказ принят: " + definition.displayName() + ". Материалы списаны со склада; строительство будет идти послойно. Статус: /civitas construction.");
     }
 
