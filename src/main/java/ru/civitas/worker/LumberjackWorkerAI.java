@@ -442,44 +442,44 @@ public final class LumberjackWorkerAI {
 
     private static BlockPos findNearestTreeLog(ServerLevel level, BlockPos origin,
                                                 CivitasSavedData worldData, BlockPos villageCenter) {
-        BlockPos nearestLeafLog = null;
-        double bestDistance = Double.MAX_VALUE;
+        // Scan the bounded search volume once, then check nearby foliage only
+        // for candidates in distance order. Checking a 7x7x10 leaf volume for
+        // every log in a dense forest was needlessly expensive each work cycle.
+        java.util.List<BlockPos> candidates = new java.util.ArrayList<>();
         for (int dx = -TREE_SEARCH_RADIUS; dx <= TREE_SEARCH_RADIUS; dx++) {
             for (int dz = -TREE_SEARCH_RADIUS; dz <= TREE_SEARCH_RADIUS; dz++) {
                 for (int dy = -6; dy <= 18; dy++) {
                     BlockPos pos = origin.offset(dx, dy, dz);
                     if (!level.hasChunkAt(pos)) continue;
                     BlockState state = level.getBlockState(pos);
-                    if (!state.is(BlockTags.LOGS) || isProtectedLog(pos, worldData, villageCenter)
-                            || !hasNearbyLeaves(level, pos)) {
-                        continue;
-                    }
-                    double distance = origin.distSqr(pos);
-                    if (distance < bestDistance) {
-                        nearestLeafLog = pos.immutable();
-                        bestDistance = distance;
+                    if (state.is(BlockTags.LOGS) && !isProtectedLog(pos, worldData, villageCenter)) {
+                        candidates.add(pos.immutable());
                     }
                 }
             }
         }
-        if (nearestLeafLog == null) return null;
+        candidates.sort(java.util.Comparator.comparingDouble(pos -> origin.distSqr(pos)));
 
-        BlockState state = level.getBlockState(nearestLeafLog);
-        Item targetItem = state.getBlock().asItem();
-        java.util.List<BlockPos> connected = findConnectedTreeLogs(
-                level, nearestLeafLog, worldData, villageCenter, targetItem);
-        if (connected.isEmpty()) return null;
+        for (BlockPos candidate : candidates) {
+            if (!hasNearbyLeaves(level, candidate)) continue;
+            BlockState state = level.getBlockState(candidate);
+            Item targetItem = state.getBlock().asItem();
+            java.util.List<BlockPos> connected = findConnectedTreeLogs(
+                    level, candidate, worldData, villageCenter, targetItem);
+            if (connected.isEmpty()) continue;
 
-        // Target the lowest block in the connected tree, not a branch or a
-        // canopy log. This puts the worker beside the trunk base consistently.
-        BlockPos base = null;
-        for (BlockPos log : connected) {
-            if (base == null || log.getY() < base.getY()
-                    || log.getY() == base.getY() && origin.distSqr(log) < origin.distSqr(base)) {
-                base = log;
+            // Target the lowest block in the connected tree, not a branch or a
+            // canopy log. This puts the worker beside the trunk base consistently.
+            BlockPos base = null;
+            for (BlockPos log : connected) {
+                if (base == null || log.getY() < base.getY()
+                        || log.getY() == base.getY() && origin.distSqr(log) < origin.distSqr(base)) {
+                    base = log;
+                }
             }
+            if (base != null) return base;
         }
-        return base;
+        return null;
     }
 
     private static boolean isHarvestableTarget(ServerLevel level, BlockPos target,
