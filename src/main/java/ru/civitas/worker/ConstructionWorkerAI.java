@@ -1,14 +1,18 @@
 package ru.civitas.worker;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraftforge.event.TickEvent;
 import ru.civitas.data.CivitasSavedData;
+import ru.civitas.world.BuildingDefinition;
 import ru.civitas.world.SettlementBuildingManager;
 
 import java.util.ArrayList;
@@ -100,20 +104,39 @@ public final class ConstructionWorkerAI {
             assignedThisTick.add(builder.getUUID());
             prepareBuilder(builder);
 
+            BuildingDefinition.Type buildingType = BuildingDefinition.Type.byId(order.type()).orElse(null);
+            var persistent = builder.getPersistentData();
+            if (buildingType == null) {
+                persistent.putString(BLOCKED_REASON_KEY, "Неизвестный тип здания в заказе.");
+                prepareBuilder(builder);
+                continue;
+            }
+
+            BlockPos workPos = findWorkPosition(level, site, buildingType, builder);
+            if (workPos == null) {
+                persistent.putInt(WORK_PROGRESS_KEY, 0);
+                persistent.putString(BLOCKED_REASON_KEY, "Нет безопасного места вокруг здания.");
+                builder.getNavigation().stop();
+                prepareBuilder(builder);
+                continue;
+            }
+            if ("Нет безопасного места вокруг здания.".equals(persistent.getString(BLOCKED_REASON_KEY))) {
+                persistent.remove(BLOCKED_REASON_KEY);
+            }
+
             double distance = builder.distanceToSqr(
-                    site.getX() + 0.5D, site.getY() + 1.0D, site.getZ() + 0.5D);
+                    workPos.getX() + 0.5D, workPos.getY(), workPos.getZ() + 0.5D);
             if (distance > WORK_DISTANCE_SQUARED) {
-                builder.getPersistentData().putInt(WORK_PROGRESS_KEY, 0);
+                persistent.putInt(WORK_PROGRESS_KEY, 0);
                 if (builder.getNavigation().isDone()) {
                     builder.getNavigation().moveTo(
-                            site.getX() + 0.5D, site.getY() + 1.0D, site.getZ() + 0.5D, MOVE_SPEED);
+                            workPos.getX() + 0.5D, workPos.getY(), workPos.getZ() + 0.5D, MOVE_SPEED);
                 }
                 prepareBuilder(builder);
                 continue;
             }
 
             builder.getNavigation().stop();
-            var persistent = builder.getPersistentData();
             int progressTicks = Math.min(WORK_PROGRESS_TICKS,
                     Math.max(0, persistent.getInt(WORK_PROGRESS_KEY)) + WORK_UPDATE_TICKS);
             persistent.putInt(WORK_PROGRESS_KEY, progressTicks);
@@ -173,6 +196,61 @@ public final class ConstructionWorkerAI {
             }
         }
         return closest;
+    }
+
+    /**
+     * Finds a safe standing position just outside the structure footprint, so
+     * the builder never gets trapped inside the floor or walls it has placed.
+     */
+    private static BlockPos findWorkPosition(
+            ServerLevel level, BlockPos site, BuildingDefinition.Type type, Villager builder) {
+        BuildingDefinition definition = BuildingDefinition.get(type);
+        List<BlockPos> candidates = new ArrayList<>();
+        int radiusX = definition.radiusX();
+        int radiusZ = definition.radiusZ();
+
+        for (int offset = -radiusX; offset <= radiusX; offset++) {
+            candidates.add(new BlockPos(site.getX() + offset, site.getY() + 1, site.getZ() - radiusZ - 1));
+            candidates.add(new BlockPos(site.getX() + offset, site.getY() + 1, site.getZ() + radiusZ + 1));
+        }
+        for (int offset = -radiusZ; offset <= radiusZ; offset++) {
+            candidates.add(new BlockPos(site.getX() - radiusX - 1, site.getY() + 1, site.getZ() + offset));
+            candidates.add(new BlockPos(site.getX() + radiusX + 1, site.getY() + 1, site.getZ() + offset));
+        }
+
+        BlockPos best = null;
+        double bestDistance = Double.MAX_VALUE;
+        for (BlockPos horizontal : candidates) {
+            int x = horizontal.getX();
+            int z = horizontal.getZ();
+            if (!level.hasChunkAt(horizontal)) continue;
+            int feetY = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z);
+            if (Math.abs(feetY - (site.getY() + 1)) > 2) continue;
+
+            BlockPos feet = new BlockPos(x, feetY, z);
+            BlockPos head = feet.above();
+            BlockPos floor = feet.below();
+            if (!level.hasChunkAt(head) || !level.hasChunkAt(floor)) continue;
+
+            BlockState feetState = level.getBlockState(feet);
+            BlockState headState = level.getBlockState(head);
+            BlockState floorState = level.getBlockState(floor);
+            if ((!feetState.isAir() && !feetState.canBeReplaced())
+                    || (!headState.isAir() && !headState.canBeReplaced())
+                    || !feetState.getFluidState().isEmpty()
+                    || !headState.getFluidState().isEmpty()
+                    || !floorState.isFaceSturdy(level, floor, Direction.UP)
+                    || !level.getFluidState(floor).isEmpty()) {
+                continue;
+            }
+
+            double distance = builder.distanceToSqr(x + 0.5D, feetY, z + 0.5D);
+            if (distance < bestDistance) {
+                best = feet;
+                bestDistance = distance;
+            }
+        }
+        return best;
     }
 
     private static void prepareBuilder(Villager builder) {
