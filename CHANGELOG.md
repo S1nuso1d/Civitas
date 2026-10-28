@@ -1,5 +1,14 @@
 # Changelog
 
+## Alpha 0.14.0 — послойная смета материалов
+
+- Added immutable material allocations for each layer of the cabin, farm and workshop; the sum of allocations is validated against the building's full cost.
+- New queued orders snapshot the complete layer plan in world saved data, so later registry edits do not re-price an in-flight order.
+- Cancellation refunds only the materials assigned to layers that have not been completed. Legacy reservations without a stage plan retain the proportional 0.13.0 calculation.
+- Added JUnit coverage for stage totals, exact per-stage refunds, plan immutability and legacy compatibility.
+- Materials are still deducted from the physical warehouse when an order is queued; per-layer allocation currently governs consumption accounting and cancellation refunds, not delayed physical withdrawal.
+- Automated CI and manual in-game verification are required before calling the release fully validated.
+
 ## Alpha 0.13.0 — резерв материалов и безопасная отмена строительства
 
 - Every queued order stores an immutable snapshot of its reserved material costs in world saved data.
