@@ -1,7 +1,9 @@
-Civitas Alpha 0.39.0 — Living Society (first slice)
+Civitas Alpha 0.40.0 — Reliability & Polish Pass (first slice)
 Target: Minecraft Java Edition 1.21.1 + Forge 52.1.20 + Java 21
 
 Implemented in source:
+- Alpha 0.40.0: shared stuck-route watchdog for assigned workers, distance-based worker decision cadence, chunk-aware lumberjack/farmer target waiting, visible profession equipment, and client-only name-tag decluttering. Added LOD policy tests. Existing save format and network protocol are unchanged.
+- Alpha 0.40.0 limitations: backup-before-save, save-version migrations, safe NBT recovery, GUI navigation, resident highlighting, and building damage are not included in this first slice.
 - Alpha 0.39.0: persistent personal orders are available through /civitas order <resident> <follow|stay|home|guard|reset> [position]; follow targets the issuing player when available. Orders override lumberjack/farmer/builder routines and preserve their saved task state; route updates and bed searches are throttled.
 - Alpha 0.39.0 scope note: health/illness, social/family relationships and interior-comfort scoring are not implemented yet.
 - Alpha 0.38.0: assigned workers rest during the night window while retaining task/cargo data; road movement uses a single +35% base-speed modifier that is removed when leaving roads or losing the role.
