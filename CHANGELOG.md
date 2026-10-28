@@ -1,3 +1,21 @@
+# Changelog
+
+## [0.26.0] - Territory Influence & Settlement Development
+
+### Added
+- Added a deterministic territory-influence estimate based on completed registered buildings, population, and settlement level.
+- Added a bounded influence score, development tier, and estimated radius to the Economy tab.
+- The dashboard explicitly labels the radius as an estimate, not a claim of block ownership.
+- The calculation is bounded and runs when the server builds a dashboard snapshot, not every game tick.
+
+### Compatibility
+- No new persistent fields are required; the score is recalculated from existing saved settlement data.
+- Existing worlds retain their current settlement, building, population, and economy data.
+- Client and server should use the same mod version.
+
+### Validation
+- Build, unit tests, and manual gameplay verification must be confirmed for the exact release commit.
+
 ## [0.25.0] - Neighbor Resource Intelligence
 
 ### Added
