@@ -1,14 +1,14 @@
-Civitas Alpha 0.21.0 — Neighbor Civilizations
+Civitas Alpha 0.22.0 — Diplomacy GUI
 Target: Minecraft Java Edition 1.21.1 + Forge 52.1.20 + Java 21
 
 Added:
-- Persistent profiles for neighbouring civilizations linked to trade partners.
-- Bounded daily simulation of population, food, timber, stone, iron, territory and stability.
-- Diplomacy commands: /civitas diplomacy; /civitas diplomacy stance <index> <neutral|allied|rival|war>.
-- War suspends caravan selection for civilizations at war.
-- NBT persistence and migration from existing 0.20.x saves.
-- Unit tests for persistence, diplomacy/trade eligibility and bounded simulation.
+- Vanilla-style diplomacy screen opened from the settlement dashboard.
+- Paginated list of neighbouring civilizations with population, territory, food, stability and reputation.
+- Direct selection of neutral, allied, rival and war stances.
+- Server-authoritative packet validation by civilization UUID and settlement ownership.
+- Alliance requires trade reputation of at least 60; war blocks new caravans from that civilization.
+- Network protocol version 4.
 
 Validation:
-- Exact commit must pass GitHub Actions compile, tests and JAR packaging.
-- Manual in-game testing is still required, including save/load, diplomacy commands and caravan behavior.
+- GitHub Actions compile, tests and JAR packaging must be checked for the exact release commit.
+- Manual in-game and multiplayer testing has not been performed in this environment.
