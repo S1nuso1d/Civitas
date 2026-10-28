@@ -1,7 +1,8 @@
-Civitas Alpha 0.37.1 — Quality Pass
+Civitas Alpha 0.37.2 — Worker Search Backoff
 Target: Minecraft Java Edition 1.21.1 + Forge 52.1.20 + Java 21
 
 Implemented in source:
+- Lumberjack tree-search misses are cached for 100 game ticks (5 seconds), reducing repeated full-volume scans when no harvestable trees are available. A successful search clears the backoff immediately.
 - Lumberjacks replant supported tree species after successful harvest when the base position is empty and suitable soil is present. Replanting is configurable and enabled by default.
 - Lumberjack cargo delivery is triggered at its existing capacity limit or after 200 ticks since the last harvest; it no longer needs to wait for another full load.
 - New population-growth residents receive procedural names generated from syllable lists.
