@@ -1,4 +1,14 @@
-# Civitas — Alpha 0.39.0 (Forge 1.21.1)
+# Civitas — Alpha 0.40.0 (Forge 1.21.1)
+
+## Alpha 0.40.0 — Reliability & Polish Pass (first slice)
+- Added a shared navigation watchdog that retries stalled worker routes without teleporting villagers or discarding their saved targets and cargo.
+- Added distance-based AI decision cadence for lumberjacks, farmers and builders. Vanilla navigation continues to tick normally; distant worker decisions are evaluated less often.
+- Workers preserve targets in unloaded chunks and wait for those chunks instead of interpreting them as missing blocks.
+- Profession markers are visible in villagers' main hands: axe for lumberjack, hoe for farmer and shovel for builder. Markers are removed when the profession is released.
+- Villager name tags are less cluttered: they remain visible at close range or while directly looking at the villager.
+- Added unit tests for the LOD distance policy.
+
+Validation: source committed; run Gradle build and tests, then verify route recovery, chunk loading and equipment in a disposable world.
 
 ## Alpha 0.39.0 — Living Society (first slice)
 - Added persistent per-villager personal orders: follow the player who issued the order (or the nearest player for console-issued orders), stay in place, go to a nearby bed, guard a specified block position, or reset to profession AI.
