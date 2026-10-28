@@ -15,7 +15,6 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.CropBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.event.entity.living.LivingEvent;
-import net.minecraftforge.event.level.LevelTickEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraft.ChatFormatting;
 import ru.civitas.block.SettlementWarehouseBlockEntity;
