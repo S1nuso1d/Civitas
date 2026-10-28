@@ -9,7 +9,6 @@ import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.InputEvent;
-import net.minecraftforge.client.event.RenderGuiOverlayEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.lwjgl.glfw.GLFW;
@@ -43,11 +42,10 @@ public final class RealtimeHud {
         }
     }
 
-    @SubscribeEvent
-    public static void onRenderGui(RenderGuiOverlayEvent.Post event) {
+    /** Called by the registered Forge GUI layer every frame. */
+    public static void render(GuiGraphics graphics, net.minecraft.client.DeltaTracker deltaTracker) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.level == null || mc.options.hideGui) return;
-        GuiGraphics graphics = event.getGuiGraphics();
 
         if (enabled) renderSettlement(graphics, ClientNetworkHandler.latestSnapshot());
         if (mc.hitResult instanceof EntityHitResult hit && hit.getEntity() instanceof Villager villager
