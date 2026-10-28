@@ -13,6 +13,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraftforge.event.TickEvent;
 import ru.civitas.data.CivitasSavedData;
+import ru.civitas.worker.PersonalOrders;
 import ru.civitas.world.BuildingDefinition;
 import ru.civitas.world.SettlementBuildingManager;
 
@@ -72,6 +73,10 @@ public final class ConstructionWorkerAI {
 
         // Clear obsolete assignments before returning when the queue becomes empty.
         for (Villager builder : builders) {
+            if (PersonalOrders.get(builder) != PersonalOrders.Order.NONE) {
+                PersonalOrders.tickOverride(level, builder);
+                continue;
+            }
             BlockPos target = readTarget(builder);
             if (target != null && !activeSites.contains(target)) {
                 clearTarget(builder);
