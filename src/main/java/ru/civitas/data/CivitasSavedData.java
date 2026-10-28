@@ -750,6 +750,15 @@ public final class CivitasSavedData extends SavedData {
         return unlockedAchievements.getOrDefault(id, -1L);
     }
 
+    /** Compact, bounded wire representation: stable achievement ID and first-unlock day. */
+    public List<String> getUnlockedAchievementRecords() {
+        List<String> records = new ArrayList<>(unlockedAchievements.size());
+        for (Map.Entry<String, Long> entry : unlockedAchievements.entrySet()) {
+            records.add(entry.getKey() + "|" + Math.max(0L, entry.getValue()));
+        }
+        return Collections.unmodifiableList(records);
+    }
+
     public List<ChunkPos> getClaimedChunks() {
         List<ChunkPos> result = new ArrayList<>();
         for (long packed : claimedChunks) result.add(new ChunkPos(packed));
