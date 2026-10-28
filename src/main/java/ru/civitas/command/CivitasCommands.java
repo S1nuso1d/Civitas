@@ -8,6 +8,7 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.ResourceLocationArgument;
+import net.minecraft.commands.arguments.coordinates.BlockPosArgument;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
@@ -53,9 +54,47 @@ public final class CivitasCommands {
                                         .executes(CivitasCommands::cancelConstruction)
                                         .then(Commands.argument("index", IntegerArgumentType.integer(1))
                                                 .executes(CivitasCommands::cancelConstructionByIndex))))
-                        .then(Commands.literal("build").then(Commands.literal("cabin").executes(ctx -> build(ctx, BuildingDefinition.Type.CABIN)))
-                                .then(Commands.literal("farm").executes(ctx -> build(ctx, BuildingDefinition.Type.FARM)))
-                                .then(Commands.literal("workshop").executes(ctx -> build(ctx, BuildingDefinition.Type.WORKSHOP))))
+                        .then(Commands.literal("preview")
+                                .then(Commands.literal("cabin")
+                                        .then(Commands.argument("position", BlockPosArgument.blockPos())
+                                                .executes(ctx -> preview(ctx, BuildingDefinition.Type.CABIN, 0))
+                                                .then(Commands.argument("rotation", IntegerArgumentType.integer(0, 359))
+                                                        .executes(ctx -> preview(ctx, BuildingDefinition.Type.CABIN,
+                                                                IntegerArgumentType.getInteger(ctx, "rotation"))))))
+                                .then(Commands.literal("farm")
+                                        .then(Commands.argument("position", BlockPosArgument.blockPos())
+                                                .executes(ctx -> preview(ctx, BuildingDefinition.Type.FARM, 0))
+                                                .then(Commands.argument("rotation", IntegerArgumentType.integer(0, 359))
+                                                        .executes(ctx -> preview(ctx, BuildingDefinition.Type.FARM,
+                                                                IntegerArgumentType.getInteger(ctx, "rotation"))))))
+                                .then(Commands.literal("workshop")
+                                        .then(Commands.argument("position", BlockPosArgument.blockPos())
+                                                .executes(ctx -> preview(ctx, BuildingDefinition.Type.WORKSHOP, 0))
+                                                .then(Commands.argument("rotation", IntegerArgumentType.integer(0, 359))
+                                                        .executes(ctx -> preview(ctx, BuildingDefinition.Type.WORKSHOP,
+                                                                IntegerArgumentType.getInteger(ctx, "rotation")))))))
+                        .then(Commands.literal("build")
+                                .then(Commands.literal("cabin")
+                                        .executes(ctx -> build(ctx, BuildingDefinition.Type.CABIN))
+                                        .then(Commands.argument("position", BlockPosArgument.blockPos())
+                                                .executes(ctx -> buildAt(ctx, BuildingDefinition.Type.CABIN, 0))
+                                                .then(Commands.argument("rotation", IntegerArgumentType.integer(0, 359))
+                                                        .executes(ctx -> buildAt(ctx, BuildingDefinition.Type.CABIN,
+                                                                IntegerArgumentType.getInteger(ctx, "rotation"))))))
+                                .then(Commands.literal("farm")
+                                        .executes(ctx -> build(ctx, BuildingDefinition.Type.FARM))
+                                        .then(Commands.argument("position", BlockPosArgument.blockPos())
+                                                .executes(ctx -> buildAt(ctx, BuildingDefinition.Type.FARM, 0))
+                                                .then(Commands.argument("rotation", IntegerArgumentType.integer(0, 359))
+                                                        .executes(ctx -> buildAt(ctx, BuildingDefinition.Type.FARM,
+                                                                IntegerArgumentType.getInteger(ctx, "rotation"))))))
+                                .then(Commands.literal("workshop")
+                                        .executes(ctx -> build(ctx, BuildingDefinition.Type.WORKSHOP))
+                                        .then(Commands.argument("position", BlockPosArgument.blockPos())
+                                                .executes(ctx -> buildAt(ctx, BuildingDefinition.Type.WORKSHOP, 0))
+                                                .then(Commands.argument("rotation", IntegerArgumentType.integer(0, 359))
+                                                        .executes(ctx -> buildAt(ctx, BuildingDefinition.Type.WORKSHOP,
+                                                                IntegerArgumentType.getInteger(ctx, "rotation")))))))
                         .then(Commands.literal("worker")
                                 .then(Commands.literal("lumberjack").executes(CivitasCommands::assignLumberjack))
                                 .then(Commands.literal("builder").executes(CivitasCommands::assignBuilder))
@@ -82,7 +121,9 @@ public final class CivitasCommands {
         source.sendSuccess(() -> Component.literal("§e/civitas workers §7— список жителей и их роли"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas buildings §7— реестр построенных зданий"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas construction §7— очередь и прогресс строительства"), false);
-        source.sendSuccess(() -> Component.literal("§e/civitas build cabin|farm|workshop §7— построить здание за ресурсы склада"), false);
+        source.sendSuccess(() -> Component.literal("§e/civitas preview cabin|farm|workshop <позиция> [угол] §7— показать чертёж частицами"), false);
+        source.sendSuccess(() -> Component.literal("§e/civitas build cabin|farm|workshop §7— автоматическая площадка; добавь координаты и угол для выбора места"), false);
+        source.sendSuccess(() -> Component.literal("§7Угол: 0, 90, 180 или 270. Координаты — твёрдый блок земли под зданием; стоя на поверхности используй ~ ~-1 ~."), false);
         source.sendSuccess(() -> Component.literal("§e/civitas worker lumberjack §7— назначить лесоруба"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas worker builder §7— назначить ещё одного строителя"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas worker pause|resume §7— приостановить/продолжить"), false);
@@ -379,6 +420,55 @@ public final class CivitasCommands {
             return Command.SINGLE_SUCCESS;
         }
         context.getSource().sendFailure(Component.literal(result.message()));
+        return 0;
+    }
+
+    private static int buildAt(CommandContext<CommandSourceStack> context,
+                                BuildingDefinition.Type type, int rotationDegrees) throws CommandSyntaxException {
+        ServerPlayer player = context.getSource().getPlayerOrException();
+        CivitasSavedData data = CivitasSavedData.get(context.getSource().getServer());
+        if (!ensureOwner(context.getSource(), player, data)) return 0;
+        if (!context.getSource().getLevel().dimension().equals(net.minecraft.world.level.Level.OVERWORLD)) {
+            context.getSource().sendFailure(Component.literal("Строительство Civitas доступно только в обычном мире."));
+            return 0;
+        }
+        BlockPos site = BlockPosArgument.getLoadedBlockPos(context, "position");
+        SettlementWarehouseBlockEntity warehouse = findWarehouse(context.getSource(), data);
+        if (warehouse == null) {
+            context.getSource().sendFailure(Component.literal("Центральный физический склад не найден."));
+            return 0;
+        }
+        BlockPos center = data.hasStarterVillage() ? data.getStarterVillageCenter() : data.getCenter();
+        SettlementBuildingManager.BuildResult result = SettlementBuildingManager.buildAt(
+                context.getSource().getServer().overworld(), center, warehouse, type, data, site, rotationDegrees);
+        if (result.success()) {
+            context.getSource().sendSuccess(() -> Component.literal("§a" + result.message()), false);
+            return Command.SINGLE_SUCCESS;
+        }
+        context.getSource().sendFailure(Component.literal(result.message()));
+        return 0;
+    }
+
+    private static int preview(CommandContext<CommandSourceStack> context,
+                               BuildingDefinition.Type type, int rotationDegrees) throws CommandSyntaxException {
+        ServerPlayer player = context.getSource().getPlayerOrException();
+        CivitasSavedData data = CivitasSavedData.get(context.getSource().getServer());
+        if (!ensureOwner(context.getSource(), player, data)) return 0;
+        if (!context.getSource().getLevel().dimension().equals(net.minecraft.world.level.Level.OVERWORLD)) {
+            context.getSource().sendFailure(Component.literal("Чертёж Civitas можно показывать только в обычном мире."));
+            return 0;
+        }
+        BlockPos site = BlockPosArgument.getLoadedBlockPos(context, "position");
+        BlockPos center = data.hasStarterVillage() ? data.getStarterVillageCenter() : data.getCenter();
+        SettlementBuildingManager.BuildResult result = SettlementBuildingManager.preview(
+                context.getSource().getServer().overworld(), center, type, data, site, rotationDegrees);
+        if (result.success()) {
+            context.getSource().sendSuccess(() -> Component.literal("§aЧертёж показан частицами. Зелёные точки — площадка свободна. "
+                    + "Заказ не создан и ресурсы не списаны."), false);
+            return Command.SINGLE_SUCCESS;
+        }
+        context.getSource().sendFailure(Component.literal(result.message()
+                + " Чертёж показан дымом там, где он не помещается. Заказ не создан."));
         return 0;
     }
 
