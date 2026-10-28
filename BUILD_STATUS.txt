@@ -1,13 +1,11 @@
-Civitas Alpha 0.24.0 — Diplomacy Has Economic Consequences
+Civitas Alpha 0.25.0 — Neighbor Resource Intelligence
 Target: Minecraft Java Edition 1.21.1 + Forge 52.1.20 + Java 21
 
 Added:
-- Alliance improves daily food reserves and stability and supports faster territorial expansion.
-- Rivalry reduces stability and may consume timber in larger territories.
-- War reduces stability and food reserves and consumes timber and iron under defined conditions.
-- Diplomatic consequences are applied only in bounded daily simulation steps.
-- Added unit coverage comparing the same neighbor profile under alliance and war.
+- Diplomacy screen shows neighbor population, territory, food, timber, stone, iron, stability and reputation.
+- New resource fields are encoded and decoded in the server-authoritative diplomacy packet.
+- Network protocol bumped to version 6; client and server must use the same mod build.
 
 Validation:
 - GitHub Actions build/test/JAR packaging must be confirmed for the exact release commit.
-- Manual in-game balance and multiplayer checks have not been performed here.
+- Manual GUI layout, client/server compatibility, and gameplay checks have not been performed here.
