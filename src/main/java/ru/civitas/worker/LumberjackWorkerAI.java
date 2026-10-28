@@ -26,6 +26,7 @@ import ru.civitas.data.CivitasSavedData;
 import ru.civitas.worker.PersonalOrders;
 import ru.civitas.CivitasConfig;
 import ru.civitas.ai.AiLodController;
+import ru.civitas.ai.DecisionEngine;
 import ru.civitas.ai.ChunkGuard;
 import ru.civitas.ai.StuckDetector;
 
@@ -368,6 +369,7 @@ public final class LumberjackWorkerAI {
     }
 
     private static void tickWorker(ServerLevel level, Villager villager) {
+        if (DecisionEngine.tick(level, villager)) return;
         CivitasSavedData worldData = CivitasSavedData.get(level.getServer());
         if (!worldData.hasStarterVillage() || level.dimension() != Level.OVERWORLD) {
             return;
