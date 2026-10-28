@@ -693,6 +693,15 @@ public final class SettlementScreen extends Screen {
         lines.add("Дерево: " + signed(snapshot.woodDelta7d()) + " шт.");
         lines.add("Камень: " + signed(snapshot.stoneDelta7d()) + " шт.");
         lines.add("Еда: " + signed(snapshot.foodDelta7d()) + " ед.");
+        if (snapshot.foodDelta7d() < 0 && snapshot.foodStock() > 0) {
+            long days = (long) snapshot.foodStock() * 7L / Math.max(1L, -(long) snapshot.foodDelta7d());
+            lines.add("Прогноз еды: запас примерно на " + days + " дн. при текущем тренде");
+        } else if (snapshot.foodDelta7d() >= 0) {
+            lines.add("Прогноз еды: запас не сокращается по данным за 7 дней");
+        }
+        if (snapshot.foodStock() < Math.max(1, snapshot.foodNeedPerDay()) * 3L) {
+            lines.add("ВНИМАНИЕ: запас еды меньше трёх дней потребления");
+        }
         lines.add("Последние события:");
         List<String> events = snapshot.recentEvents();
         for (int i = Math.max(0, events.size() - 4); i < events.size(); i++) lines.add("• " + events.get(i));
