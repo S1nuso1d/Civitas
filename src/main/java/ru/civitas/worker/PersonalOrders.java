@@ -14,6 +14,8 @@ public final class PersonalOrders {
     private static final String ORDER_KEY = "civitas.personal_order";
     private static final String TARGET_KEY = "civitas.personal_order_target";
     private static final String NEXT_UPDATE_KEY = "civitas.personal_order_next_update";
+    private static final String BED_TARGET_KEY = "civitas.personal_order_bed_target";
+    private static final String BED_SCAN_KEY = "civitas.personal_order_bed_scan";
     private static final String ISSUE_KEY = "civitas.worker_issue";
 
     private PersonalOrders() { }
@@ -32,6 +34,8 @@ public final class PersonalOrders {
         if (target != null) tag.putLong(TARGET_KEY, target.asLong());
         else tag.remove(TARGET_KEY);
         tag.remove(NEXT_UPDATE_KEY);
+        tag.remove(BED_TARGET_KEY);
+        tag.remove(BED_SCAN_KEY);
         villager.getNavigation().stop();
         tag.putString(ISSUE_KEY, status(order));
     }
@@ -64,7 +68,15 @@ public final class PersonalOrders {
                 tag.putString(ISSUE_KEY, "Стоит на месте");
             }
             case GO_HOME -> {
-                BlockPos bed = findNearbyBed(level, villager.blockPosition(), 32);
+                BlockPos bed = tag.contains(BED_TARGET_KEY) ? BlockPos.of(tag.getLong(BED_TARGET_KEY)) : null;
+                if (bed == null || !level.hasChunkAt(bed) || !(level.getBlockState(bed).getBlock() instanceof BedBlock)) {
+                    if (now >= tag.getLong(BED_SCAN_KEY)) {
+                        bed = findNearbyBed(level, villager.blockPosition(), 24);
+                        tag.putLong(BED_SCAN_KEY, now + 200L);
+                        if (bed != null) tag.putLong(BED_TARGET_KEY, bed.asLong());
+                        else tag.remove(BED_TARGET_KEY);
+                    }
+                }
                 if (bed == null) {
                     villager.getNavigation().stop();
                     tag.putString(ISSUE_KEY, "Кровать не найдена");
