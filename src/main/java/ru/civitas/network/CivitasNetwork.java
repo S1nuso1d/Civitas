@@ -59,7 +59,9 @@ public final class CivitasNetwork {
         RESUME_LUMBERJACK,
         CLEAR_LUMBERJACK,
         DEPOSIT,
-        WITHDRAW
+        WITHDRAW,
+        BUILD_AT,
+        PREVIEW_BUILD
     }
 
     public static void register() {
@@ -170,6 +172,8 @@ public final class CivitasNetwork {
             case BUILD -> BuildingDefinition.Type.byId(value.toLowerCase(Locale.ROOT))
                     .map(type -> "civitas build " + type.id())
                     .orElse(null);
+            case BUILD_AT -> manualBuildCommand(value, packet.amount(), false);
+            case PREVIEW_BUILD -> manualBuildCommand(value, packet.amount(), true);
             case CANCEL_ORDER -> packet.amount() >= 1 && packet.amount() <= 999
                     ? "civitas construction cancel " + packet.amount()
                     : null;
@@ -186,6 +190,25 @@ public final class CivitasNetwork {
                     ? "civitas withdraw " + value + " " + packet.amount()
                     : null;
         };
+    }
+
+    private static String manualBuildCommand(String encoded, int rotationDegrees, boolean preview) {
+        if (encoded == null || encoded.length() > 128
+                || rotationDegrees < 0 || rotationDegrees > 359) {
+            return null;
+        }
+        String[] parts = encoded.split("\\|", -1);
+        if (parts.length != 4) return null;
+        BuildingDefinition.Type type = BuildingDefinition.Type.byId(parts[0]).orElse(null);
+        if (type == null) return null;
+        for (int i = 1; i <= 3; i++) {
+            // Only integer coordinates or vanilla relative coordinates are accepted.
+            // This keeps the network action typed rather than allowing arbitrary commands.
+            if (!parts[i].matches("(?:-?\\d+|~(?:-?\\d+)?)")) return null;
+        }
+        String command = preview ? "civitas preview " : "civitas build ";
+        return command + type.id() + " " + parts[1] + " " + parts[2] + " " + parts[3]
+                + " " + rotationDegrees;
     }
 
     private static String sanitizeName(String value) {
