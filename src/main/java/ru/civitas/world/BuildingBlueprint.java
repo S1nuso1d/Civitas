@@ -236,11 +236,11 @@ public final class BuildingBlueprint {
             put(blocks, 0, 2, -3, "minecraft:oak_stairs");
             put(blocks, 0, 3, -3, "minecraft:lantern");
         } else {
-            for (int y = 1; y <= 4; y++) {
+            // A narrow chimney rises through the existing roof. The roof block
+            // at (3,5,2) is replaced deliberately and restored by rollback.
+            for (int y = 1; y <= 6; y++) {
                 put(blocks, 3, y, 2, "minecraft:bricks");
             }
-            put(blocks, 3, 4, 1, "minecraft:lantern");
-            put(blocks, -3, 4, 2, "minecraft:lantern");
         }
         List<Placement> rotated = new ArrayList<>(blocks.size());
         for (Placement placement : blocks.values()) {
@@ -263,7 +263,10 @@ public final class BuildingBlueprint {
             BlockPos target = ground.offset(placement.relativePosition());
             if (!level.hasChunkAt(target)) return false;
             BlockState current = level.getBlockState(target);
-            if (!current.isAir() && !current.canBeReplaced()) return false;
+            boolean chimneyRoofOpening = newLevel == 3
+                    && placement.relativePosition().equals(new BlockPos(3, 5, 2))
+                    && current.is(resolveBlock("minecraft:oak_planks"));
+            if (!chimneyRoofOpening && !current.isAir() && !current.canBeReplaced()) return false;
             if (!level.getFluidState(target).isEmpty()) return false;
         }
         return true;
@@ -283,7 +286,11 @@ public final class BuildingBlueprint {
             BlockPos target = ground.offset(placement.relativePosition());
             if (level.hasChunkAt(target)
                     && level.getBlockState(target).is(resolveBlock(placement.blockId()))) {
-                level.setBlock(target, net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(), 3);
+                boolean roofOpening = newLevel == 3
+                        && placement.relativePosition().equals(new BlockPos(3, 5, 2));
+                level.setBlock(target, roofOpening
+                        ? resolveState(new Placement(placement.relativePosition(), "minecraft:oak_planks", -1))
+                        : net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(), 3);
             }
         }
     }
