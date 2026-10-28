@@ -218,6 +218,9 @@ public final class LumberjackWorkerAI {
         }
 
         BlockPos treeLog = findNearestTreeLog(level, villager.blockPosition(), worldData, warehousePos);
+        java.util.List<BlockPos> treeLogs = treeLog == null
+                ? java.util.List.of()
+                : findConnectedTreeLogs(level, treeLog, worldData, warehousePos);
         String targetItemId = treeLog == null ? "" : BuiltInRegistries.ITEM.getKey(level.getBlockState(treeLog).getBlock().asItem()).toString();
         boolean mustDeliver = carriedCount >= MAX_CARRIED
                 || carriedCount > 0 && (treeLog == null || !carriedItemId.equals(targetItemId));
@@ -266,14 +269,18 @@ public final class LumberjackWorkerAI {
         }
 
         villager.getNavigation().stop();
+        // One work tick is one second. Keep the villager stationary until the
+        // whole connected tree has been processed, rather than chopping one log
+        // and immediately selecting a different block on the next cycle.
         int progress = persistent.getInt(CHOP_PROGRESS_KEY) + 1;
-        if (progress < 3) {
+        int requiredSeconds = Math.max(1, treeLogs.size());
+        if (progress < requiredSeconds) {
             persistent.putInt(CHOP_PROGRESS_KEY, progress);
             return;
         }
 
         BlockState logState = level.getBlockState(treeLog);
-        if (!logState.is(BlockTags.LOGS)) {
+        if (!logState.is(BlockTags.LOGS) || treeLogs.isEmpty()) {
             persistent.putInt(CHOP_PROGRESS_KEY, 0);
             return;
         }
@@ -286,12 +293,32 @@ public final class LumberjackWorkerAI {
             return;
         }
 
-        if (level.destroyBlock(treeLog, false)) {
+        // Revalidate each log immediately before removal. The connected-tree
+        // scan excludes registered buildings and the protected starter-village
+        // footprint, so logs belonging to houses are never harvested here.
+        int harvested = 0;
+        for (BlockPos logPos : treeLogs) {
+            BlockState current = level.getBlockState(logPos);
+            if (!current.is(BlockTags.LOGS)) {
+                continue;
+            }
+            Item currentItem = current.getBlock().asItem();
+            if (currentItem != logItem) {
+                continue;
+            }
+            if (level.destroyBlock(logPos, false)) {
+                harvested++;
+            }
+        }
+
+        if (harvested > 0) {
             if (carriedCount == 0) {
                 carriedItemId = actualItemId;
                 persistent.putString(CARRIED_ITEM_KEY, carriedItemId);
             }
-            persistent.putInt(CARRIED_COUNT_KEY, carriedCount + 1);
+            // The worker delivers the complete harvest on the next cycle when
+            // the carried amount reaches or exceeds its normal capacity.
+            persistent.putInt(CARRIED_COUNT_KEY, carriedCount + harvested);
         }
         persistent.putInt(CHOP_PROGRESS_KEY, 0);
     }
@@ -329,6 +356,55 @@ public final class LumberjackWorkerAI {
             }
         }
         return best;
+    }
+
+    /**
+     * Collects the connected logs of one tree with a strict search bound.
+     * Registered building areas and the starter village footprint are excluded
+     * at every step, not just when choosing the initial target.
+     */
+    private static java.util.List<BlockPos> findConnectedTreeLogs(
+            ServerLevel level, BlockPos start, CivitasSavedData worldData, BlockPos villageCenter) {
+        java.util.List<BlockPos> result = new java.util.ArrayList<>();
+        java.util.ArrayDeque<BlockPos> queue = new java.util.ArrayDeque<>();
+        java.util.Set<BlockPos> visited = new java.util.HashSet<>();
+        queue.add(start.immutable());
+        visited.add(start.immutable());
+
+        while (!queue.isEmpty() && result.size() < 64) {
+            BlockPos current = queue.removeFirst();
+            BlockState state = level.getBlockState(current);
+            if (!state.is(BlockTags.LOGS) || isProtectedLog(current, worldData, villageCenter)) {
+                continue;
+            }
+            result.add(current.immutable());
+
+            for (BlockPos next : BlockPos.betweenClosed(
+                    current.offset(-1, -1, -1), current.offset(1, 1, 1))) {
+                BlockPos candidate = next.immutable();
+                if (candidate.equals(current) || visited.contains(candidate)) {
+                    continue;
+                }
+                if (Math.abs(candidate.getX() - start.getX()) > 6
+                        || Math.abs(candidate.getZ() - start.getZ()) > 6
+                        || candidate.getY() < start.getY() - 2
+                        || candidate.getY() > start.getY() + 12) {
+                    continue;
+                }
+                if (level.getBlockState(candidate).is(BlockTags.LOGS)
+                        && !isProtectedLog(candidate, worldData, villageCenter)) {
+                    visited.add(candidate);
+                    queue.addLast(candidate);
+                }
+            }
+        }
+        return result;
+    }
+
+    private static boolean isProtectedLog(BlockPos pos, CivitasSavedData worldData, BlockPos villageCenter) {
+        return (Math.abs(pos.getX() - villageCenter.getX()) <= 10
+                && Math.abs(pos.getZ() - villageCenter.getZ()) <= 10)
+                || worldData.hasBuildingNear(pos, 5);
     }
 
     private static boolean hasNearbyLeaves(ServerLevel level, BlockPos logPos) {
