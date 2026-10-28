@@ -1,7 +1,9 @@
-Civitas Alpha 0.38.0 — Senses & Schedules
+Civitas Alpha 0.39.0 — Living Society (first slice)
 Target: Minecraft Java Edition 1.21.1 + Forge 52.1.20 + Java 21
 
 Implemented in source:
+- Alpha 0.39.0: persistent personal orders are available through /civitas order <resident> <follow|stay|home|guard|reset> [position]. Orders override lumberjack/farmer/builder routines and preserve their saved task state; route updates and bed searches are throttled.
+- Alpha 0.39.0 scope note: health/illness, social/family relationships and interior-comfort scoring are not implemented yet.
 - Alpha 0.38.0: assigned workers rest during the night window while retaining task/cargo data; road movement uses a single +35% base-speed modifier that is removed when leaving roads or losing the role.
 - Alpha 0.38.0: role-specific work sounds and particles are throttled to work intervals; occasional chatter is only sent to nearby players.
 - Alpha 0.38.0: workers can open adjacent unpowered doors while moving and close their tracked door after passage when the doorway is clear.
