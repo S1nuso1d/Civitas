@@ -223,6 +223,24 @@ public final class ConstructionWorkerAI {
         tag.putInt(TARGET_Z_KEY, site.getZ());
     }
 
+    /** Releases a selected builder so another worker can take its queued order. */
+    public static boolean releaseBuilderRole(Villager villager) {
+        if (villager == null) return false;
+        var tag = villager.getPersistentData();
+        if (!"builder".equals(tag.getString(ROLE_KEY))) return true;
+        clearTarget(villager);
+        tag.putInt(WORK_PROGRESS_KEY, 0);
+        tag.remove(BLOCKED_REASON_KEY);
+        tag.putString(ROLE_KEY, "");
+        villager.getNavigation().stop();
+        if (villager.getCustomName() != null
+                && villager.getCustomName().getString().startsWith("Строитель Civitas")) {
+            villager.setCustomName(null);
+            villager.setCustomNameVisible(false);
+        }
+        return true;
+    }
+
     private static void clearTarget(Villager villager) {
         var tag = villager.getPersistentData();
         tag.remove(TARGET_ASSIGNED_KEY);
