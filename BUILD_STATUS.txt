@@ -1,18 +1,20 @@
-Civitas Alpha 0.12.0 — build status
+Civitas Alpha 0.13.0 — build status
 Target: Minecraft Java Edition 1.21.1 + Forge 52.1.20 + Java 21
 
-New in 0.12.0:
-- Multiple villagers can hold the builder role at the same time.
-- Each builder keeps a persistent target site in entity data.
-- Builders are assigned to distinct queued orders so several constructions can progress concurrently.
-- Stale assignments are released after the corresponding queued order disappears.
+New in 0.13.0:
+- Per-order resource reservations are snapshotted and persisted in world saved data.
+- Material costs are allocated to construction layers by progress.
+- Cancelling a partially built order refunds only the unbuilt-layer share.
+- Completed Civitas template layers are removed using block-type checks; replacements of other block types are preserved.
+- Legacy orders without stored reservations use the current BuildingDefinition costs.
 
-Included foundation:
-- Central building definition registry.
+Foundation retained:
+- Central building registry.
 - Forge SimpleChannel snapshot/action packets.
 - Responsive Overview / Residents / Construction / Storage dashboard.
-- JUnit checks for building registry metadata and material costs.
+- Multiple builders can work on separate queued orders.
+- JUnit checks for building definitions and reservation/refund calculation.
 
 Validation:
-- GitHub Actions build and test status must pass on the final commit before release.
-- Manual in-game verification of multiple concurrent builders is not available in this environment.
+- GitHub Actions build and all automated tests must pass on the final commit.
+- Manual in-game testing is still required, especially for cancellation cleanup and save/load.
