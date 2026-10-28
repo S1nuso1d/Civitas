@@ -1,3 +1,16 @@
+## [0.22.0] - Diplomacy GUI
+
+### Added
+- Added a vanilla-style diplomacy screen reachable from the settlement dashboard.
+- Civilization list shows relationship, population, territory, food, stability and trade reputation; list supports pagination.
+- Stance changes are sent as typed packets and validated on the authoritative server by civilization UUID and settlement ownership.
+- Alliances require trade reputation of at least 60; gifts and successful trade improve reputation, while war blocks caravan selection.
+- Bumped network protocol to 4 for clients and servers using the new packet set.
+
+### Validation
+- Automated build and tests must pass for the exact release commit.
+- Manual in-game and multiplayer checks are still required.
+
 ## [0.21.0] - Neighbor Civilizations
 
 ### Added
