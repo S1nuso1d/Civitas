@@ -96,8 +96,9 @@ public final class WorkerLifeCycle {
         return false;
     }
 
-    /** Opens only an adjacent, unpowered wooden door when a worker is actively moving. */
+    /** Opens only an adjacent, unpowered door while moving and closes it after passage. */
     public static void openNearbyDoor(ServerLevel level, Villager villager) {
+        closeTrackedDoor(level, villager);
         if (villager.getNavigation().isDone()) return;
         BlockPos origin = villager.blockPosition();
         for (Direction direction : Direction.Plane.HORIZONTAL) {
@@ -107,8 +108,35 @@ public final class WorkerLifeCycle {
             if (!(state.getBlock() instanceof DoorBlock) || state.getValue(DoorBlock.OPEN)
                     || state.getValue(DoorBlock.POWERED)) continue;
             level.setBlock(pos, state.setValue(DoorBlock.OPEN, true), 10);
+            var tag = villager.getPersistentData();
+            tag.putInt("civitas.worker_door_x", pos.getX());
+            tag.putInt("civitas.worker_door_y", pos.getY());
+            tag.putInt("civitas.worker_door_z", pos.getZ());
+            tag.putLong("civitas.worker_door_opened_at", level.getGameTime());
             level.playSound(null, pos, SoundEvents.WOODEN_DOOR_OPEN, SoundSource.BLOCKS, 0.45F, 1.0F);
+            break;
         }
+    }
+
+    private static void closeTrackedDoor(ServerLevel level, Villager villager) {
+        var tag = villager.getPersistentData();
+        long openedAt = tag.getLong("civitas.worker_door_opened_at");
+        if (openedAt <= 0L || level.getGameTime() - openedAt < 30L) return;
+        BlockPos pos = new BlockPos(tag.getInt("civitas.worker_door_x"),
+                tag.getInt("civitas.worker_door_y"), tag.getInt("civitas.worker_door_z"));
+        if (!level.hasChunkAt(pos)) return;
+        BlockState state = level.getBlockState(pos);
+        if (!(state.getBlock() instanceof DoorBlock) || !state.getValue(DoorBlock.OPEN)) {
+            tag.remove("civitas.worker_door_opened_at");
+            return;
+        }
+        if (villager.distanceToSqr(pos.getX() + 0.5D, pos.getY(), pos.getZ() + 0.5D) <= 4.0D
+                || !level.getEntitiesOfClass(Villager.class, new net.minecraft.world.phys.AABB(pos).inflate(1.5D),
+                        other -> other != villager).isEmpty()) return;
+        if (!state.getValue(DoorBlock.POWERED)) {
+            level.setBlock(pos, state.setValue(DoorBlock.OPEN, false), 10);
+        }
+        tag.remove("civitas.worker_door_opened_at");
     }
 
     public static int progressIncrement(ServerLevel level, Villager villager, String role, int normal) {
