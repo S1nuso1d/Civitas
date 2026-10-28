@@ -817,23 +817,14 @@ public final class SettlementScreen extends Screen {
         int startY = contentY + 42;
         int rows = achievementVisibleRows();
         listOffset = Math.min(listOffset, achievementMaxOffset());
-        String previousBranch = "";
-        int rendered = 0;
-        for (int i = listOffset; i < tree.size() && rendered < rows; i++) {
-            Achievement achievement = tree.get(i);
-            if (!achievement.branch().equals(previousBranch)) {
-                drawLine(startY + rendered * 14, "◆ " + achievement.branch(), 0xFF8A5A20, contentWidth);
-                rendered++;
-                if (rendered >= rows) break;
-                previousBranch = achievement.branch();
-            }
+        for (int row = 0; row < rows && listOffset + row < tree.size(); row++) {
+            Achievement achievement = tree.get(listOffset + row);
             String line = (achievement.unlocked() ? "✓ " : "○ ")
-                    + achievement.name() + " — " + achievement.condition();
-            drawLine(startY + rendered * 14, line,
+                    + "[" + achievement.branch() + "] " + achievement.name()
+                    + " — " + achievement.condition();
+            drawLine(startY + row * 14, line,
                     achievement.unlocked() ? 0xFF236B36 : 0xFF777777, contentWidth);
-            rendered++;
         }
-        drawLine(contentBottom - 12, "Условия пока рассчитываются по текущему состоянию мира", 0xFF555555, contentWidth);
     }
 
     private void renderStorage() {
