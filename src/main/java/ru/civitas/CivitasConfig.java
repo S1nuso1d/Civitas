@@ -9,6 +9,7 @@ public final class CivitasConfig {
     public static final ForgeConfigSpec.IntValue GROWTH_INTERVAL_DAYS;
     public static final ForgeConfigSpec.IntValue GROWTH_FOOD_RESERVE;
     public static final ForgeConfigSpec.IntValue FARMER_SEARCH_RADIUS;
+    public static final ForgeConfigSpec.BooleanValue LUMBERJACK_REPLANT;
     public static final ForgeConfigSpec.IntValue ECONOMY_HISTORY_DAYS;
     public static final ForgeConfigSpec.IntValue CARAVAN_BASE_INTERVAL_DAYS;
     public static final ForgeConfigSpec.IntValue CARAVAN_WAIT_SECONDS;
@@ -26,6 +27,7 @@ public final class CivitasConfig {
         builder.pop();
         builder.push("workers");
         FARMER_SEARCH_RADIUS = builder.defineInRange("farmerSearchRadius", 24, 8, 64);
+        LUMBERJACK_REPLANT = builder.define("lumberjackReplant", true);
         builder.pop();
         builder.push("economy");
         ECONOMY_HISTORY_DAYS = builder.defineInRange("historyDays", 30, 7, 90);
