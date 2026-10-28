@@ -35,6 +35,19 @@ public final class BuildingBlueprint {
         return Collections.unmodifiableList(result);
     }
 
+    /** Check an entire layer before resources are charged. */
+    public static boolean canPlaceLayer(ServerLevel level, BlockPos ground,
+                                        BuildingDefinition.Type type, int layer) {
+        for (Placement p : layer(type, layer)) {
+            BlockPos target = ground.offset(p.relativePosition());
+            if (!level.hasChunkAt(target)) return false;
+            if (p.state().isAir()) continue;
+            var current = level.getBlockState(target);
+            if (!current.canBeReplaced() && !current.is(p.state().getBlock())) return false;
+        }
+        return true;
+    }
+
     public static void placeLayer(ServerLevel level, BlockPos ground, BuildingDefinition.Type type, int layer) {
         for (Placement p : layer(type, layer)) {
             BlockPos target = ground.offset(p.relativePosition());
