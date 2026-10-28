@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.32.0] - Living Settlement
+
+### Added
+- Added a Buildings tab with registered building indices and cabin upgrade levels.
+- Added owner-only `/civitas buildings upgrade <index>`: level 2 adds a porch, fence railings and lantern; level 3 adds a brick chimney and extra lanterns.
+- House upgrades use free warehouse stock only; resources reserved by construction orders are excluded. The upgrade blueprint is validated before material deduction and has a block/resource rollback path.
+- Building records now persist upgrade level and orientation while old saves default to level 1 and rotation 0.
+- Added an achievement-tree tab derived from persistent settlement progress: founding, population, houses, farm, workshop, worker specializations and settlement development.
+- Construction residents now swing their main hand while visibly progressing through a building layer.
+- Added blueprint regression tests for upgrade footprint bounds, duplicate coordinates and invalid inputs.
+
+### Validation
+- Source changes are committed but the Alpha 0.32.0 build, automated tests and in-game behavior have not yet been verified locally.
+
+
 ## [0.31.0] - Construction Integrity Checks
 
 ### Improved
