@@ -1,4 +1,66 @@
-## Alpha 0.6.0 — строительная система\n\n- Added three placeable settlement structures: cabin, farm and workshop.\n- Building costs are charged from the same physical warehouse used by the inventory UI and storage commands.\n- Build sites are checked before resources are removed; occupied terrain and insufficient materials abort the build.\n- Added building buttons to the settlement management screen.\n- GitHub Actions compilation and manual in-game checks are pending.\n\n# Changelog
+# Changelog
+
+## Alpha 0.16.0 — атомарное списание материалов
+
+- Warehouse contents are snapshotted before per-layer deductions.
+- If any individual deduction fails, every slot is restored and construction does not place the layer.
+- The transaction rejects invalid item IDs and malformed amounts before committing the stage.
+- CI compilation and tests must pass; manual in-game validation remains outstanding.
+
+
+## Alpha 0.15.0 — поэтапное списание и резерв склада
+
+- New construction orders retain their materials in the physical warehouse and reserve the full outstanding cost in world saved data.
+- When a builder completes a layer, the exact items assigned to that layer are withdrawn from the central warehouse before blocks are placed.
+- Building a new order is rejected if stock already backing other orders would be double-reserved.
+- The command interface and normal / shift-click warehouse withdrawals protect stock committed to active construction orders.
+- Construction pauses without placing blocks if the warehouse is missing or any outstanding reservation is no longer physically present.
+- Cancelling a new order releases its remaining warehouse reservation; unconsumed items remain in the warehouse. Old saved orders retain the upfront-paid behavior and their existing refund rules.
+- Construction status and documentation now describe reservation shortages and stage-based physical withdrawal.
+- Automated CI and manual in-game verification are required before treating this alpha build as fully validated.
+
+## Alpha 0.14.0 — послойная смета материалов
+
+- Added immutable material allocations for each layer of the cabin, farm and workshop; the sum of allocations is validated against the building's full cost.
+- New queued orders snapshot the complete layer plan in world saved data, so later registry edits do not re-price an in-flight order.
+- Cancellation refunds only the materials assigned to layers that have not been completed. Legacy reservations without a stage plan retain the proportional 0.13.0 calculation.
+- Added JUnit coverage for stage totals, exact per-stage refunds, plan immutability and legacy compatibility.
+- Materials are still deducted from the physical warehouse when an order is queued; per-layer allocation currently governs consumption accounting and cancellation refunds, not delayed physical withdrawal.
+- Automated CI and manual in-game verification are required before calling the release fully validated.
+
+## Alpha 0.13.0 — резерв материалов и безопасная отмена строительства
+
+- Every queued order stores an immutable snapshot of its reserved material costs in world saved data.
+- Reservations are allocated proportionally by completed construction layers. Cancelling an order refunds only the reservation associated with remaining layers; one-count items are allocated to the final layer.
+- Started orders can be cancelled after their construction chunk is loaded. The manager removes only block types expected from completed Civitas template layers and leaves blocks changed to other types untouched.
+- Orders from saves created before the reservation ledger was introduced remain supported by falling back to the current building definition.
+- Added automated tests for proportional refunds, progress clamping and reservation immutability.
+- CI compilation and test verification are required before the revision is considered ready; manual in-game checks are still needed.
+
+## Alpha 0.12.0 — параллельная работа строителей
+
+- The owner can assign multiple residents as builders; assigning a new builder no longer removes the role from existing builders.
+- Builders persist their target coordinates and are allocated to distinct construction orders, allowing multiple jobs to advance in parallel.
+- Stale assignments are cleared when a matching order is no longer in the queue.
+- Added a targeted build verification note for multi-builder operation, save/load and queue progression. Manual in-game verification remains outstanding.
+
+## Alpha 0.11.0 — реестр зданий, сетевое состояние и вкладки
+
+- Added a central `BuildingDefinition` registry for buildable ids, display labels, material costs, footprints and layer counts.
+- Unified server-side construction validation, material refunds and client cost previews around that registry.
+- Added Forge `SimpleChannel` request, snapshot and typed action packets. The server remains authoritative and reuses command validation for actions.
+- Reworked the settlement dashboard into Overview, Residents, Construction and Storage tabs, with a viewport-aware layout and automatic snapshot refresh while open.
+- Removed legacy instant-building methods that were unused after construction was moved to a persistent queue.
+- Fixed the Java compilation issue in `/civitas overview` caused by captured mutable counters.
+- Build and in-game validation are pending.
+
+## Alpha 0.6.0 — строительная система
+
+- Added three placeable settlement structures: cabin, farm and workshop.
+- Building costs are charged from the same physical warehouse used by the inventory UI and storage commands.
+- Build sites are checked before resources are removed; occupied terrain and insufficient materials abort the build.
+- Added building buttons to the settlement management screen.
+- GitHub Actions compilation and manual in-game checks are pending.
 
 ## Alpha 0.7.0 — сохранённая очередь строительства
 

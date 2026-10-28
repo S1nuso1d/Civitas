@@ -18,6 +18,7 @@ import ru.civitas.command.CivitasCommands;
 import ru.civitas.data.CivitasSavedData;
 import ru.civitas.item.ModItems;
 import ru.civitas.menu.ModMenus;
+import ru.civitas.network.CivitasNetwork;
 import ru.civitas.world.StarterVillageGenerator;
 import ru.civitas.worker.LumberjackWorkerAI;
 import ru.civitas.worker.ConstructionWorkerAI;
@@ -33,6 +34,7 @@ public final class CivitasMod {
         ModBlockEntities.BLOCK_ENTITIES.register(context.getModEventBus());
         ModItems.ITEMS.register(context.getModEventBus());
         ModMenus.MENUS.register(context.getModEventBus());
+        CivitasNetwork.register();
         MinecraftForge.EVENT_BUS.addListener(this::onPlayerLoggedIn);
         MinecraftForge.EVENT_BUS.addListener(this::onPlayerRespawn);
         MinecraftForge.EVENT_BUS.addListener(this::onBuildCreativeTab);

@@ -24,8 +24,10 @@ import ru.civitas.block.SettlementWarehouseBlock;
 import ru.civitas.block.SettlementWarehouseBlockEntity;
 import ru.civitas.data.CivitasSavedData;
 import ru.civitas.worker.LumberjackWorkerAI;
+import ru.civitas.world.BuildingDefinition;
 import ru.civitas.world.SettlementBuildingManager;
-import ru.civitas.world.SettlementBuildingManager.BuildingType;
+
+import java.util.Map;
 
 public final class CivitasCommands {
     private CivitasCommands() {
@@ -51,9 +53,9 @@ public final class CivitasCommands {
                                         .executes(CivitasCommands::cancelConstruction)
                                         .then(Commands.argument("index", IntegerArgumentType.integer(1))
                                                 .executes(CivitasCommands::cancelConstructionByIndex))))
-                        .then(Commands.literal("build").then(Commands.literal("cabin").executes(ctx -> build(ctx, BuildingType.CABIN)))
-                                .then(Commands.literal("farm").executes(ctx -> build(ctx, BuildingType.FARM)))
-                                .then(Commands.literal("workshop").executes(ctx -> build(ctx, BuildingType.WORKSHOP))))
+                        .then(Commands.literal("build").then(Commands.literal("cabin").executes(ctx -> build(ctx, BuildingDefinition.Type.CABIN)))
+                                .then(Commands.literal("farm").executes(ctx -> build(ctx, BuildingDefinition.Type.FARM)))
+                                .then(Commands.literal("workshop").executes(ctx -> build(ctx, BuildingDefinition.Type.WORKSHOP))))
                         .then(Commands.literal("worker")
                                 .then(Commands.literal("lumberjack").executes(CivitasCommands::assignLumberjack))
                                 .then(Commands.literal("builder").executes(CivitasCommands::assignBuilder))
@@ -82,7 +84,7 @@ public final class CivitasCommands {
         source.sendSuccess(() -> Component.literal("§e/civitas construction §7— очередь и прогресс строительства"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas build cabin|farm|workshop §7— построить здание за ресурсы склада"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas worker lumberjack §7— назначить лесоруба"), false);
-        source.sendSuccess(() -> Component.literal("§e/civitas worker builder §7— назначить строителя"), false);
+        source.sendSuccess(() -> Component.literal("§e/civitas worker builder §7— назначить ещё одного строителя"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas worker pause|resume §7— приостановить/продолжить"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas worker clear §7— снять профессию после доставки груза"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas storage §7— содержимое физического склада"), false);
@@ -140,11 +142,14 @@ public final class CivitasCommands {
         int farms = 0;
         int workshops = 0;
         for (CivitasSavedData.BuildingRecord building : data.getBuildings()) {
-            switch (building.type()) {
-                case "cabin" -> cabins++;
-                case "farm" -> farms++;
-                case "workshop" -> workshops++;
-                default -> { }
+            BuildingDefinition definition = BuildingDefinition.find(building.type()).orElse(null);
+            if (definition == null) {
+                continue;
+            }
+            switch (definition.type()) {
+                case CABIN -> cabins++;
+                case FARM -> farms++;
+                case WORKSHOP -> workshops++;
             }
         }
 
@@ -166,10 +171,12 @@ public final class CivitasCommands {
         context.getSource().sendSuccess(() -> Component.literal("Развитие: уровень " + data.getLevel()
                 + " | зарегистрировано зданий: " + data.getBuildings().size()
                 + " | в очереди: " + orders.size()), false);
-        context.getSource().sendSuccess(() -> Component.literal("Жители в радиусе 24 блоков: " + residents.size()
-                + " | лесорубы: " + lumberjacks + " | строители: " + builders + " | без профессии: " + idle), false);
-        context.getSource().sendSuccess(() -> Component.literal("Здания: дома " + cabins + " | фермы " + farms
-                + " | мастерские " + workshops), false);
+        final String residentSummary = "Жители в радиусе 24 блоков: " + residents.size()
+                + " | лесорубы: " + lumberjacks + " | строители: " + builders + " | без профессии: " + idle;
+        final String buildingSummary = "Здания: дома " + cabins + " | фермы " + farms
+                + " | мастерские " + workshops;
+        context.getSource().sendSuccess(() -> Component.literal(residentSummary), false);
+        context.getSource().sendSuccess(() -> Component.literal(buildingSummary), false);
         if (warehouse == null) {
             context.getSource().sendSuccess(() -> Component.literal("§cСклад недоступен: проверь центральный блок склада."), false);
         } else {
@@ -308,17 +315,20 @@ public final class CivitasCommands {
             context.getSource().sendFailure(Component.literal("Нет свободного жителя. Сними с одного жителя другую профессию или приведи нового."));
             return 0;
         }
-        for (Villager villager : villagers) {
-            if ("builder".equals(villager.getPersistentData().getString("civitas.worker_role"))) {
-                villager.getPersistentData().putString("civitas.worker_role", "");
-                villager.getNavigation().stop();
-            }
-        }
         chosen.getPersistentData().putString("civitas.worker_role", "builder");
         chosen.setCustomName(Component.literal("Строитель Civitas"));
         chosen.setCustomNameVisible(true);
         chosen.setPersistenceRequired();
-        context.getSource().sendSuccess(() -> Component.literal("§aНазначен строитель. Он отправится к ближайшему заказу в очереди."), false);
+        int assignedBuilders = 0;
+        for (Villager villager : villagers) {
+            if ("builder".equals(villager.getPersistentData().getString("civitas.worker_role"))) {
+                assignedBuilders++;
+            }
+        }
+        final int totalBuilders = assignedBuilders;
+        context.getSource().sendSuccess(() -> Component.literal(
+                "§aНазначен дополнительный строитель. Всего строителей: " + totalBuilders
+                        + ". Работники могут строить разные заказы параллельно."), false);
         return Command.SINGLE_SUCCESS;
     }
 
@@ -348,7 +358,7 @@ public final class CivitasCommands {
         return 0;
     }
 
-    private static int build(CommandContext<CommandSourceStack> context, BuildingType type) throws CommandSyntaxException {
+    private static int build(CommandContext<CommandSourceStack> context, BuildingDefinition.Type type) throws CommandSyntaxException {
         ServerPlayer player = context.getSource().getPlayerOrException();
         CivitasSavedData data = CivitasSavedData.get(context.getSource().getServer());
         if (!ensureOwner(context.getSource(), player, data)) return 0;
@@ -387,12 +397,9 @@ public final class CivitasCommands {
         ServerLevel level = context.getSource().getServer().overworld();
         for (int i = 0; i < orders.size(); i++) {
             var order = orders.get(i);
-            String label = switch (order.type()) {
-                case "cabin" -> "Жилой дом";
-                case "farm" -> "Ферма";
-                case "workshop" -> "Мастерская";
-                default -> order.type();
-            };
+            String label = BuildingDefinition.find(order.type())
+                    .map(BuildingDefinition::displayName)
+                    .orElse(order.type());
             int percent = Math.min(100, order.progress() * 100 / order.totalLayers());
             String progressLine = (i + 1) + ". " + label + " — " + percent + "% (слой "
                     + Math.min(order.progress() + 1, order.totalLayers()) + "/" + order.totalLayers() + ")";
@@ -419,6 +426,17 @@ public final class CivitasCommands {
                 }
             } else {
                 workerState = "площадка в незагруженном чанке";
+            }
+            if (order.materialsReservedInWarehouse()) {
+                SettlementWarehouseBlockEntity warehouse = findWarehouse(context.getSource(), data);
+                if (warehouse == null) {
+                    workerState = "ожидание: центральный склад отсутствует";
+                } else if (!data.warehouseContainsAllReservations(
+                        SettlementBuildingManager.inventoryCounts(warehouse))) {
+                    workerState = "ожидание: часть зарезервированных материалов отсутствует";
+                } else {
+                    workerState += " | материалы зарезервированы, списываются по слоям";
+                }
             }
             String stateLine = "   Состояние: " + workerState + " | координаты: "
                     + order.x() + ", " + order.y() + ", " + order.z();
@@ -466,12 +484,9 @@ public final class CivitasCommands {
         }
         for (int i = 0; i < buildings.size(); i++) {
             var building = buildings.get(i);
-            String label = switch (building.type()) {
-                case "cabin" -> "Жилой дом";
-                case "farm" -> "Ферма";
-                case "workshop" -> "Мастерская";
-                default -> building.type();
-            };
+            String label = BuildingDefinition.find(building.type())
+                    .map(BuildingDefinition::displayName)
+                    .orElse(building.type());
             String line = (i + 1) + ". " + label + " — " + building.x() + ", " + building.y() + ", " + building.z();
             context.getSource().sendSuccess(() -> Component.literal(line), false);
         }
@@ -499,6 +514,21 @@ public final class CivitasCommands {
         }
         int total = countAllItems(warehouse);
         context.getSource().sendSuccess(() -> Component.literal("Всего предметов: " + total + " / " + (warehouse.getContainerSize() * 64)), false);
+        Map<String, Integer> reserved = data.getWarehouseReservedResources();
+        if (reserved.isEmpty()) {
+            context.getSource().sendSuccess(() -> Component.literal("Резерв строительства: нет."), false);
+        } else {
+            Map<String, Integer> stock = SettlementBuildingManager.inventoryCounts(warehouse);
+            context.getSource().sendSuccess(() -> Component.literal("Резервы активных строительных заказов:"), false);
+            for (Map.Entry<String, Integer> entry : reserved.entrySet()) {
+                int stored = stock.getOrDefault(entry.getKey(), 0);
+                int amountReserved = entry.getValue();
+                int free = Math.max(0, stored - amountReserved);
+                String line = "• " + entry.getKey() + ": всего " + stored
+                        + ", зарезервировано " + amountReserved + ", свободно " + free;
+                context.getSource().sendSuccess(() -> Component.literal(line), false);
+            }
+        }
         return Command.SINGLE_SUCCESS;
     }
 
@@ -590,13 +620,17 @@ public final class CivitasCommands {
             context.getSource().sendFailure(Component.literal("Нельзя забрать пустой предмет."));
             return 0;
         }
-        int available = 0;
+        int stored = 0;
         for (int slot = 0; slot < warehouse.getContainerSize(); slot++) {
             ItemStack stack = warehouse.getItem(slot);
-            if (!stack.isEmpty() && stack.getItem() == item) available += stack.getCount();
+            if (!stack.isEmpty() && stack.getItem() == item) stored += stack.getCount();
         }
+        int reserved = data.getWarehouseReservedResources().getOrDefault(id.toString(), 0);
+        int available = Math.max(0, stored - reserved);
         if (available < amount) {
-            context.getSource().sendFailure(Component.literal("На физическом складе только " + available + " предмет(ов) " + id + "."));
+            context.getSource().sendFailure(Component.literal("Можно забрать только свободные ресурсы. На складе: "
+                    + stored + ", зарезервировано под строительство: " + reserved
+                    + ", доступно: " + available + " предмет(ов) " + id + "."));
             return 0;
         }
 

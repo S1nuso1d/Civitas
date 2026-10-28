@@ -1,7 +1,25 @@
-Civitas Alpha 0.10.0 — build status
+Civitas Alpha 0.16.0 — build status
 Target: Minecraft Java Edition 1.21.1 + Forge 52.1.20 + Java 21
 
-New: unified /civitas overview command summarizing residents and roles, registered building types, construction queue, warehouse capacity, and actionable warnings.
-Project version, Windows build output, and CI artifact name aligned to 0.10.0.
+New in 0.16.0:
+- Each layer deduction snapshots all physical warehouse slots before removing items.
+- If a deduction fails, the inventory snapshot is restored and the layer is not placed.
 
-GitHub Actions compilation is pending. Manual in-game verification has not been performed.
+Retained from 0.15.0:
+- New build orders reserve resources without removing them immediately from the physical warehouse.
+- Successful construction of a layer consumes only that layer's persisted material cost.
+- A new order is accepted only if warehouse stock can cover existing reservations plus its cost.
+- The warehouse command and normal / shift-click inventory withdrawal protect reserved stock.
+- If material reservations are missing from the physical warehouse, builders pause and do not place the layer.
+- Cancelling a new order releases unspent stock in-place; old saved orders are handled as already paid and preserve legacy refunds.
+- Construction status reports when a warehouse reservation shortage blocks progress.
+
+Foundation retained:
+- Exact per-layer material plans for cabin, farm and workshop.
+- Persistent construction order and layer-plan data.
+- Safe partial cancellation and template-aware cleanup.
+- Central building registry, management dashboard, networking, multiple builders and physical warehouse.
+
+Validation:
+- Check the latest GitHub Actions run for compile/test/build status before using the 0.15.0 artifact.
+- Manual in-game checks remain required for normal and shift-click warehouse withdrawals, reservation conflicts, per-layer consumption, cancellation, save/load and missing stock.
