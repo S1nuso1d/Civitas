@@ -231,22 +231,33 @@ public final class CivitasNetwork {
         String message;
         switch (packet.action()) {
             case ASSIGN_LUMBERJACK_TO -> {
-                if ("lumberjack".equals(role)
-                        && villager.getPersistentData().getInt("civitas.worker_carried_count") > 0) {
+                int carried = villager.getPersistentData().getInt("civitas.worker_carried_count");
+                String cargoError = ResidentAssignmentRules.cargoErrorForLumberjack(role, carried);
+                if (cargoError != null) {
+                    succeeded = false;
+                    message = cargoError;
+                } else if ("lumberjack".equals(role) && carried > 0) {
                     succeeded = true;
                     message = name + " уже лесоруб и доставит накопленные брёвна.";
                 } else {
                     succeeded = LumberjackWorkerAI.assignLumberjackTo(level, center, villager);
                     message = succeeded
                             ? "Житель «" + name + "» назначен лесорубом."
-                            : "Не удалось назначить лесоруба: проверь груз текущего лесоруба и выбранного жителя.";
+                            : "Не удалось назначить лесоруба: другой лесоруб может ещё доставлять груз.";
                 }
             }
             case ASSIGN_BUILDER_TO -> {
-                succeeded = ConstructionWorkerAI.assignBuilderTo(level, center, villager);
-                message = succeeded
-                        ? "Житель «" + name + "» назначен строителем. Очередь строительства сохранена."
-                        : "Нельзя назначить строителя: возможно, житель ещё несёт брёвна или находится вне поселения.";
+                int carried = villager.getPersistentData().getInt("civitas.worker_carried_count");
+                String cargoError = ResidentAssignmentRules.cargoErrorForBuilder(carried);
+                if (cargoError != null) {
+                    succeeded = false;
+                    message = cargoError;
+                } else {
+                    succeeded = ConstructionWorkerAI.assignBuilderTo(level, center, villager);
+                    message = succeeded
+                            ? "Житель «" + name + "» назначен строителем. Очередь строительства сохранена."
+                            : "Не удалось назначить строителя: возможно, житель находится вне поселения.";
+                }
             }
             case PAUSE_SELECTED -> {
                 succeeded = LumberjackWorkerAI.setLumberjackPaused(villager, true);
