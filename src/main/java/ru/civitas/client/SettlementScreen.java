@@ -597,6 +597,9 @@ public final class SettlementScreen extends Screen {
         }
         List<String> lines = List.of(
                 "Уровень: " + snapshot.level() + " | Население: " + snapshot.population(),
+                "Еда: " + snapshot.foodStock() + " | Нужно в день: " + snapshot.foodConsumptionPerDay(),
+                "Голод: " + (snapshot.hungerDays() > 0 ? "да (" + snapshot.hungerDays() + " дн.)" : "нет")
+                        + " | Рост: " + snapshot.growthProgressDays() + "/3 благополучных дней",
                 "Жители: " + snapshot.residentCount() + " | Лесорубы: " + snapshot.lumberjacks()
                         + " | Строители: " + snapshot.builders() + " | Без роли: " + snapshot.idleResidents(),
                 "Здания: дома " + snapshot.cabinCount() + " | фермы " + snapshot.farmCount()

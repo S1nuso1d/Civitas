@@ -15,6 +15,10 @@ public record SettlementSnapshot(
         String ownerName,
         int level,
         int population,
+        int foodStock,
+        int foodConsumptionPerDay,
+        int hungerDays,
+        int growthProgressDays,
         int residentCount,
         int lumberjacks,
         int builders,
@@ -63,6 +67,7 @@ public record SettlementSnapshot(
     public static SettlementSnapshot empty(String message) {
         return new SettlementSnapshot(
                 false, "Нет поселения", "", 1, 0,
+                0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, message,
                 List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of()
@@ -75,6 +80,10 @@ public record SettlementSnapshot(
         buffer.writeUtf(ownerName, 40);
         buffer.writeVarInt(level);
         buffer.writeVarInt(population);
+        buffer.writeVarInt(foodStock);
+        buffer.writeVarInt(foodConsumptionPerDay);
+        buffer.writeVarInt(hungerDays);
+        buffer.writeVarInt(growthProgressDays);
         buffer.writeVarInt(residentCount);
         buffer.writeVarInt(lumberjacks);
         buffer.writeVarInt(builders);
@@ -101,6 +110,10 @@ public record SettlementSnapshot(
                 buffer.readBoolean(),
                 buffer.readUtf(40),
                 buffer.readUtf(40),
+                readBoundedInt(buffer, 1_000_000),
+                readBoundedInt(buffer, 1_000_000),
+                readBoundedInt(buffer, 1_000_000),
+                readBoundedInt(buffer, 1_000_000),
                 readBoundedInt(buffer, 1_000_000),
                 readBoundedInt(buffer, 1_000_000),
                 readBoundedInt(buffer, 1_000_000),

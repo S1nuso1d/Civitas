@@ -25,6 +25,7 @@ import ru.civitas.world.BuildingDefinition;
 import ru.civitas.worker.LumberjackWorkerAI;
 import ru.civitas.worker.ConstructionWorkerAI;
 import ru.civitas.worker.FarmerWorkerAI;
+import ru.civitas.economy.SettlementEconomyAI;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -424,6 +425,9 @@ public final class CivitasNetwork {
         List<String> residentUuids = new ArrayList<>();
         List<String> residentRoles = new ArrayList<>();
         List<String> residentStatuses = new ArrayList<>();
+        int foodStock = level.hasChunkAt(center)
+                && level.getBlockEntity(center) instanceof SettlementWarehouseBlockEntity foodWarehouse
+                ? SettlementEconomyAI.countFood(foodWarehouse) : 0;
         int lumberjacks = 0;
         int builders = 0;
         int idle = 0;
@@ -553,7 +557,11 @@ public final class CivitasNetwork {
                 data.getOwnerName(),
                 data.getLevel(),
                 data.getPopulation(),
+                foodStock,
                 residentCount,
+                residentCount,
+                data.getHungerDays(),
+                data.getGrowthProgressDays(),
                 lumberjacks,
                 builders,
                 idle,

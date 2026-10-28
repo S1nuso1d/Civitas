@@ -34,6 +34,9 @@ public final class CivitasSavedData extends SavedData {
     private int centerY;
     private int centerZ;
     private int population = 5;
+    private long lastEconomyDay = -1L;
+    private int hungerDays;
+    private int growthProgressDays;
     private int level = 1;
     private boolean starterVillageGenerated;
     private int villageX;
@@ -175,6 +178,9 @@ public final class CivitasSavedData extends SavedData {
         data.centerY = tag.getInt("center_y");
         data.centerZ = tag.getInt("center_z");
         data.population = Math.max(0, tag.getInt("population"));
+        data.lastEconomyDay = tag.contains("last_economy_day") ? tag.getLong("last_economy_day") : -1L;
+        data.hungerDays = Math.max(0, Math.min(1_000_000, tag.getInt("hunger_days")));
+        data.growthProgressDays = Math.max(0, Math.min(3, tag.getInt("growth_progress_days")));
         data.level = Math.max(1, tag.getInt("level"));
         data.starterVillageGenerated = tag.getBoolean("starter_village_generated");
         data.villageX = tag.getInt("village_x");
@@ -245,6 +251,9 @@ public final class CivitasSavedData extends SavedData {
         tag.putInt("center_y", centerY);
         tag.putInt("center_z", centerZ);
         tag.putInt("population", population);
+        tag.putLong("last_economy_day", lastEconomyDay);
+        tag.putInt("hunger_days", hungerDays);
+        tag.putInt("growth_progress_days", growthProgressDays);
         tag.putInt("level", level);
         tag.putBoolean("starter_village_generated", starterVillageGenerated);
         tag.putInt("village_x", villageX);
@@ -521,6 +530,26 @@ public final class CivitasSavedData extends SavedData {
 
     public int getPopulation() {
         return population;
+    }
+
+    public void setPopulation(int population) {
+        int safe = Math.max(0, Math.min(1_000_000, population));
+        if (this.population != safe) { this.population = safe; setDirty(); }
+    }
+
+    public long getLastEconomyDay() { return lastEconomyDay; }
+    public void setLastEconomyDay(long day) {
+        if (lastEconomyDay != day) { lastEconomyDay = day; setDirty(); }
+    }
+    public int getHungerDays() { return hungerDays; }
+    public void setHungerDays(int days) {
+        int safe = Math.max(0, Math.min(1_000_000, days));
+        if (hungerDays != safe) { hungerDays = safe; setDirty(); }
+    }
+    public int getGrowthProgressDays() { return growthProgressDays; }
+    public void setGrowthProgressDays(int days) {
+        int safe = Math.max(0, Math.min(3, days));
+        if (growthProgressDays != safe) { growthProgressDays = safe; setDirty(); }
     }
 
     public int getLevel() {

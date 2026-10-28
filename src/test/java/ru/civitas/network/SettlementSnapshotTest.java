@@ -16,6 +16,7 @@ class SettlementSnapshotTest {
         String residentId = UUID.randomUUID().toString();
         SettlementSnapshot snapshot = new SettlementSnapshot(
                 true, "Civitas", "Owner", 2, 7,
+                12, 7, 0, 2,
                 7, 1, 2, 4, 4, 1, 1, 2, 45, 6, 27,
                 "Синхронизировано",
                 List.of("Лесоруб Civitas", "Житель"),
@@ -53,6 +54,7 @@ class SettlementSnapshotTest {
 
         SettlementSnapshot snapshot = new SettlementSnapshot(
                 true, "Civitas", "Owner", 1, 70,
+                0, 70, 0, 0,
                 70, 1, 1, 68, 4, 1, 1, 0, 0, 0, 27,
                 "Ок", names, ids, roles, statuses, List.of(), List.of(), List.of()
         );
