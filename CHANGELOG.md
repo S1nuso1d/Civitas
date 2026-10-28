@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.42.0] - Living Systems Pass (first implementation slice)
+
+### Added
+- Added a client-only real-time settlement HUD toggled with F4, backed by the existing authoritative settlement snapshot.
+- HUD shows population, worker roles, food reserve estimate, seven-day resource trends, construction queue, building count, warehouse occupancy and the current settlement status.
+- Added a villager inspection panel while looking at a nearby villager: name, current custom status, movement/idle state, health and Minecraft profession.
+- This slice deliberately does not claim needs-based worker autonomy, persistent traditions, new networking fields, or a complete AI reason stack. Those require dedicated follow-up changes and tests.
+
+### Validation
+- Source committed; GitHub Actions build/tests and in-game rendering must be checked before calling this release verified.
+
 ## [0.40.3] - In-game Blueprint Planner
 
 ### Added
