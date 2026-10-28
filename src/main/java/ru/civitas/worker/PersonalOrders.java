@@ -54,6 +54,11 @@ public final class PersonalOrders {
 
         var tag = villager.getPersistentData();
         long now = level.getGameTime();
+        if (order == Order.STAY) {
+            villager.getNavigation().stop();
+            tag.putString(ISSUE_KEY, "Стоит на месте");
+            return true;
+        }
         if (now < tag.getLong(NEXT_UPDATE_KEY)) return true;
         tag.putLong(NEXT_UPDATE_KEY, now + 10L);
 
