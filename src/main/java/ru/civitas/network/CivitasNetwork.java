@@ -54,7 +54,7 @@ import java.util.regex.Pattern;
 public final class CivitasNetwork {
     public static final SimpleChannel CHANNEL = ChannelBuilder
             .named(ResourceLocation.fromNamespaceAndPath(CivitasMod.MOD_ID, "main"))
-            .networkProtocolVersion(3)
+            .networkProtocolVersion(4)
             .simpleChannel();
 
     private static final Pattern ITEM_ID_PATTERN =
@@ -215,6 +215,13 @@ public final class CivitasNetwork {
             return;
         }
         NeighborCivilization.Stance stance = NeighborCivilization.Stance.parse(raw);
+        int reputation = data.getTradeReputation(civilization.id());
+        if (stance == NeighborCivilization.Stance.ALLIED && reputation < 60) {
+            player.sendSystemMessage(Component.literal("Civitas: для заключения союза нужна репутация не ниже 60. Сейчас: " + reputation + ". Улучши отношения торговлей или подарками."));
+            sendDiplomacyScreen(player, data);
+            context.setPacketHandled(true);
+            return;
+        }
         if (data.setNeighborStance(civilization.id(), stance)) {
             data.recordTrade("Дипломатия: с «" + civilization.name() + "» установлено отношение «" + stance.displayName() + "»");
             player.sendSystemMessage(Component.literal("Civitas: отношения с «" + civilization.name() + "» изменены: " + stance.displayName() + "."));
