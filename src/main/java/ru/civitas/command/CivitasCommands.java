@@ -61,6 +61,8 @@ public final class CivitasCommands {
                                         .executes(CivitasCommands::visitNeighbor)))
                         .then(Commands.literal("return").executes(CivitasCommands::returnFromNeighbor))
                         .then(Commands.literal("status").executes(CivitasCommands::status))
+                        .then(Commands.literal("addons").executes(CivitasCommands::addons))
+                        .then(Commands.literal("map").executes(CivitasCommands::mapCoordinates))
                         .then(Commands.literal("territory").executes(CivitasCommands::territory)
                                 .then(Commands.literal("claim").executes(CivitasCommands::claimTerritoryChunk))
                                 .then(Commands.literal("unclaim").executes(CivitasCommands::unclaimTerritoryChunk))
@@ -249,6 +251,8 @@ public final class CivitasCommands {
         source.sendSuccess(() -> Component.literal("§e/civitas territory §7— влияние и закреплённые чанки"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas territory claim|unclaim|show §7— захват, освобождение и подсветка текущих чанков"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas status §7— состояние поселения"), false);
+        source.sendSuccess(() -> Component.literal("§e/civitas addons §7— проверка четырёх дополнительных модов и зависимостей"), false);
+        source.sendSuccess(() -> Component.literal("§e/civitas map §7— координаты поселения для метки на мини-карте"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas overview §7— сводка поселения: жители, здания, стройка и склад"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas rename <название> §7— переименовать поселение"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas workers §7— список жителей и их роли"), false);
@@ -266,6 +270,64 @@ public final class CivitasCommands {
         source.sendSuccess(() -> Component.literal("§e/civitas deposit <количество> §7— положить предметы из основной руки"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas withdraw <namespace:item> <количество> §7— забрать предметы"), false);
         source.sendSuccess(() -> Component.literal("§7Команды склада и окно склада используют один инвентарь."), false);
+        return Command.SINGLE_SUCCESS;
+    }
+
+    private static int addons(CommandContext<CommandSourceStack> context) {
+        CommandSourceStack source = context.getSource();
+        boolean biomes = net.minecraftforge.fml.ModList.get().isLoaded("biomesoplenty");
+        boolean signpost = net.minecraftforge.fml.ModList.get().isLoaded("signpost");
+        boolean minimap = net.minecraftforge.fml.ModList.get().isLoaded("xaerominimap");
+        boolean dynamicLights = net.minecraftforge.fml.ModList.get().isLoaded("dynamiclights");
+        boolean glitchCore = net.minecraftforge.fml.ModList.get().isLoaded("glitchcore");
+        boolean terraBlender = net.minecraftforge.fml.ModList.get().isLoaded("terrablender");
+
+        source.sendSuccess(() -> Component.literal("§6§lCivitas — совместимость модов"), false);
+        source.sendSuccess(() -> Component.literal(modStatus("Biomes O' Plenty", biomes)), false);
+        source.sendSuccess(() -> Component.literal(modStatus("Signpost", signpost)), false);
+        source.sendSuccess(() -> Component.literal(modStatus("Xaero's Minimap", minimap)), false);
+        source.sendSuccess(() -> Component.literal(modStatus("Dynamic Lights", dynamicLights)), false);
+
+        if (biomes) {
+            source.sendSuccess(() -> Component.literal("§aBiomes O' Plenty обнаружен. Для появления новых биомов исследуй новые, ещё не сгенерированные территории."), false);
+            if (!glitchCore || !terraBlender) {
+                source.sendSuccess(() -> Component.literal("§cВнимание: Biomes O' Plenty требует GlitchCore и TerraBlender. Сейчас обнаружены: GlitchCore="
+                        + glitchCore + ", TerraBlender=" + terraBlender + "."), false);
+            }
+        }
+        if (signpost) {
+            source.sendSuccess(() -> Component.literal("§7Signpost: используй указатели как визуальные ориентиры к центру Civitas и важным зданиям."), false);
+        }
+        if (minimap) {
+            source.sendSuccess(() -> Component.literal("§7Xaero's Minimap: выполни /civitas map и добавь координаты центра как waypoint через меню мини-карты."), false);
+        }
+        if (dynamicLights) {
+            source.sendSuccess(() -> Component.literal("§7Dynamic Lights обнаружен. Проверь освещение с факелом в руке в отдельном тестовом мире."), false);
+        }
+        source.sendSuccess(() -> Component.literal("§8Эта проверка обнаруживает загруженные моды, но не заменяет запуск и проверку игрового мира."), false);
+        return Command.SINGLE_SUCCESS;
+    }
+
+    private static String modStatus(String name, boolean loaded) {
+        return (loaded ? "§a✓ " : "§c✗ ") + name + (loaded ? " — загружен" : " — не обнаружен");
+    }
+
+    private static int mapCoordinates(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        CommandSourceStack source = context.getSource();
+        CivitasSavedData data = CivitasSavedData.get(source.getServer());
+        if (!data.isFounded()) {
+            source.sendFailure(Component.literal("Поселение ещё не создано. Используй /civitas found <название>."));
+            return 0;
+        }
+        BlockPos center = data.hasStarterVillage() ? data.getStarterVillageCenter() : data.getCenter();
+        source.sendSuccess(() -> Component.literal("§6§lМетка поселения Civitas: " + data.getSettlementName()), false);
+        source.sendSuccess(() -> Component.literal("X: " + center.getX() + "  Y: " + center.getY() + "  Z: " + center.getZ()), false);
+        source.sendSuccess(() -> Component.literal("Измерение: minecraft:overworld"), false);
+        if (net.minecraftforge.fml.ModList.get().isLoaded("xaerominimap")) {
+            source.sendSuccess(() -> Component.literal("§aОткрой меню waypoint в Xaero's Minimap и создай точку с этими координатами."), false);
+        } else {
+            source.sendSuccess(() -> Component.literal("§7Эти координаты можно сохранить как ориентир или использовать для навигации."), false);
+        }
         return Command.SINGLE_SUCCESS;
     }
 
