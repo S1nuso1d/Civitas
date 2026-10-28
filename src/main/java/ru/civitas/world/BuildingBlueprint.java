@@ -226,7 +226,7 @@ public final class BuildingBlueprint {
         }
         Map<BlockPos, Placement> blocks = new LinkedHashMap<>();
         if (newLevel == 2) {
-            for (int x = -1; x <= 1; x++) {
+            for (int x = -2; x <= 2; x++) {
                 put(blocks, x, 1, -3, "minecraft:oak_slab");
             }
             put(blocks, -2, 2, -3, "minecraft:oak_fence");
