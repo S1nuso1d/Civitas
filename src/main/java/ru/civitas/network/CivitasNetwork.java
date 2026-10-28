@@ -54,7 +54,7 @@ import java.util.regex.Pattern;
 public final class CivitasNetwork {
     public static final SimpleChannel CHANNEL = ChannelBuilder
             .named(ResourceLocation.fromNamespaceAndPath(CivitasMod.MOD_ID, "main"))
-            .networkProtocolVersion(5)
+            .networkProtocolVersion(6)
             .simpleChannel();
 
     private static final Pattern ITEM_ID_PATTERN =
@@ -272,7 +272,8 @@ public final class CivitasNetwork {
         civilizations.sort(java.util.Comparator.comparing(NeighborCivilization::name, String.CASE_INSENSITIVE_ORDER));
         for (NeighborCivilization c : civilizations) {
             lines.add(new DiplomacyScreenPacket.CivilizationLine(c.id(), c.name(), c.stance().name(),
-                    c.population(), c.territory(), c.food(), c.stability(), data.getTradeReputation(c.id())));
+                    c.population(), c.territory(), c.food(), c.timber(), c.stone(), c.iron(),
+                    c.stability(), data.getTradeReputation(c.id())));
         }
         CHANNEL.send(new DiplomacyScreenPacket(lines), PacketDistributor.PLAYER.with(player));
     }
@@ -905,7 +906,7 @@ public final class CivitasNetwork {
 
     public record DiplomacyScreenPacket(List<CivilizationLine> civilizations) {
         public record CivilizationLine(UUID id, String name, String stance, int population,
-                int territory, int food, int stability, int reputation) {
+                int territory, int food, int timber, int stone, int iron, int stability, int reputation) {
             public CivilizationLine {
                 if (id == null) id = UUID.randomUUID();
                 name = name == null ? "Неизвестная цивилизация" : name.substring(0, Math.min(64, name.length()));
@@ -913,6 +914,9 @@ public final class CivitasNetwork {
                 population = Math.max(1, Math.min(100_000, population));
                 territory = Math.max(1, Math.min(100_000, territory));
                 food = Math.max(0, Math.min(1_000_000, food));
+                timber = Math.max(0, Math.min(1_000_000, timber));
+                stone = Math.max(0, Math.min(1_000_000, stone));
+                iron = Math.max(0, Math.min(1_000_000, iron));
                 stability = Math.max(0, Math.min(100, stability));
                 reputation = Math.max(0, Math.min(100, reputation));
             }
@@ -926,6 +930,7 @@ public final class CivitasNetwork {
             for (CivilizationLine c : civilizations) {
                 b.writeUUID(c.id()); b.writeUtf(c.name(), 64); b.writeUtf(c.stance(), 16);
                 b.writeVarInt(c.population()); b.writeVarInt(c.territory()); b.writeVarInt(c.food());
+                b.writeVarInt(c.timber()); b.writeVarInt(c.stone()); b.writeVarInt(c.iron());
                 b.writeVarInt(c.stability()); b.writeVarInt(c.reputation());
             }
         }
@@ -935,7 +940,8 @@ public final class CivitasNetwork {
             List<CivilizationLine> lines = new ArrayList<>();
             for (int i = 0; i < count; i++) {
                 lines.add(new CivilizationLine(b.readUUID(), b.readUtf(64), b.readUtf(16),
-                        b.readVarInt(), b.readVarInt(), b.readVarInt(), b.readVarInt(), b.readVarInt()));
+                        b.readVarInt(), b.readVarInt(), b.readVarInt(), b.readVarInt(), b.readVarInt(),
+                        b.readVarInt(), b.readVarInt(), b.readVarInt()));
             }
             return new DiplomacyScreenPacket(lines);
         }
