@@ -3,7 +3,7 @@
 ## [0.39.0] - Living Society (first slice)
 
 ### Added
-- Added persistent personal orders for individual villagers: follow, stay, go home, guard a position, and reset to profession behavior.
+- Added persistent personal orders for individual villagers: follow the issuing player, stay, go home, guard a position, and reset to profession behavior.
 - Added `/civitas order <resident> <follow|stay|home|guard|reset> [position]` with suggestions for valid order names.
 - Personal orders take precedence over existing lumberjack, farmer and builder routines while preserving their existing work state.
 - Navigation updates are throttled; nearby bed scans are bounded and use a retry cooldown.
