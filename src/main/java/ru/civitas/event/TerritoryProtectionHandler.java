@@ -65,8 +65,9 @@ public final class TerritoryProtectionHandler {
         // Right-click events may fire repeatedly (e.g. while using an item).
         // Keep the protection effective without flooding the action bar/chat.
         long now = level.getGameTime();
+        boolean hasWarned = player.getPersistentData().contains(LAST_WARNING_TICK);
         long last = player.getPersistentData().getLong(LAST_WARNING_TICK);
-        if (now - last >= WARNING_COOLDOWN_TICKS || last == 0L) {
+        if (!hasWarned || now - last >= WARNING_COOLDOWN_TICKS) {
             player.getPersistentData().putLong(LAST_WARNING_TICK, now);
             player.sendSystemMessage(Component.literal(
                     "Эта территория принадлежит поселению Civitas. Только владелец может изменять блоки и взаимодействовать с ними."));
