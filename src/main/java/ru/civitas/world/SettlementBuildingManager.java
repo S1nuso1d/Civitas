@@ -1,9 +1,11 @@
 package ru.civitas.world;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.tags.BlockTags;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
@@ -25,13 +27,135 @@ public final class SettlementBuildingManager {
     }
 
     public static BuildResult build(ServerLevel level, BlockPos warehousePos,
-                                    SettlementWarehouseBlockEntity warehouse, BuildingDefinition.Type type, CivitasSavedData data) {
-        BuildingDefinition definition = BuildingDefinition.get(type);
+                                    SettlementWarehouseBlockEntity warehouse, BuildingDefinition.Type type,
+                                    CivitasSavedData data) {
         BlockPos site = findSite(level, warehousePos, type, data);
-        if (site == null) return new BuildResult(false,
-                "Нет свободной площадки рядом с деревней. Освободи участок примерно 7×7 блоков.");
+        if (site == null) {
+            return new BuildResult(false,
+                    "Нет свободной площадки рядом с деревней. Освободи участок примерно 7×7 блоков.");
+        }
+        return queueAtSite(level, warehouse, type, data, site, 0);
+    }
 
-        if (data.hasBuildingNear(site, 5)) return new BuildResult(false, "Рядом уже зарегистрировано здание. Выбери другой участок.");
+    /** Queues a player-selected build site with a validated 90-degree rotation. */
+    public static BuildResult buildAt(ServerLevel level, BlockPos warehousePos,
+                                      SettlementWarehouseBlockEntity warehouse, BuildingDefinition.Type type,
+                                      CivitasSavedData data, BlockPos site, int rotationDegrees) {
+        BuildResult validation = validateManualSite(level, warehousePos, type, data, site, rotationDegrees);
+        if (!validation.success()) return validation;
+        return queueAtSite(level, warehouse, type, data, site, rotationDegrees);
+    }
+
+    /**
+     * Draws the blueprint as short-lived particles. End rods mean the selected
+     * plot is valid; smoke means a building/terrain/clearance check failed.
+     */
+    public static BuildResult preview(ServerLevel level, BlockPos warehousePos,
+                                      BuildingDefinition.Type type, CivitasSavedData data,
+                                      BlockPos site, int rotationDegrees) {
+        BuildResult validation = validateManualSite(level, warehousePos, type, data, site, rotationDegrees);
+        boolean valid = validation.success();
+        BuildingDefinition definition = BuildingDefinition.get(type);
+        for (int layer = 1; layer <= definition.totalLayers(); layer++) {
+            for (BuildingBlueprint.Placement placement : BuildingBlueprint.layer(type, layer,
+                    validRotationForPreview(rotationDegrees))) {
+                if (placement.clearsBlock()) continue;
+                BlockPos target = site.offset(placement.relativePosition());
+                if (!level.hasChunkAt(target)) continue;
+                level.sendParticles(valid ? ParticleTypes.END_ROD : ParticleTypes.SMOKE,
+                        target.getX() + 0.5D, target.getY() + 0.5D, target.getZ() + 0.5D,
+                        1, 0.0D, 0.0D, 0.0D, 0.0D);
+            }
+        }
+        return validation;
+    }
+
+    private static int validRotationForPreview(int rotationDegrees) {
+        if (rotationDegrees >= 0 && rotationDegrees < 360 && rotationDegrees % 90 == 0) {
+            return rotationDegrees;
+        }
+        return 0;
+    }
+
+    private static BuildResult validateManualSite(ServerLevel level, BlockPos villageCenter,
+                                                   BuildingDefinition.Type type, CivitasSavedData data,
+                                                   BlockPos site, int rotationDegrees) {
+        if (site == null) {
+            return new BuildResult(false, "Не задан центр площадки.");
+        }
+        if (rotationDegrees < 0 || rotationDegrees >= 360 || rotationDegrees % 90 != 0) {
+            return new BuildResult(false, "Угол поворота должен быть 0, 90, 180 или 270 градусов.");
+        }
+        if (!level.hasChunkAt(site)) {
+            return new BuildResult(false, "Площадка находится в незагруженном чанке. Подойди ближе и повтори.");
+        }
+
+        BuildingDefinition definition = BuildingDefinition.get(type);
+        BlockState groundState = level.getBlockState(site);
+        if (!groundState.isSolid() || !level.getFluidState(site).isEmpty()) {
+            return new BuildResult(false,
+                    "Укажи координаты твёрдого блока земли под зданием. Например, стоя на земле: ~ ~-1 ~.");
+        }
+
+        // Player-selected construction must not overlap the protected 29x29 starter village.
+        BlockPos protectedCenter = data.hasStarterVillage() ? data.getStarterVillageCenter() : villageCenter;
+        if (data.hasStarterVillage()
+                && Math.abs(site.getX() - protectedCenter.getX()) <= 14 + definition.radiusX()
+                && Math.abs(site.getZ() - protectedCenter.getZ()) <= 14 + definition.radiusZ()) {
+            return new BuildResult(false,
+                    "Площадка пересекает стартовую деревню или её дорожки. Выбери участок за её пределами.");
+        }
+
+        int exclusionRadius = Math.max(definition.radiusX(), definition.radiusZ()) * 2 + 1;
+        if (data.hasBuildingNear(site, exclusionRadius)) {
+            return new BuildResult(false, "Площадка пересекается с уже зарегистрированным зданием.");
+        }
+        for (CivitasSavedData.ConstructionOrder order : data.getConstructionOrders()) {
+            if (Math.abs(order.x() - site.getX()) <= exclusionRadius
+                    && Math.abs(order.z() - site.getZ()) <= exclusionRadius) {
+                return new BuildResult(false, "Площадка пересекается с другим заказом строительства.");
+            }
+        }
+
+        // Require one solid, dry level under the complete footprint. The builder
+        // will clear replaceable vegetation above it, but never demolish solid blocks.
+        for (int dx = -definition.radiusX(); dx <= definition.radiusX(); dx++) {
+            for (int dz = -definition.radiusZ(); dz <= definition.radiusZ(); dz++) {
+                BlockPos floorPos = site.offset(dx, 0, dz);
+                if (!level.hasChunkAt(floorPos)) {
+                    return new BuildResult(false, "Не все чанки площадки загружены.");
+                }
+                BlockState floor = level.getBlockState(floorPos);
+                if (!floor.isSolid() || !level.getFluidState(floorPos).isEmpty()) {
+                    return new BuildResult(false, "Площадка должна быть ровной, сухой и иметь твёрдую землю.");
+                }
+                for (int dy = 1; dy <= definition.height(); dy++) {
+                    BlockPos clearancePos = site.offset(dx, dy, dz);
+                    if (!level.hasChunkAt(clearancePos)) {
+                        return new BuildResult(false, "Не все чанки объёма здания загружены.");
+                    }
+                    BlockState existing = level.getBlockState(clearancePos);
+                    if (existing.isAir()) continue;
+                    if ((!existing.canBeReplaced() && !existing.is(BlockTags.LEAVES))
+                            || !level.getFluidState(clearancePos).isEmpty()) {
+                        return new BuildResult(false, "Объём здания занят: "
+                                + clearancePos.getX() + ", " + clearancePos.getY() + ", "
+                                + clearancePos.getZ() + ". Убери твёрдое препятствие.");
+                    }
+                }
+            }
+        }
+        return new BuildResult(true, "Площадка подходит.");
+    }
+
+    private static BuildResult queueAtSite(ServerLevel level, SettlementWarehouseBlockEntity warehouse,
+                                            BuildingDefinition.Type type, CivitasSavedData data,
+                                            BlockPos site, int rotationDegrees) {
+        BuildingDefinition definition = BuildingDefinition.get(type);
+        if (warehouse == null) {
+            return new BuildResult(false, "Центральный физический склад не найден.");
+        }
+
         Map<String, Integer> cost = definition.costs();
         Map<String, Integer> stock = inventoryCounts(warehouse);
         Map<String, Integer> reserved = data.getWarehouseReservedResources();
@@ -45,18 +169,38 @@ public final class SettlementBuildingManager {
             }
             if (free < entry.getValue()) {
                 return new BuildResult(false, "Недостаточно свободных ресурсов: " + entry.getKey()
-                        + " — доступно " + free + ", нужно ещё " + entry.getValue()
+                        + " — доступно " + free + ", нужно ещё " + (entry.getValue() - free)
                         + ". Всего требуется: " + definition.describeCosts() + ".");
             }
         }
         if (!data.canReserveWarehouseResources(stock, cost)) {
-            return new BuildResult(false, "Нельзя зарезервировать материалы: часть складских запасов уже обещана другим заказам.");
+            return new BuildResult(false,
+                    "Нельзя зарезервировать материалы: часть складских запасов уже обещана другим заказам.");
         }
+
+        clearReplaceableVolume(level, site, definition);
         data.addConstructionOrder(definition.id(), site, definition.totalLayers(),
-                definition.costs(), definition.layerCosts(), true);
+                definition.costs(), definition.layerCosts(), true, rotationDegrees);
         return new BuildResult(true, "Заказ принят: " + definition.displayName()
-                + ". Материалы зарезервированы на складе и будут списываться при завершении каждого слоя. "
-                + "Свободные запасы не включают резерв других заказов. Статус: /civitas construction.");
+                + " (поворот " + rotationDegrees + "°). Резерв материалов создан на складе. "
+                + "Растительность в объёме здания очищена; твёрдые блоки не удаляются. "
+                + "Статус: /civitas construction.");
+    }
+
+    private static void clearReplaceableVolume(ServerLevel level, BlockPos site, BuildingDefinition definition) {
+        for (int dx = -definition.radiusX(); dx <= definition.radiusX(); dx++) {
+            for (int dz = -definition.radiusZ(); dz <= definition.radiusZ(); dz++) {
+                for (int dy = 1; dy <= definition.height(); dy++) {
+                    BlockPos target = site.offset(dx, dy, dz);
+                    BlockState existing = level.getBlockState(target);
+                    if (!existing.isAir()
+                            && (existing.canBeReplaced() || existing.is(BlockTags.LEAVES))
+                            && level.getFluidState(target).isEmpty()) {
+                        level.setBlock(target, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
+                    }
+                }
+            }
+        }
     }
 
     public static BuildResult cancelFirstOrder(CivitasSavedData data, net.minecraft.server.level.ServerPlayer player) {
