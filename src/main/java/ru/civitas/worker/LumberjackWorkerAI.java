@@ -552,6 +552,7 @@ public final class LumberjackWorkerAI {
     }
 
     private static void writeTreeTarget(net.minecraft.nbt.CompoundTag persistent, BlockPos target) {
+        WorkerNavigationGuard.reset(persistent, "lumberjack");
         persistent.putBoolean(TARGET_TREE_ASSIGNED_KEY, true);
         persistent.putInt(TARGET_TREE_X_KEY, target.getX());
         persistent.putInt(TARGET_TREE_Y_KEY, target.getY());

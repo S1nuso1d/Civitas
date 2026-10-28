@@ -92,7 +92,10 @@ final class WorkerNavigationGuard {
     }
 
     static void reset(Villager villager, String workerKey) {
-        CompoundTag tag = villager.getPersistentData();
+        reset(villager.getPersistentData(), workerKey);
+    }
+
+    static void reset(CompoundTag tag, String workerKey) {
         String prefix = "civitas." + workerKey + "_navigation_";
         tag.remove(prefix + "initialized");
         tag.remove(prefix + "last_x");
