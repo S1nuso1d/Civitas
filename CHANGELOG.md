@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.29.0] - Claimed Territory Protection
+
+### Added
+- Server-side protection for claimed overworld chunks against non-owner block breaking, block placement, and right-click block interaction.
+- Complete rotated building footprint validation against territory influence and claimed chunks.
+- Automatic building sites now use the same validation before resource reservation and vegetation clearing.
+
+### Validation
+- The exact release commit still requires a local Gradle build, unit tests, and in-game checks.
+
 ## [0.28.0] - Persistent Chunk Territory
 
 ### Added
