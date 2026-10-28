@@ -53,6 +53,7 @@ public final class CivitasMod {
         MinecraftForge.EVENT_BUS.addListener(TerritoryProtectionHandler::onBlockBreak);
         MinecraftForge.EVENT_BUS.addListener(TerritoryProtectionHandler::onBlockPlace);
         MinecraftForge.EVENT_BUS.addListener(TerritoryProtectionHandler::onRightClickBlock);
+        MinecraftForge.EVENT_BUS.addListener(TerritoryProtectionHandler::onExplosionDetonate);
         MinecraftForge.EVENT_BUS.addListener(LumberjackWorkerAI::onLivingTick);
         MinecraftForge.EVENT_BUS.addListener(LumberjackWorkerAI::onLivingDeath);
         MinecraftForge.EVENT_BUS.addListener(ConstructionWorkerAI::onLevelTick);
