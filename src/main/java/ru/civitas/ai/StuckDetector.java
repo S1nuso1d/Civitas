@@ -14,6 +14,7 @@ import net.minecraft.world.entity.npc.Villager;
  */
 public final class StuckDetector {
     private static final String LAST_POS_KEY = "civitas.stuck.last_pos";
+    private static final String LAST_CHECK_KEY = "civitas.stuck.last_check";
     private static final String STUCK_TICKS_KEY = "civitas.stuck.ticks";
     private static final String RECOVERIES_KEY = "civitas.stuck.recoveries";
     private static final String COOLDOWN_UNTIL_KEY = "civitas.stuck.cooldown_until";
@@ -45,18 +46,23 @@ public final class StuckDetector {
         // Do not flag intentional stationary work or workers that have no route.
         if (villager.getNavigation().isDone()) {
             tag.putLong(LAST_POS_KEY, villager.blockPosition().asLong());
+            tag.putLong(LAST_CHECK_KEY, now);
             tag.putInt(STUCK_TICKS_KEY, 0);
             return false;
         }
 
         BlockPos current = villager.blockPosition();
-        long previousPacked = tag.getLong(LAST_POS_KEY);
-        if (previousPacked == 0L) {
+        if (!tag.contains(LAST_POS_KEY)) {
             tag.putLong(LAST_POS_KEY, current.asLong());
+            tag.putLong(LAST_CHECK_KEY, now);
             tag.putInt(STUCK_TICKS_KEY, 0);
             return false;
         }
 
+        long previousPacked = tag.getLong(LAST_POS_KEY);
+        long lastCheck = tag.getLong(LAST_CHECK_KEY);
+        int elapsed = (int) Math.max(0L, Math.min(20L, now - lastCheck));
+        tag.putLong(LAST_CHECK_KEY, now);
         if (!BlockPos.of(previousPacked).equals(current)) {
             tag.putLong(LAST_POS_KEY, current.asLong());
             tag.putInt(STUCK_TICKS_KEY, 0);
@@ -65,7 +71,7 @@ public final class StuckDetector {
             return false;
         }
 
-        int stuckTicks = tag.getInt(STUCK_TICKS_KEY) + 1;
+        int stuckTicks = tag.getInt(STUCK_TICKS_KEY) + elapsed;
         tag.putInt(STUCK_TICKS_KEY, stuckTicks);
         if (stuckTicks < POSITION_TIMEOUT) {
             return false;
