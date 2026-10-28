@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.40.0] - Reliability & Polish Pass (first slice)
+
+### Added
+- Added a shared navigation watchdog for assigned workers. It only monitors active routes, restarts stalled navigation without teleporting entities, and applies a cooldown after repeated failures.
+- Added distance-based AI decision cadence for lumberjacks, farmers and builders while leaving vanilla entity navigation untouched. The cadence is aligned to world time so existing 20-tick scheduling remains compatible.
+- Added chunk-aware target waiting for lumberjack and farmer targets; a temporarily unloaded target is retained rather than treated as a missing block.
+- Assigned workers now hold a role marker: iron axe for lumberjacks, iron hoe for farmers and iron shovel for builders. The marker is removed when the profession is released.
+- Villager name tags are now shown when the player looks directly at a villager or is within four blocks; this is client-side only.
+- Added unit tests for AI LOD distance thresholds.
+
+### Safety notes
+- Existing saved settlement data and network protocol are unchanged.
+- Automatic backup/migration and GUI polish are not part of this first slice; they will be handled separately after the actual save lifecycle is verified.
+
+### Validation
+- Source committed. Build, automated tests and in-game behavior have not yet been confirmed for this version.
+
 ## [0.39.0] - Living Society (first slice)
 
 ### Added
