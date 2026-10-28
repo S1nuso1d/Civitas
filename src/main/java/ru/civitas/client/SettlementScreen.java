@@ -1,198 +1,508 @@
 package ru.civitas.client;
 
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.protocol.game.ServerboundChatCommandPacket;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import ru.civitas.network.CivitasNetwork;
+import ru.civitas.network.SettlementSnapshot;
 import ru.civitas.world.BuildingDefinition;
 
-/** Vanilla-inspired settlement dashboard with real Minecraft item icons. */
-public final class SettlementScreen extends Screen {
-    private static final int PANEL_WIDTH = 360;
-    private static final int PANEL_HEIGHT = 480;
-    private static final int INNER_WIDTH = 330;
-    private static final int BUTTON_WIDTH = 160;
-    private static final int GAP = 10;
+import java.util.ArrayList;
+import java.util.List;
 
+/** Responsive, vanilla-inspired settlement dashboard backed by server snapshots. */
+public final class SettlementScreen extends Screen {
+    private static final int MAX_PANEL_WIDTH = 520;
+    private static final int MAX_PANEL_HEIGHT = 420;
+    private static final int PAD = 12;
+
+    private enum Tab {
+        OVERVIEW("Обзор"),
+        RESIDENTS("Жители"),
+        CONSTRUCTION("Стройка"),
+        STORAGE("Склад");
+
+        private final String title;
+
+        Tab(String title) {
+            this.title = title;
+        }
+    }
+
+    private record IconPosition(int x, int y, ItemStack stack) {}
+    private record RenderLine(int x, int y, String text, int color) {}
+
+    private final List<IconPosition> icons = new ArrayList<>();
+    private final List<RenderLine> renderLines = new ArrayList<>();
+
+    private int panelX;
+    private int panelY;
+    private int panelWidth;
+    private int panelHeight;
+    private int contentX;
+    private int contentY;
+    private int contentWidth;
+    private int contentBottom;
+
+    private Tab activeTab = Tab.OVERVIEW;
+    private SettlementSnapshot snapshot;
     private EditBox settlementName;
     private EditBox itemId;
     private EditBox amount;
     private EditBox orderIndex;
+
+    private String settlementNameValue = "Новая деревня";
+    private String itemIdValue = "minecraft:oak_log";
+    private String amountValue = "16";
+    private String orderIndexValue = "1";
     private String pendingBuild = "";
+
+    private int buildOffset;
+    private int listOffset;
+    private int residentControlPage;
+    private boolean showingQueue;
+    private int ticksSinceRefresh;
 
     public SettlementScreen() {
         super(Component.translatable("screen.civitas.settlement"));
+        snapshot = ClientNetworkHandler.latestSnapshot();
     }
 
     @Override
     protected void init() {
-        iconPositions.clear();
-        int panelLeft = (width - PANEL_WIDTH) / 2;
-        int left = panelLeft + 15;
-        int top = (height - PANEL_HEIGHT) / 2;
-        int right = left + BUTTON_WIDTH + GAP;
+        icons.clear();
 
-        settlementName = new EditBox(font, left, top + 40, INNER_WIDTH, 20,
-                Component.translatable("screen.civitas.settlement_name"));
+        // The panel follows the current viewport rather than assuming 360×480.
+        panelWidth = Math.min(MAX_PANEL_WIDTH, Math.max(200, width - 12));
+        panelHeight = Math.min(MAX_PANEL_HEIGHT, Math.max(180, height - 12));
+        panelX = (width - panelWidth) / 2;
+        panelY = (height - panelHeight) / 2;
+        contentX = panelX + PAD;
+        contentY = panelY + 64;
+        contentWidth = panelWidth - PAD * 2;
+        contentBottom = panelY + panelHeight - 42;
+
+        int gap = 3;
+        int tabWidth = (contentWidth - gap * 3) / 4;
+        int x = contentX;
+        int tabY = panelY + 35;
+        for (Tab tab : Tab.values()) {
+            final Tab selected = tab;
+            addRenderableWidget(Button.builder(Component.literal(tab.title), button -> switchTab(selected))
+                    .bounds(x, tabY, tabWidth, 20).build());
+            x += tabWidth + gap;
+        }
+
+        switch (activeTab) {
+            case OVERVIEW -> initOverview();
+            case RESIDENTS -> initResidents();
+            case CONSTRUCTION -> initConstruction();
+            case STORAGE -> initStorage();
+        }
+
+        int footerButtonY = panelY + panelHeight - 30;
+        int leftButtonWidth = (contentWidth - 4) / 2;
+        addButton("Обновить", contentX, footerButtonY, leftButtonWidth, 20,
+                CivitasNetwork::requestSnapshot, Items.COMPASS);
+        addButton("Закрыть", contentX + leftButtonWidth + 4, footerButtonY,
+                contentWidth - leftButtonWidth - 4, 20, this::onClose, Items.BARRIER);
+
+        CivitasNetwork.requestSnapshot();
+    }
+
+    private void initOverview() {
+        int inputY = contentY + 13;
+        int renameWidth = Math.min(98, Math.max(70, contentWidth / 3));
+        int inputWidth = Math.max(70, contentWidth - renameWidth - 4);
+        settlementName = new EditBox(font, contentX, inputY, inputWidth, 20,
+                Component.literal("Название поселения"));
         settlementName.setMaxLength(40);
-        settlementName.setHint(Component.translatable("screen.civitas.name_hint"));
+        settlementName.setValue(settlementNameValue);
+        settlementName.setHint(Component.literal("Название поселения"));
         addRenderableWidget(settlementName);
 
-        addButton("   Основать поселение", left, top + 67, BUTTON_WIDTH, "civitas found", Items.BELL);
-        addButton("   Переименовать", right, top + 67, BUTTON_WIDTH, "civitas rename", Items.NAME_TAG);
-
-        addButton("   Обзор поселения", left, top + 108, BUTTON_WIDTH, "civitas status", Items.WRITABLE_BOOK);
-        addButton("   Склад поселения", right, top + 108, BUTTON_WIDTH, "civitas storage", Items.CHEST);
-
-        itemId = new EditBox(font, left, top + 148, 230, 20, Component.translatable("screen.civitas.item_id"));
-        itemId.setMaxLength(128);
-        itemId.setValue("minecraft:oak_log");
-        itemId.setHint(Component.literal("minecraft:oak_log"));
-        addRenderableWidget(itemId);
-
-        amount = new EditBox(font, left + 240, top + 148, 90, 20, Component.translatable("screen.civitas.amount"));
-        amount.setMaxLength(4);
-        amount.setValue("16");
-        amount.setFilter(value -> value.isEmpty() || value.chars().allMatch(Character::isDigit));
-        addRenderableWidget(amount);
-
-        addButton("   Сдать из руки", left, top + 175, BUTTON_WIDTH, "civitas deposit " + safeAmount(), Items.HOPPER);
-        addButton("   Забрать со склада", right, top + 175, BUTTON_WIDTH, "civitas withdraw " + safeItemId() + " " + safeAmount(), Items.BARREL);
-
-        addButton("   Жители и задачи", left, top + 216, BUTTON_WIDTH, "civitas workers", Items.VILLAGER_SPAWN_EGG);
-        addButton("   Назначить лесоруба", right, top + 216, BUTTON_WIDTH, "civitas worker lumberjack", Items.IRON_AXE);
-        addButton("   Назначить строителя", left, top + 242, BUTTON_WIDTH, "civitas worker builder", Items.IRON_PICKAXE);
-        addButton("   Пауза лесоруба", right, top + 242, BUTTON_WIDTH, "civitas worker pause", Items.CLOCK);
-        addButton("   Продолжить работу", left, top + 268, BUTTON_WIDTH, "civitas worker resume", Items.LIME_DYE);
-        addButton("   Снять профессию", right, top + 268, BUTTON_WIDTH, "civitas worker clear", Items.BARRIER);
-
-        addButton("   Список зданий", left, top + 294, BUTTON_WIDTH, "civitas buildings", Items.BRICKS);
-        addButton("   Очередь стройки", right, top + 294, BUTTON_WIDTH, "civitas construction", Items.OAK_PLANKS);
-
-        addButton("   " + BuildingDefinition.get(BuildingDefinition.Type.CABIN).displayName(), left, top + 337, BUTTON_WIDTH, "civitas build cabin", Items.OAK_DOOR);
-        addButton("   " + BuildingDefinition.get(BuildingDefinition.Type.FARM).displayName(), right, top + 337, BUTTON_WIDTH, "civitas build farm", Items.WHEAT);
-        addButton("   " + BuildingDefinition.get(BuildingDefinition.Type.WORKSHOP).displayName(), left, top + 363, INNER_WIDTH, "civitas build workshop", Items.CRAFTING_TABLE);
-
-        orderIndex = new EditBox(font, left, top + 389, 55, 20, Component.literal("№"));
-        orderIndex.setMaxLength(3);
-        orderIndex.setValue("1");
-        orderIndex.setFilter(value -> value.isEmpty() || value.chars().allMatch(Character::isDigit));
-        addRenderableWidget(orderIndex);
-        addButton("   Отменить заказ №", left + 65, top + 389, INNER_WIDTH - 65, "civitas construction cancel selected", Items.BARRIER);
-        addRenderableWidget(Button.builder(Component.literal("Закрыть  [Esc]"), button -> onClose())
-                .bounds(left, top + 412, INNER_WIDTH, 16).build());
+        String label = snapshot != null && snapshot.founded() ? "Переименовать" : "Основать";
+        addButton(label, contentX + inputWidth + 4, inputY, renameWidth, 20, () -> {
+            rememberInputs();
+            CivitasNetwork.sendAction(
+                    snapshot != null && snapshot.founded()
+                            ? CivitasNetwork.Action.RENAME : CivitasNetwork.Action.FOUND,
+                    settlementNameValue, 0);
+        }, Items.NAME_TAG);
     }
 
-    private void addButton(String label, int x, int y, int width, String command, net.minecraft.world.item.Item icon) {
-        addRenderableWidget(Button.builder(Component.literal(label), button -> {
-            String actual = command;
-            if (actual.equals("civitas construction cancel selected")) {
-                actual = "civitas construction cancel " + safeOrderIndex();
+    private void initResidents() {
+        int half = (contentWidth - 4) / 2;
+        addButton("Назначение", contentX, contentY, half, 20,
+                () -> { residentControlPage = 0; listOffset = 0; rebuildWidgets(); }, null);
+        addButton("Работа", contentX + half + 4, contentY, contentWidth - half - 4, 20,
+                () -> { residentControlPage = 1; listOffset = 0; rebuildWidgets(); }, null);
+
+        int actionY = contentY + 23;
+        if (residentControlPage == 0) {
+            addButton("Лесоруб", contentX, actionY, half, 20,
+                    () -> sendAction(CivitasNetwork.Action.ASSIGN_LUMBERJACK, "", 0), Items.IRON_AXE);
+            addButton("Строитель", contentX + half + 4, actionY, contentWidth - half - 4, 20,
+                    () -> sendAction(CivitasNetwork.Action.ASSIGN_BUILDER, "", 0), Items.IRON_PICKAXE);
+        } else {
+            int third = (contentWidth - 8) / 3;
+            addButton("Пауза", contentX, actionY, third, 20,
+                    () -> sendAction(CivitasNetwork.Action.PAUSE_LUMBERJACK, "", 0), Items.CLOCK);
+            addButton("Старт", contentX + third + 4, actionY, third, 20,
+                    () -> sendAction(CivitasNetwork.Action.RESUME_LUMBERJACK, "", 0), Items.LIME_DYE);
+            addButton("Снять", contentX + (third + 4) * 2, actionY,
+                    contentWidth - (third + 4) * 2, 20,
+                    () -> sendAction(CivitasNetwork.Action.CLEAR_LUMBERJACK, "", 0), Items.BARRIER);
+        }
+
+        int navY = contentY + 44;
+        addListNavigation(snapshot == null ? 0 : snapshot.residents().size(), navY);
+    }
+
+    private void initConstruction() {
+        int navY = contentY;
+        if (showingQueue) {
+            addButton("← Здания", contentX, navY, Math.min(82, contentWidth / 2), 18,
+                    () -> { showingQueue = false; buildOffset = 0; listOffset = 0; rebuildWidgets(); }, null);
+
+            List<String> orders = snapshot == null ? List.of() : snapshot.construction();
+            int cancelY = contentBottom - 22;
+            int rows = Math.max(1, (cancelY - (navY + 24) - 2) / 13);
+            int maxOffset = Math.max(0, orders.size() - rows);
+            listOffset = Math.min(listOffset, maxOffset);
+            int arrowsX = contentX + contentWidth - 54;
+            addButton("←", arrowsX, navY, 24, 18,
+                    () -> { listOffset = Math.max(0, listOffset - rows); rebuildWidgets(); }, null);
+            addButton("→", arrowsX + 28, navY, 24, 18,
+                    () -> { listOffset = Math.min(maxOffset, listOffset + rows); rebuildWidgets(); }, null);
+
+            orderIndex = new EditBox(font, contentX, cancelY, 44, 20, Component.literal("№"));
+            orderIndex.setMaxLength(3);
+            orderIndex.setValue(orderIndexValue);
+            orderIndex.setFilter(value -> value.isEmpty() || value.chars().allMatch(Character::isDigit));
+            addRenderableWidget(orderIndex);
+            addButton("Отменить заказ №", contentX + 49, cancelY,
+                    Math.max(70, contentWidth - 49), 20, () -> {
+                        rememberInputs();
+                        sendAction(CivitasNetwork.Action.CANCEL_ORDER, "",
+                                safeInteger(orderIndexValue, 1, 999, 1));
+                    }, Items.BARRIER);
+        } else {
+            List<BuildingDefinition> definitions = BuildingDefinition.all();
+            int rows = Math.max(1, Math.min(3, visibleRows(navY + 22, 28)));
+            buildOffset = Math.min(buildOffset, Math.max(0, definitions.size() - 1));
+
+            addButton("←", contentX, navY, 26, 18,
+                    () -> { buildOffset = Math.max(0, buildOffset - rows); rebuildWidgets(); }, null);
+            addButton("→", contentX + 30, navY, 26, 18,
+                    () -> { buildOffset = Math.min(Math.max(0, definitions.size() - rows), buildOffset + rows); rebuildWidgets(); }, null);
+            addButton("Очередь", contentX + contentWidth - 70, navY, 70, 18,
+                    () -> { showingQueue = true; listOffset = 0; rebuildWidgets(); }, Items.OAK_PLANKS);
+
+            int buttonWidth = Math.min(104, Math.max(78, contentWidth / 2));
+            for (int i = buildOffset; i < Math.min(definitions.size(), buildOffset + rows); i++) {
+                BuildingDefinition definition = definitions.get(i);
+                int rowY = navY + 22 + (i - buildOffset) * 28;
+                String command = "civitas build " + definition.id();
+                addButton(definition.displayName(), contentX, rowY, buttonWidth, 22, () -> {
+                    if (!command.equals(pendingBuild)) {
+                        pendingBuild = command;
+                        return;
+                    }
+                    pendingBuild = "";
+                    sendAction(CivitasNetwork.Action.BUILD, definition.id(), 0);
+                }, buildingIcon(definition.type()));
             }
-            if (actual.startsWith("civitas build ")) {
-                if (!actual.equals(pendingBuild)) {
-                    pendingBuild = actual;
-                    return;
-                }
-                pendingBuild = "";
-            }
-            if (actual.equals("civitas found") || actual.equals("civitas rename")) {
-                actual = actual + " " + safeName();
-            } else if (actual.startsWith("civitas deposit ")) {
-                actual = "civitas deposit " + safeAmount();
-            } else if (actual.startsWith("civitas withdraw ")) {
-                actual = "civitas withdraw " + safeItemId() + " " + safeAmount();
-            }
-            sendCommand(actual);
-        }).bounds(x, y, width, 20).build());
-        iconPositions.add(new IconPosition(x + 4, y + 2, new ItemStack(icon)));
-    }
-
-    private final java.util.List<IconPosition> iconPositions = new java.util.ArrayList<>();
-
-    private record IconPosition(int x, int y, ItemStack stack) {}
-
-    private String safeName() {
-        String value = settlementName.getValue().trim().replace('\n', ' ').replace('\r', ' ');
-        return value.isEmpty() ? "Новая деревня" : value;
-    }
-
-    private String safeItemId() {
-        String value = itemId.getValue().trim();
-        return value.matches("[a-z0-9_.-]+:[a-z0-9_./-]+") ? value : "minecraft:oak_log";
-    }
-
-    private String safeOrderIndex() {
-        try { return Integer.toString(Math.max(1, Math.min(999, Integer.parseInt(orderIndex.getValue())))); }
-        catch (NumberFormatException exception) { return "1"; }
-    }
-
-    private String safeAmount() {
-        try {
-            int value = Integer.parseInt(amount.getValue());
-            return Integer.toString(Math.max(1, Math.min(2304, value)));
-        } catch (NumberFormatException exception) {
-            return "1";
         }
     }
 
-    private static void sendCommand(String command) {
-        Minecraft minecraft = Minecraft.getInstance();
-        if (minecraft.getConnection() != null) {
-            minecraft.getConnection().send(new ServerboundChatCommandPacket(command));
+    private void initStorage() {
+        int amountWidth = Math.min(72, Math.max(48, contentWidth / 4));
+        int itemWidth = Math.max(80, contentWidth - amountWidth - 6);
+        itemId = new EditBox(font, contentX, contentY + 13, itemWidth, 20, Component.literal("ID предмета"));
+        itemId.setMaxLength(128);
+        itemId.setValue(itemIdValue);
+        itemId.setHint(Component.literal("minecraft:oak_log"));
+        addRenderableWidget(itemId);
+
+        amount = new EditBox(font, contentX + itemWidth + 6, contentY + 13, amountWidth, 20,
+                Component.literal("Количество"));
+        amount.setMaxLength(4);
+        amount.setValue(amountValue);
+        amount.setFilter(value -> value.isEmpty() || value.chars().allMatch(Character::isDigit));
+        addRenderableWidget(amount);
+
+        int half = (contentWidth - 4) / 2;
+        addButton("Сдать", contentX, contentY + 37, half, 20, () -> {
+            rememberInputs();
+            sendAction(CivitasNetwork.Action.DEPOSIT, "", safeInteger(amountValue, 1, 2304, 1));
+        }, Items.HOPPER);
+        addButton("Забрать", contentX + half + 4, contentY + 37,
+                contentWidth - half - 4, 20, () -> {
+                    rememberInputs();
+                    sendAction(CivitasNetwork.Action.WITHDRAW, safeItemId(),
+                            safeInteger(amountValue, 1, 2304, 1));
+                }, Items.BARREL);
+
+        addListNavigation(snapshot == null ? 0 : snapshot.storage().size(), contentY + 59);
+    }
+
+    private void addListNavigation(int itemCount, int y) {
+        int rowStart = y + 17;
+        int rows = visibleRows(rowStart, 12);
+        int maxOffset = Math.max(0, itemCount - rows);
+        int arrowsX = contentX + contentWidth - 54;
+        addButton("←", arrowsX, y, 24, 16,
+                () -> { listOffset = Math.max(0, listOffset - rows); rebuildWidgets(); }, null);
+        addButton("→", arrowsX + 28, y, 24, 16,
+                () -> { listOffset = Math.min(maxOffset, listOffset + rows); rebuildWidgets(); }, null);
+    }
+
+    private Item buildingIcon(BuildingDefinition.Type type) {
+        return switch (type) {
+            case CABIN -> Items.OAK_DOOR;
+            case FARM -> Items.WHEAT;
+            case WORKSHOP -> Items.CRAFTING_TABLE;
+        };
+    }
+
+    private void addButton(String label, int x, int y, int buttonWidth, int buttonHeight,
+                           Runnable action, Item icon) {
+        String buttonLabel = icon == null ? label : "   " + label;
+        addRenderableWidget(Button.builder(Component.literal(buttonLabel), button -> action.run())
+                .bounds(x, y, buttonWidth, buttonHeight).build());
+        if (icon != null) {
+            icons.add(new IconPosition(x + 3, y + Math.max(1, (buttonHeight - 16) / 2),
+                    new ItemStack(icon)));
+        }
+    }
+
+    private void switchTab(Tab tab) {
+        rememberInputs();
+        activeTab = tab;
+        listOffset = 0;
+        pendingBuild = "";
+        rebuildWidgets();
+    }
+
+    private void sendAction(CivitasNetwork.Action action, String value, int number) {
+        rememberInputs();
+        CivitasNetwork.sendAction(action, value, number);
+    }
+
+    private void rememberInputs() {
+        if (settlementName != null) settlementNameValue = cleanText(settlementName.getValue(), 40);
+        if (itemId != null) itemIdValue = itemId.getValue().trim();
+        if (amount != null) amountValue = amount.getValue();
+        if (orderIndex != null) orderIndexValue = orderIndex.getValue();
+    }
+
+    private static String cleanText(String value, int maxLength) {
+        String cleaned = value == null ? "" : value.replace('\n', ' ').replace('\r', ' ').trim();
+        return cleaned.length() > maxLength ? cleaned.substring(0, maxLength).trim() : cleaned;
+    }
+
+    private String safeItemId() {
+        String value = itemIdValue == null ? "" : itemIdValue.trim();
+        return value.matches("[a-z0-9_.-]+:[a-z0-9_./-]+") ? value : "minecraft:oak_log";
+    }
+
+    private static int safeInteger(String value, int min, int max, int fallback) {
+        try {
+            return Math.max(min, Math.min(max, Integer.parseInt(value)));
+        } catch (NumberFormatException exception) {
+            return fallback;
+        }
+    }
+
+    private int visibleRows(int startY, int rowHeight) {
+        return Math.max(1, (contentBottom - startY) / rowHeight);
+    }
+
+    private void drawLine(int y, String text, int color, int maxWidth) {
+        drawLineAt(contentX, y, text, color, maxWidth);
+    }
+
+    private void drawLineAt(int x, int y, String text, int color, int maxWidth) {
+        String fitted = text == null ? "" : text;
+        while (font.width(fitted) > maxWidth && fitted.length() > 1) {
+            fitted = fitted.substring(0, fitted.length() - 1);
+        }
+        if (!fitted.equals(text) && fitted.length() > 1) {
+            fitted = fitted.substring(0, fitted.length() - 1) + "…";
+        }
+        if (y <= contentBottom) renderLines.add(new RenderLine(x, y, fitted, color));
+    }
+
+    public void acceptSnapshot(SettlementSnapshot nextSnapshot) {
+        snapshot = nextSnapshot;
+        if (settlementName == null || !settlementName.isFocused()) {
+            settlementNameValue = nextSnapshot.settlementName();
+            if (settlementName != null) settlementName.setValue(settlementNameValue);
+        }
+    }
+
+    @Override
+    public void tick() {
+        super.tick();
+        if (++ticksSinceRefresh >= 40) {
+            ticksSinceRefresh = 0;
+            CivitasNetwork.requestSnapshot();
         }
     }
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         renderBackground(graphics, mouseX, mouseY, partialTick);
-        int left = (width - PANEL_WIDTH) / 2;
-        int top = (height - PANEL_HEIGHT) / 2;
+        renderLines.clear();
 
-        // Pixel-like beveled frame inspired by vanilla inventory panels.
-        graphics.fill(left, top, left + PANEL_WIDTH, top + PANEL_HEIGHT, 0xFF171717);
-        graphics.fill(left + 2, top + 2, left + PANEL_WIDTH - 2, top + PANEL_HEIGHT - 2, 0xFFC6C6C6);
-        graphics.fill(left + 4, top + 4, left + PANEL_WIDTH - 4, top + PANEL_HEIGHT - 4, 0xFF373737);
-        graphics.fill(left + 5, top + 5, left + PANEL_WIDTH - 5, top + PANEL_HEIGHT - 5, 0xFFC6C6C6);
-        graphics.fill(left + 7, top + 7, left + PANEL_WIDTH - 7, top + 30, 0xFF555555);
-        graphics.fill(left + 8, top + 8, left + PANEL_WIDTH - 8, top + 29, 0xFF292929);
+        graphics.fill(panelX, panelY, panelX + panelWidth, panelY + panelHeight, 0xFF171717);
+        graphics.fill(panelX + 2, panelY + 2, panelX + panelWidth - 2, panelY + panelHeight - 2, 0xFFC6C6C6);
+        graphics.fill(panelX + 4, panelY + 4, panelX + panelWidth - 4, panelY + panelHeight - 4, 0xFF373737);
+        graphics.fill(panelX + 5, panelY + 5, panelX + panelWidth - 5, panelY + panelHeight - 5, 0xFFC6C6C6);
+        graphics.fill(panelX + 7, panelY + 7, panelX + panelWidth - 7, panelY + 30, 0xFF555555);
+        graphics.fill(panelX + 8, panelY + 8, panelX + panelWidth - 8, panelY + 29, 0xFF292929);
+        graphics.drawCenteredString(font, Component.literal("CIVITAS"), panelX + panelWidth / 2, panelY + 9, 0xFFFFD866);
 
-        graphics.drawCenteredString(font, Component.literal("CIVITAS"), width / 2, top + 11, 0xFFFFD866);
-        graphics.drawCenteredString(font, Component.literal("УПРАВЛЕНИЕ ПОСЕЛЕНИЕМ"), width / 2, top + 22, 0xFFFFFFFF);
-        graphics.drawString(font, Component.literal("Название поселения"), left + 15, top + 31, 0xFF303030, false);
-        drawSection(graphics, left + 15, top + 96, "ПОСЕЛЕНИЕ И СКЛАД");
-        graphics.drawString(font, Component.literal("ID предмета"), left + 15, top + 136, 0xFF303030, false);
-        graphics.drawString(font, Component.literal("Кол-во"), left + 255, top + 136, 0xFF303030, false);
-        drawSection(graphics, left + 15, top + 203, "ЖИТЕЛИ И ЗАДАЧИ");
-        drawSection(graphics, left + 15, top + 323, "СТРОИТЕЛЬСТВО · РЕСУРСЫ СО СКЛАДА");
-        super.render(graphics, mouseX, mouseY, partialTick);
-        for (IconPosition icon : iconPositions) graphics.renderItem(icon.stack(), icon.x(), icon.y());
-        if (!pendingBuild.isEmpty()) {
-            String buildingId = pendingBuild.substring("civitas build ".length());
-            String preview = BuildingDefinition.find(buildingId)
-                    .map(definition -> definition.displayName() + ": " + definition.describeCosts())
-                    .orElse("Проверь стоимость и наличие материалов на складе");
-            graphics.fill(left + 8, top + 433, left + PANEL_WIDTH - 8, top + 464, 0xFF777777);
-            graphics.fill(left + 9, top + 434, left + PANEL_WIDTH - 9, top + 463, 0xFFE7D8A8);
-            graphics.drawCenteredString(font, Component.literal(preview), width / 2, top + 439, 0xFF303030);
-            graphics.drawCenteredString(font, Component.literal("Нажми выбранную постройку ещё раз для заказа"), width / 2, top + 451, 0xFF8A2020);
-        } else {
-            graphics.drawCenteredString(font, Component.literal("Выбери постройку один раз для предпросмотра стоимости"), width / 2, top + 443, 0xFF303030);
-            graphics.drawCenteredString(font, Component.literal("Повторное нажатие спишет ресурсы и поставит её в очередь"), width / 2, top + 455, 0xFF303030);
+        String title = snapshot != null && snapshot.founded()
+                ? snapshot.settlementName() : "УПРАВЛЕНИЕ ПОСЕЛЕНИЕМ";
+        graphics.drawCenteredString(font, Component.literal(title),
+                panelX + panelWidth / 2, panelY + 20, 0xFFFFFFFF);
+
+        switch (activeTab) {
+            case OVERVIEW -> renderOverview();
+            case RESIDENTS -> renderResidents();
+            case CONSTRUCTION -> renderConstruction();
+            case STORAGE -> renderStorage();
         }
-        graphics.drawCenteredString(font, Component.literal("Ответы и ошибки отображаются в чате"), width / 2, top + 468, 0xFF303030);
+
+        super.render(graphics, mouseX, mouseY, partialTick);
+        for (IconPosition icon : icons) graphics.renderItem(icon.stack(), icon.x(), icon.y());
+        for (RenderLine line : renderLines) {
+            graphics.drawString(font, Component.literal(line.text()), line.x(), line.y(), line.color(), false);
+        }
+        drawFooter(graphics, snapshot == null ? "Запрашиваю состояние сервера…" : snapshot.statusMessage());
     }
 
-    private void drawSection(GuiGraphics graphics, int x, int y, String title) {
-        graphics.fill(x, y, x + INNER_WIDTH, y + 1, 0xFF777777);
-        graphics.drawString(font, Component.literal(title), x + 2, y - 8, 0xFF303030, false);
+    private void renderOverview() {
+        if (snapshot == null) {
+            drawLine(contentY + 40, "Запрашиваю состояние поселения…", 0xFF303030, contentWidth);
+            return;
+        }
+        List<String> lines = List.of(
+                "Уровень: " + snapshot.level() + " | Население: " + snapshot.population(),
+                "Жители: " + snapshot.residentCount() + " | Лесорубы: " + snapshot.lumberjacks()
+                        + " | Строители: " + snapshot.builders() + " | Без роли: " + snapshot.idleResidents(),
+                "Здания: дома " + snapshot.cabinCount() + " | фермы " + snapshot.farmCount()
+                        + " | мастерские " + snapshot.workshopCount(),
+                "Строительных заказов: " + snapshot.orderCount(),
+                "Склад: " + snapshot.warehouseItemCount() + " предметов; занято "
+                        + snapshot.warehouseOccupiedSlots() + "/" + snapshot.warehouseSlots() + " слотов"
+        );
+        int startY = contentY + 40;
+        int rows = visibleRows(startY, 14);
+        for (int i = 0; i < Math.min(rows, lines.size()); i++) {
+            drawLine(startY + i * 14, lines.get(i), 0xFF303030, contentWidth);
+        }
+    }
+
+    private void renderResidents() {
+        if (snapshot == null) {
+            drawLine(contentY + 65, "Запрашиваю жителей…", 0xFF303030, contentWidth);
+            return;
+        }
+        drawLine(contentY + 45, "Жителей рядом: " + snapshot.residentCount(),
+                0xFF303030, Math.max(50, contentWidth - 58));
+        List<String> lines = snapshot.residents();
+        int startY = contentY + 61;
+        int rows = visibleRows(startY, 12);
+        listOffset = Math.min(listOffset, Math.max(0, lines.size() - rows));
+        for (int i = 0; i < rows && listOffset + i < lines.size(); i++) {
+            drawLine(startY + i * 12, lines.get(listOffset + i), 0xFF303030, contentWidth);
+        }
+        if (lines.isEmpty()) drawLine(startY, "Жители поблизости не найдены.", 0xFF777777, contentWidth);
+    }
+
+    private void renderConstruction() {
+        if (showingQueue) {
+            if (snapshot == null) return;
+            List<String> orders = snapshot.construction();
+            int startY = contentY + 24;
+            int cancelY = contentBottom - 22;
+            int rows = Math.max(1, (cancelY - startY - 2) / 13);
+            listOffset = Math.min(listOffset, Math.max(0, orders.size() - rows));
+            for (int i = 0; i < rows && listOffset + i < orders.size(); i++) {
+                drawLine(startY + i * 13, orders.get(listOffset + i), 0xFF303030, contentWidth);
+            }
+            if (orders.isEmpty()) drawLine(startY, "Очередь строительства пуста.", 0xFF777777, contentWidth);
+            return;
+        }
+
+        List<BuildingDefinition> definitions = BuildingDefinition.all();
+        int rows = Math.max(1, Math.min(3, visibleRows(contentY + 22, 28)));
+        int buttonWidth = Math.min(104, Math.max(78, contentWidth / 2));
+        for (int i = buildOffset; i < Math.min(definitions.size(), buildOffset + rows); i++) {
+            BuildingDefinition definition = definitions.get(i);
+            int y = contentY + 28 + (i - buildOffset) * 28;
+            String cost = definition.describeCosts();
+            if (("civitas build " + definition.id()).equals(pendingBuild)) cost = "Выбрано: " + cost;
+            drawLineAt(contentX + buttonWidth + 8, y, cost, 0xFF303030,
+                    Math.max(24, contentWidth - buttonWidth - 8));
+        }
+        if (!pendingBuild.isEmpty()) {
+            String selectedId = pendingBuild.substring("civitas build ".length());
+            String preview = BuildingDefinition.find(selectedId)
+                    .map(definition -> "Подтверди: " + definition.displayName() + " — " + definition.describeCosts())
+                    .orElse("Повтори нажатие для подтверждения");
+            drawLine(contentBottom - 12, preview, 0xFF7A2828, contentWidth);
+        } else {
+            drawLine(contentBottom - 12, "Выбери здание и нажми ещё раз для подтверждения.",
+                    0xFF303030, contentWidth);
+        }
+    }
+
+    private void renderStorage() {
+        if (snapshot == null) return;
+        drawLine(contentY, "ID предмета", 0xFF303030, contentWidth);
+        drawLine(contentY + 45, "Склад: " + snapshot.warehouseOccupiedSlots()
+                + "/" + snapshot.warehouseSlots() + " слотов", 0xFF303030,
+                Math.max(40, contentWidth - 58));
+        List<String> lines = snapshot.storage();
+        int startY = contentY + 62;
+        int rows = visibleRows(startY, 12);
+        listOffset = Math.min(listOffset, Math.max(0, lines.size() - rows));
+        for (int i = 0; i < rows && listOffset + i < lines.size(); i++) {
+            drawLine(startY + i * 12, lines.get(listOffset + i), 0xFF303030, contentWidth);
+        }
+        if (lines.isEmpty()) drawLine(startY, "В складе нет предметов.", 0xFF777777, contentWidth);
+    }
+
+    private void drawFooter(GuiGraphics graphics, String text) {
+        String fitted = text == null ? "" : text;
+        int maxWidth = panelWidth - 18;
+        while (font.width(fitted) > maxWidth && fitted.length() > 1) {
+            fitted = fitted.substring(0, fitted.length() - 1);
+        }
+        if (fitted.length() < (text == null ? 0 : text.length()) && fitted.length() > 1) {
+            fitted = fitted.substring(0, fitted.length() - 1) + "…";
+        }
+        graphics.drawCenteredString(font, Component.literal(fitted),
+                panelX + panelWidth / 2, panelY + panelHeight - 9, 0xFF303030);
     }
 
     @Override
-    public boolean isPauseScreen() { return false; }
+    public boolean isPauseScreen() {
+        return false;
+    }
+
+    @Override
+    public void onClose() {
+        rememberInputs();
+        super.onClose();
+    }
 }
