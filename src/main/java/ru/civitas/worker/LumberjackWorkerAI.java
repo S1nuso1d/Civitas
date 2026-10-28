@@ -23,6 +23,7 @@ import net.minecraftforge.event.entity.living.LivingEvent;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import ru.civitas.block.SettlementWarehouseBlockEntity;
 import ru.civitas.data.CivitasSavedData;
+import ru.civitas.worker.PersonalOrders;
 import ru.civitas.CivitasConfig;
 
 /**
@@ -334,6 +335,11 @@ public final class LumberjackWorkerAI {
             return;
         }
         if (!"lumberjack".equals(villager.getPersistentData().getString(ROLE_KEY))) {
+            return;
+        }
+        if (villager.level() instanceof ServerLevel orderLevel
+                && PersonalOrders.get(villager) != PersonalOrders.Order.NONE) {
+            PersonalOrders.tickOverride(orderLevel, villager);
             return;
         }
         if (villager.level() instanceof ServerLevel scheduleLevel
