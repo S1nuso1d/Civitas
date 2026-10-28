@@ -103,6 +103,10 @@ public final class ConstructionWorkerAI {
             }
 
             assignedThisTick.add(builder.getUUID());
+            if (WorkerLifeCycle.shouldRest(level, builder, "builder")) {
+                continue;
+            }
+            WorkerLifeCycle.openNearbyDoor(level, builder);
             prepareBuilder(builder);
 
             BuildingDefinition.Type buildingType = BuildingDefinition.Type.byId(order.type()).orElse(null);
@@ -149,6 +153,7 @@ public final class ConstructionWorkerAI {
 
             WorkerNavigationGuard.reset(builder, "builder");
             builder.getNavigation().stop();
+            WorkerLifeCycle.workFeedback(level, builder, "builder", workPos);
             int progressTicks = Math.min(WORK_PROGRESS_TICKS,
                     Math.max(0, persistent.getInt(WORK_PROGRESS_KEY)) + WORK_UPDATE_TICKS);
             persistent.putInt(WORK_PROGRESS_KEY, progressTicks);
