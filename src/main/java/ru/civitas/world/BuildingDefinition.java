@@ -145,6 +145,49 @@ public record BuildingDefinition(
         return Collections.unmodifiableMap(result);
     }
 
+    /**
+     * Materials allocated to each construction stage, in build order.
+     *
+     * The schedule is deliberately separate from the total cost: a completed
+     * stage consumes only its own allocation, so cancelling an order refunds
+     * the exact material budget for stages that have not started. The returned
+     * plan is immutable and is snapshotted into the world's saved data.
+     */
+    public List<Map<String, Integer>> layerCosts() {
+        List<Map<String, Integer>> layers = switch (type) {
+            case CABIN -> List.of(
+                    Map.of("minecraft:oak_planks", 12),
+                    Map.of("minecraft:oak_log", 3),
+                    Map.of("minecraft:oak_log", 3, "minecraft:glass", 2),
+                    Map.of("minecraft:oak_log", 2, "minecraft:glass", 2),
+                    Map.of("minecraft:oak_planks", 20)
+            );
+            case FARM -> List.of(
+                    Map.of("minecraft:dirt", 49, "minecraft:water_bucket", 1),
+                    Map.of("minecraft:wheat_seeds", 24)
+            );
+            case WORKSHOP -> List.of(
+                    Map.of("minecraft:cobblestone", 13, "minecraft:crafting_table", 1),
+                    Map.of("minecraft:cobblestone", 6),
+                    Map.of("minecraft:cobblestone", 6),
+                    Map.of("minecraft:oak_planks", 32)
+            );
+        };
+
+        if (layers.size() != totalLayers) {
+            throw new IllegalStateException("Layer cost plan does not match layer count for " + id);
+        }
+
+        Map<String, Integer> totals = new java.util.TreeMap<>();
+        for (Map<String, Integer> layer : layers) {
+            layer.forEach((itemId, amount) -> totals.merge(itemId, amount, Integer::sum));
+        }
+        if (!totals.equals(new java.util.TreeMap<>(costs()))) {
+            throw new IllegalStateException("Layer cost plan does not match total costs for " + id);
+        }
+        return List.copyOf(layers);
+    }
+
     /** Compact human-readable cost used by both server messages and the GUI. */
     public String describeCosts() {
         return resources.stream()
