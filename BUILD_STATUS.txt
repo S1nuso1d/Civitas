@@ -1,20 +1,24 @@
-Civitas Alpha 0.13.0 — build status
+Civitas Alpha 0.14.0 — build status
 Target: Minecraft Java Edition 1.21.1 + Forge 52.1.20 + Java 21
 
-New in 0.13.0:
-- Per-order resource reservations are snapshotted and persisted in world saved data.
-- Material costs are allocated to construction layers by progress.
-- Cancelling a partially built order refunds only the unbuilt-layer share.
-- Completed Civitas template layers are removed using block-type checks; replacements of other block types are preserved.
-- Legacy orders without stored reservations use the current BuildingDefinition costs.
+New in 0.14.0:
+- Cabin, farm and workshop define exact resource allocations for every construction layer.
+- Each plan is checked so its stage count equals the number of layers and its resource totals equal the full building cost.
+- New construction orders persist the stage plan with the reservation snapshot.
+- Cancellation refunds the sum of resources assigned to unbuilt stages; legacy orders without a stage plan keep their proportional 0.13.0 refund behavior.
+- Automated tests cover all building plans, stage-specific refunds, immutability and backward compatibility.
 
 Foundation retained:
 - Central building registry.
 - Forge SimpleChannel snapshot/action packets.
 - Responsive Overview / Residents / Construction / Storage dashboard.
 - Multiple builders can work on separate queued orders.
-- JUnit checks for building definitions and reservation/refund calculation.
+- Safe partial cancellation, template-aware cleanup and persistent construction records.
+
+Accounting note:
+- Materials are still deducted from the physical warehouse when an order is placed.
+- The layer plan controls how the reserved budget is accounted for as stages complete and what is returned on cancellation; it does not yet withdraw items physically at each build stage.
 
 Validation:
-- GitHub Actions build and all automated tests must pass on the final commit.
-- Manual in-game testing is still required, especially for cancellation cleanup and save/load.
+- Verify the latest GitHub Actions run for compile/test/build status before using the artifact.
+- Manual in-game testing is still required, especially layer cancellation, inventory overflow, save/load, and loaded-chunk safety.
