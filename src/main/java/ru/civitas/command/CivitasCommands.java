@@ -82,7 +82,7 @@ public final class CivitasCommands {
         source.sendSuccess(() -> Component.literal("§e/civitas construction §7— очередь и прогресс строительства"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas build cabin|farm|workshop §7— построить здание за ресурсы склада"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas worker lumberjack §7— назначить лесоруба"), false);
-        source.sendSuccess(() -> Component.literal("§e/civitas worker builder §7— назначить строителя"), false);
+        source.sendSuccess(() -> Component.literal("§e/civitas worker builder §7— назначить ещё одного строителя"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas worker pause|resume §7— приостановить/продолжить"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas worker clear §7— снять профессию после доставки груза"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas storage §7— содержимое физического склада"), false);
@@ -313,17 +313,20 @@ public final class CivitasCommands {
             context.getSource().sendFailure(Component.literal("Нет свободного жителя. Сними с одного жителя другую профессию или приведи нового."));
             return 0;
         }
-        for (Villager villager : villagers) {
-            if ("builder".equals(villager.getPersistentData().getString("civitas.worker_role"))) {
-                villager.getPersistentData().putString("civitas.worker_role", "");
-                villager.getNavigation().stop();
-            }
-        }
         chosen.getPersistentData().putString("civitas.worker_role", "builder");
         chosen.setCustomName(Component.literal("Строитель Civitas"));
         chosen.setCustomNameVisible(true);
         chosen.setPersistenceRequired();
-        context.getSource().sendSuccess(() -> Component.literal("§aНазначен строитель. Он отправится к ближайшему заказу в очереди."), false);
+        int assignedBuilders = 0;
+        for (Villager villager : villagers) {
+            if ("builder".equals(villager.getPersistentData().getString("civitas.worker_role"))) {
+                assignedBuilders++;
+            }
+        }
+        final int totalBuilders = assignedBuilders;
+        context.getSource().sendSuccess(() -> Component.literal(
+                "§aНазначен дополнительный строитель. Всего строителей: " + totalBuilders
+                        + ". Работники могут строить разные заказы параллельно."), false);
         return Command.SINGLE_SUCCESS;
     }
 
