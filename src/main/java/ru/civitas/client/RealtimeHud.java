@@ -9,7 +9,7 @@ import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.InputEvent;
-import net.minecraftforge.client.event.RenderGuiEvent;
+import net.minecraftforge.client.event.RenderGuiOverlayEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.lwjgl.glfw.GLFW;
@@ -44,7 +44,7 @@ public final class RealtimeHud {
     }
 
     @SubscribeEvent
-    public static void onRenderGui(RenderGuiEvent.Post event) {
+    public static void onRenderGui(RenderGuiOverlayEvent.Post event) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.level == null || mc.options.hideGui) return;
         GuiGraphics graphics = event.getGuiGraphics();
@@ -82,7 +82,7 @@ public final class RealtimeHud {
             lines.add("Статус: " + (villager.getNavigation().isDone() ? "стоит / ожидает" : "перемещается"));
         }
         lines.add("Здоровье: " + Math.round(villager.getHealth()) + "/" + Math.round(villager.getMaxHealth()));
-        lines.add("Профессия Minecraft: " + BuiltInRegistries.VILLAGER_PROFESSION.getKey(villager.getVillagerData().getProfession().value()).toString());
+        lines.add("Профессия Minecraft: " + BuiltInRegistries.VILLAGER_PROFESSION.getKey(villager.getVillagerData().getProfession()).toString());
         drawPanel(graphics, 8, 122, lines, 0xCC202016, 0xFFFFE8B0);
     }
 
