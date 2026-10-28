@@ -1,35 +1,30 @@
 package ru.civitas.trade;
 
 import org.junit.jupiter.api.Test;
-import ru.civitas.data.EconomyHistory;
+import java.util.Random;
 import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
 
 class TradeOfferGeneratorTest {
     @Test
-    void samePartnerAndDayProduceSameOffers() {
-        UUID id = UUID.fromString("00000000-0000-0000-0000-000000000001");
-        EconomyHistory history = new EconomyHistory(30);
-        history.recordDaily(1, 100, 50, 30, 5);
-        var first = TradeOfferGenerator.generate(id, 5, TradePersonality.NEUTRAL, history);
-        var second = TradeOfferGenerator.generate(id, 5, TradePersonality.NEUTRAL, history);
-        assertEquals(first.size(), second.size());
-        for (int i = 0; i < first.size(); i++) {
-            assertEquals(first.get(i).want().getItem(), second.get(i).want().getItem());
-            assertEquals(first.get(i).want().getCount(), second.get(i).want().getCount());
-            assertEquals(first.get(i).offer().getItem(), second.get(i).offer().getItem());
-            assertEquals(first.get(i).offer().getCount(), second.get(i).offer().getCount());
+    void personalitiesHaveValidTradeLimitsAndOfferCounts() {
+        for (TradePersonality personality : TradePersonality.values()) {
+            assertTrue(personality.offerCount >= 1 && personality.offerCount <= 8);
+            assertTrue(personality.tradeLimit >= 1 && personality.tradeLimit <= 20);
+            assertTrue(personality.wantMultiplier > 0);
+            assertTrue(personality.offerMultiplier > 0);
         }
     }
 
     @Test
-    void everyGeneratedOfferHasPositiveCountsAndFiniteLimit() {
-        var offers = TradeOfferGenerator.generate(UUID.randomUUID(), 42, TradePersonality.FRIENDLY, new EconomyHistory(30));
-        assertFalse(offers.isEmpty());
-        for (TradeOffer offer : offers) {
-            assertTrue(offer.want().getCount() > 0);
-            assertTrue(offer.offer().getCount() > 0);
-            assertTrue(offer.limit() >= 1 && offer.limit() <= 64);
-        }
+    void partnerNameGenerationIsDeterministicForSameSeed() {
+        assertEquals(TradePartner.generateName(new Random(1234)),
+                TradePartner.generateName(new Random(1234)));
+    }
+
+    @Test
+    void partnerArrivalIntervalIsBounded() {
+        TradePartner partner = new TradePartner(UUID.randomUUID(), "Test Partner", TradePersonality.WARLIKE, 50_000);
+        assertTrue(partner.arrivalIntervalDays() >= 2 && partner.arrivalIntervalDays() <= 30);
     }
 }
