@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.38.0] - Senses & Schedules
+
+### Added
+- Added shared worker lifecycle behavior: night rest for assigned lumberjacks, farmers and builders, preserving persisted targets and cargo.
+- Added a non-stacking +35% base movement-speed modifier for assigned workers standing on supported road blocks.
+- Added throttled work sounds, role-specific work particles, and occasional nearby worker chatter.
+- Workers open adjacent unpowered doors while navigating; rain reduces farmer harvest progress by 25%.
+
+### Validation
+- Source committed; local Gradle build, automated tests and in-game checks remain required.
+
+
+
 ## [0.37.2] - Worker Search Backoff
 
 ### Changed
