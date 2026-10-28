@@ -63,11 +63,13 @@ public final class NeighborSettlementGenerator {
     private static BlockPos findSafeSite(ServerLevel level, NeighborCivilization civilization, BlockPos origin) {
         int seed = civilization.id().hashCode();
         double baseAngle = (Math.floorMod(seed, 360)) * Math.PI / 180.0D;
-        int[] radii = {192, 224, 256, 288, 320, 352, 384, 416};
-        for (int attempt = 0; attempt < radii.length; attempt++) {
+        // Search a broad deterministic spiral; this improves the chance of
+        // finding a flat, unobstructed site without deleting trees or buildings.
+        for (int attempt = 0; attempt < 16; attempt++) {
             double angle = baseAngle + attempt * Math.PI * (3.0D - Math.sqrt(5.0D));
-            int x = origin.getX() + (int) Math.round(Math.cos(angle) * radii[attempt]);
-            int z = origin.getZ() + (int) Math.round(Math.sin(angle) * radii[attempt]);
+            int radius = 192 + attempt * 16;
+            int x = origin.getX() + (int) Math.round(Math.cos(angle) * radius);
+            int z = origin.getZ() + (int) Math.round(Math.sin(angle) * radius);
             level.getChunk(x >> 4, z >> 4);
             int y = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z) - 1;
             BlockPos candidate = new BlockPos(x, y, z);
