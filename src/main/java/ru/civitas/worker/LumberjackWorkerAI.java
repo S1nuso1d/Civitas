@@ -204,6 +204,39 @@ public final class LumberjackWorkerAI {
         return false;
     }
 
+    /** Keeps the existing one-click command while preferring residents without another job. */
+    public static boolean assignNearestLumberjack(ServerLevel level, BlockPos villageCenter) {
+        AABB area = new AABB(villageCenter).inflate(24, 12, 24);
+        java.util.List<Villager> villagers = level.getEntitiesOfClass(Villager.class, area);
+        if (villagers.isEmpty()) {
+            ensureWorkerExists(level, villageCenter);
+            villagers = level.getEntitiesOfClass(Villager.class, area);
+        }
+        if (villagers.isEmpty()) return false;
+
+        for (Villager villager : villagers) {
+            if ("lumberjack".equals(getWorkerRole(villager))
+                    && villager.getPersistentData().getInt(CARRIED_COUNT_KEY) > 0) {
+                return true;
+            }
+        }
+
+        Villager chosen = null;
+        double nearestDistance = Double.MAX_VALUE;
+        for (Villager villager : villagers) {
+            String role = getWorkerRole(villager);
+            if (!role.isBlank() && !"lumberjack".equals(role)) continue;
+            double distance = villager.distanceToSqr(
+                    villageCenter.getX() + 0.5D, villageCenter.getY() + 1.0D,
+                    villageCenter.getZ() + 0.5D);
+            if (distance < nearestDistance) {
+                chosen = villager;
+                nearestDistance = distance;
+            }
+        }
+        return chosen != null && assignLumberjackTo(level, villageCenter, chosen);
+    }
+
     public static void onLivingTick(LivingEvent.LivingTickEvent event) {
         LivingEntity entity = event.getEntity();
         if (!(entity instanceof Villager villager) || villager.level().isClientSide) {
