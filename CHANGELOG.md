@@ -1,5 +1,16 @@
 # Changelog
 
+## Alpha 0.15.0 — поэтапное списание и резерв склада
+
+- New construction orders retain their materials in the physical warehouse and reserve the full outstanding cost in world saved data.
+- When a builder completes a layer, the exact items assigned to that layer are withdrawn from the central warehouse before blocks are placed.
+- Building a new order is rejected if stock already backing other orders would be double-reserved.
+- The command interface and normal / shift-click warehouse withdrawals protect stock committed to active construction orders.
+- Construction pauses without placing blocks if the warehouse is missing or any outstanding reservation is no longer physically present.
+- Cancelling a new order releases its remaining warehouse reservation; unconsumed items remain in the warehouse. Old saved orders retain the upfront-paid behavior and their existing refund rules.
+- Construction status and documentation now describe reservation shortages and stage-based physical withdrawal.
+- Automated CI and manual in-game verification are required before treating this alpha build as fully validated.
+
 ## Alpha 0.14.0 — послойная смета материалов
 
 - Added immutable material allocations for each layer of the cabin, farm and workshop; the sum of allocations is validated against the building's full cost.
