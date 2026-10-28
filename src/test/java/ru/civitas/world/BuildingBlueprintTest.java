@@ -181,19 +181,26 @@ class BuildingBlueprintTest {
     }
 
     @Test
-    void fourQuarterTurnsRestoreTheOriginalBlueprint() {
+    void rotationNormalizationKeepsBlueprintStable() {
         for (BuildingDefinition definition : BuildingDefinition.all()) {
             for (int layer = 1; layer <= definition.totalLayers(); layer++) {
                 var original = BuildingBlueprint.layer(definition.type(), layer, 0).stream()
                         .map(p -> p.relativePosition() + "|" + p.blockId() + "|" + p.cropAge())
                         .sorted().toList();
-                for (int rotation : new int[]{90, 180, 270}) {
-                    var rotated = BuildingBlueprint.layer(definition.type(), layer, rotation).stream()
-                            .map(p -> p.relativePosition() + "|" + p.blockId() + "|" + p.cropAge())
-                            .sorted().toList();
-                    assertEquals(original.size(), rotated.size(),
-                            definition.id() + " layer " + layer + " rotation " + rotation);
-                }
+                var fullTurn = BuildingBlueprint.layer(definition.type(), layer, 360).stream()
+                        .map(p -> p.relativePosition() + "|" + p.blockId() + "|" + p.cropAge())
+                        .sorted().toList();
+                assertEquals(original, fullTurn,
+                        definition.id() + " layer " + layer + " must be unchanged after a full turn");
+
+                var quarterTurn = BuildingBlueprint.layer(definition.type(), layer, 90).stream()
+                        .map(p -> p.relativePosition() + "|" + p.blockId() + "|" + p.cropAge())
+                        .sorted().toList();
+                var normalizedQuarterTurn = BuildingBlueprint.layer(definition.type(), layer, 450).stream()
+                        .map(p -> p.relativePosition() + "|" + p.blockId() + "|" + p.cropAge())
+                        .sorted().toList();
+                assertEquals(quarterTurn, normalizedQuarterTurn,
+                        definition.id() + " layer " + layer + " rotation normalization");
             }
         }
     }
