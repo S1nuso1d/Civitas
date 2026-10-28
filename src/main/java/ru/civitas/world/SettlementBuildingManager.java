@@ -468,16 +468,17 @@ public final class SettlementBuildingManager {
         try {
             BuildingBlueprint.placeHouseUpgrade(level, ground, nextLevel, building.rotationDegrees());
             if (!data.upgradeBuilding(buildingIndex - 1, building.upgradeLevel())) {
-                // This should only happen if the building record changed during this operation.
+                BuildingBlueprint.removeHouseUpgrade(level, ground, nextLevel, building.rotationDegrees());
                 for (Map.Entry<String, Integer> entry : costs.entrySet()) {
                     Item item = BuiltInRegistries.ITEM.get(ResourceLocation.parse(entry.getKey()));
                     insertWarehouseItems(warehouse, item, entry.getValue());
                 }
-                return new BuildResult(false, "Дом изменился во время улучшения; материалы возвращены на склад.");
+                return new BuildResult(false, "Дом изменился во время улучшения; изменения отменены, материалы возвращены на склад.");
             }
         } catch (RuntimeException exception) {
-            // Do not silently charge for a failed blueprint. Best-effort restore
-            // the paid materials; block placements are validated before mutation.
+            // Roll back only the exact blocks from this upgrade, preserving any
+            // player replacement that no longer matches the blueprint.
+            BuildingBlueprint.removeHouseUpgrade(level, ground, nextLevel, building.rotationDegrees());
             for (Map.Entry<String, Integer> entry : costs.entrySet()) {
                 Item item = BuiltInRegistries.ITEM.get(ResourceLocation.parse(entry.getKey()));
                 insertWarehouseItems(warehouse, item, entry.getValue());
