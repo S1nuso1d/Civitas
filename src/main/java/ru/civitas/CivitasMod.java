@@ -65,8 +65,16 @@ public final class CivitasMod {
         MinecraftForge.EVENT_BUS.addListener(TradeCaravanManager::onLivingDeath);
         MinecraftForge.EVENT_BUS.addListener(this::onTradeInteract);
         MinecraftForge.EVENT_BUS.addListener(this::onTradeHurt);
+        MinecraftForge.EVENT_BUS.addListener(CivitasMod::onAchievementProgressTick);
     }
 
+
+    private static void onAchievementProgressTick(net.minecraftforge.event.TickEvent.LevelTickEvent event) {
+        if (event.phase == net.minecraftforge.event.TickEvent.Phase.END
+                && event.level instanceof ServerLevel level) {
+            CivitasNetwork.tickAchievementProgress(level);
+        }
+    }
 
     private void onTradeInteract(PlayerInteractEvent.EntityInteract event) {
         if (event.getLevel().isClientSide() || !(event.getTarget() instanceof Villager villager)
