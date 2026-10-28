@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import ru.civitas.data.CivitasSavedData;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -79,4 +80,67 @@ class ConstructionReservationTest {
         assertThrows(UnsupportedOperationException.class,
                 () -> order.remainingReservedResources().put("minecraft:diamond", 1));
     }
+
+    @Test
+    void exactLayerPlanRefundsOnlyMaterialsAssignedToUnbuiltLayers() {
+        BuildingDefinition definition = BuildingDefinition.get(BuildingDefinition.Type.CABIN);
+        CivitasSavedData data = new CivitasSavedData();
+        data.addConstructionOrder(definition.id(), new BlockPos(5, 64, 7),
+                definition.totalLayers(), definition.costs(), definition.layerCosts());
+
+        CivitasSavedData.ConstructionOrder order = data.getConstructionOrders().get(0);
+        assertTrue(order.hasValidLayerCosts());
+        assertEquals(definition.costs(), order.remainingReservedResources());
+
+        data.advanceConstructionOrder(order);
+        order = data.getConstructionOrders().get(0);
+        assertEquals(1, order.progress());
+        assertEquals(Map.of(
+                "minecraft:oak_planks", 20,
+                "minecraft:oak_log", 8,
+                "minecraft:glass", 4
+        ), order.remainingReservedResources());
+
+        data.advanceConstructionOrder(order);
+        data.advanceConstructionOrder(data.getConstructionOrders().get(0));
+        order = data.getConstructionOrders().get(0);
+        assertEquals(3, order.progress());
+        assertEquals(Map.of(
+                "minecraft:oak_planks", 20,
+                "minecraft:oak_log", 2,
+                "minecraft:glass", 2
+        ), order.remainingReservedResources());
+    }
+
+    @Test
+    void stagePlanIsDeepCopiedAndPreservedWhenProgressAdvances() {
+        BuildingDefinition definition = BuildingDefinition.get(BuildingDefinition.Type.FARM);
+        List<Map<String, Integer>> originalPlan = definition.layerCosts();
+        CivitasSavedData data = new CivitasSavedData();
+        data.addConstructionOrder(definition.id(), new BlockPos(5, 64, 7),
+                definition.totalLayers(), definition.costs(), originalPlan);
+
+        CivitasSavedData.ConstructionOrder before = data.getConstructionOrders().get(0);
+        assertThrows(UnsupportedOperationException.class,
+                () -> before.layerCosts().get(0).put("minecraft:diamond", 1));
+        assertThrows(UnsupportedOperationException.class,
+                () -> before.layerCosts().clear());
+
+        data.advanceConstructionOrder(before);
+        CivitasSavedData.ConstructionOrder after = data.getConstructionOrders().get(0);
+        assertEquals(originalPlan, after.layerCosts());
+        assertEquals(Map.of("minecraft:wheat_seeds", 24), after.remainingReservedResources());
+    }
+
+    @Test
+    void legacyReservationWithoutLayerPlanKeepsProportionalRefundBehavior() {
+        CivitasSavedData.ConstructionOrder legacy =
+                new CivitasSavedData.ConstructionOrder("cabin", 1, 64, 1, 1, 4, reservation());
+
+        assertTrue(!legacy.hasValidLayerCosts());
+        assertEquals(24, legacy.remainingReservedResources().get("minecraft:oak_planks"));
+        assertEquals(6, legacy.remainingReservedResources().get("minecraft:oak_log"));
+        assertEquals(1, legacy.remainingReservedResources().get("minecraft:water_bucket"));
+    }
+
 }
