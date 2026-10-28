@@ -584,7 +584,7 @@ public final class LumberjackWorkerAI {
 
     private static void replant(ServerLevel level, BlockPos base, net.minecraft.world.level.block.Block logBlock) {
         net.minecraft.world.level.block.Block sapling = saplingFor(logBlock);
-        if (sapling == null || !level.isLoaded(base) || !level.isEmptyBlock(base)) return;
+        if (sapling == null || !level.hasChunkAt(base) || !level.isEmptyBlock(base)) return;
         BlockState ground = level.getBlockState(base.below());
         if (ground.is(Blocks.DIRT) || ground.is(Blocks.GRASS_BLOCK) || ground.is(Blocks.PODZOL)) {
             level.setBlockAndUpdate(base, sapling.defaultBlockState());
