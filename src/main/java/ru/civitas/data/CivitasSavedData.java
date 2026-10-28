@@ -306,6 +306,10 @@ public final class CivitasSavedData extends SavedData {
             CompoundTag claim = storedClaims.getCompound(i);
             data.claimedChunks.add(new ChunkPos(claim.getInt("x"), claim.getInt("z")).toLong());
         }
+        // Backward-compatible migration: existing founded settlements receive their founding chunk.
+        if (data.founded && data.claimedChunks.isEmpty()) {
+            data.claimedChunks.add(new ChunkPos(data.centerX >> 4, data.centerZ >> 4).toLong());
+        }
         return data;
     }
 
@@ -649,10 +653,20 @@ public final class CivitasSavedData extends SavedData {
             return false;
         }
         BlockPos chunkCenter = new BlockPos(chunkX * 16 + 8, getTerritoryCenter().getY(), chunkZ * 16 + 8);
-        if (!isWithinTerritory(chunkCenter)) return false;
+        if (!isWithinTerritory(chunkCenter) || !isAdjacentToClaim(chunkX, chunkZ)) return false;
         claimedChunks.add(new ChunkPos(chunkX, chunkZ).toLong());
         setDirty();
         return true;
+    }
+
+    /** Keeps territorial expansion contiguous: a new claim must share an edge with an owned chunk. */
+    private boolean isAdjacentToClaim(int chunkX, int chunkZ) {
+        for (long packed : claimedChunks) {
+            ChunkPos owned = new ChunkPos(packed);
+            int distance = Math.abs(owned.x - chunkX) + Math.abs(owned.z - chunkZ);
+            if (distance == 1) return true;
+        }
+        return false;
     }
 
     /** The founding chunk is permanent; other chunks can be released by the owner. */
