@@ -792,7 +792,17 @@ public final class SettlementScreen extends Screen {
             return;
         }
         record Achievement(String id, String branch, String name, String condition, int tier) {
-            boolean unlocked(SettlementSnapshot snapshot) { return snapshot.unlockedAchievements().contains(id); }
+            String unlockRecord(SettlementSnapshot snapshot) {
+                String prefix = id + "|";
+                return snapshot.unlockedAchievements().stream().filter(record -> record.startsWith(prefix)).findFirst().orElse(null);
+            }
+            boolean unlocked(SettlementSnapshot snapshot) { return unlockRecord(snapshot) != null; }
+            long unlockedDay(SettlementSnapshot snapshot) {
+                String record = unlockRecord(snapshot);
+                if (record == null) return -1L;
+                try { return Long.parseLong(record.substring(record.lastIndexOf("|") + 1)); }
+                catch (NumberFormatException ignored) { return -1L; }
+            }
         }
         List<Achievement> tree = List.of(
                 new Achievement("settlement_founded", "ОСНОВАНИЕ", "I. Первое поселение", "Основать поселение", 1),
@@ -830,7 +840,9 @@ public final class SettlementScreen extends Screen {
             boolean unlocked = achievement.unlocked(snapshot);
             String line = (unlocked ? "✓ " : "○ ")
                     + "[" + achievement.branch() + "] " + achievement.name()
-                    + " — " + achievement.condition();
+                    + " — " + achievement.condition()
+                    + (unlocked && achievement.unlockedDay(snapshot) >= 0
+                        ? " · день " + achievement.unlockedDay(snapshot) : "");
             drawLine(startY + row * 14, line,
                     unlocked ? 0xFF236B36 : 0xFF777777, contentWidth);
         }
