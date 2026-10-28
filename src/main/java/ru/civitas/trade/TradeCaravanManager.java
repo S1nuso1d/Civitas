@@ -167,14 +167,14 @@ public final class TradeCaravanManager {
     }
 
     private static BlockPos findTradePoint(ServerLevel level, BlockPos center) {
-        BlockPos best = center;
+        BlockPos best = null;
         int bestDistance = Integer.MAX_VALUE;
         for (BlockPos pos : BlockPos.betweenClosed(center.offset(-24, -8, -24), center.offset(24, 8, 24))) {
             if (!level.hasChunkAt(pos) || !level.getBlockState(pos).is(Blocks.BELL)) continue;
             int distance = (int)pos.distSqr(center);
             if (distance < bestDistance) { best = pos.immutable(); bestDistance = distance; }
         }
-        return best.immutable();
+        return best == null ? null : best.immutable();
     }
 
     private static BlockPos findSurface(ServerLevel level, BlockPos rough) {

@@ -616,7 +616,7 @@ public final class CivitasNetwork {
 
 
     public static void openTradeScreen(ServerPlayer player, TradeCaravan caravan, CivitasSavedData data) {
-        if (player == null || caravan == null || data == null || !caravan.canTrade()) return;
+        if (player == null || caravan == null || data == null || caravan.state() != TradeCaravan.State.WAIT) return;
         TradePartner partner = data.getTradePartner(caravan.partnerId());
         if (partner == null) return;
         List<TradeScreenPacket.OfferLine> lines = new ArrayList<>();
