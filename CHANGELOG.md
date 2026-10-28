@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.32.0] - Achievement Branches & Dashboard Improvements
+
+### Added
+- Reworked the Achievements tab into a scrollable progression tree with named branches and previous/next navigation.
+- Expanded the tree to 21 milestone conditions spanning founding, population, crafts, construction, economy, trade, territory, workforce and development.
+- Added contextual progress totals and visual distinction between completed and pending milestones.
+- Added milestones based on food reserves, housing, worker assignment, idle residents and recent resource trends.
+
+### Important scope note
+- This first UI pass calculates milestone states from the current authoritative settlement snapshot. Unlocks are not yet individually persisted, there are no reward grants, and prerequisites do not yet gate later milestones.
+- Building appearance, resident task coordination and persistent achievement rewards remain follow-up implementation areas.
+- Build, automated tests and in-game layout have not been verified for this commit.
+
+
 ## [0.32.0] - Living Settlement
 
 ### Added
