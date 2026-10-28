@@ -1,22 +1,17 @@
-Civitas Alpha 0.32.0 — Living Settlement
+Civitas Alpha 0.32.0 — Achievement Branches & Dashboard Improvements
 Target: Minecraft Java Edition 1.21.1 + Forge 52.1.20 + Java 21
 
-Added:
-- Responsive settlement UI now includes a Buildings tab and an achievement-tree tab.
-- Building list displays stable 1-based indices and cabin upgrade levels.
-- Owner-only /civitas buildings upgrade <index> upgrades registered cabins to level 2 or 3.
-- Level 2 adds a porch, fence railings and lantern; level 3 adds a brick chimney and lanterns.
-- Upgrade materials are withdrawn from free warehouse stock only; resources reserved by construction orders are not available.
-- Building upgrade metadata (level and rotation) is persisted. Existing world data defaults to level 1 and rotation 0.
-- Upgrade placement is prevalidated and has a rollback path for upgrade blocks and materials.
-- Construction workers perform a visible main-hand swing while work progress advances.
-- Added tests for house upgrade footprint, unique positions and invalid parameters.
+Included:
+- Achievement dashboard reorganized into a scrollable tree with nine named branches.
+- Twenty-one milestone conditions cover founding, population, housing, crafts, construction, economy, trade/resource trends, territory, worker assignment and development.
+- Previous/next navigation and completed/pending visual states.
+- Milestones are computed from the server-provided settlement snapshot.
 
 Known limitations:
-- Achievement unlocks are derived from saved settlement state and shown in the UI; this release does not add a separate claimable reward system.
-- Resident behavior improvements are incremental: this release adds visible construction work animation, not a full daily schedule or needs simulation.
-- Fire/fluid spread, mob griefing and third-party world changes are not comprehensively protected.
-- The exact release has not been verified with a local Gradle build, tests or manual Minecraft play.
+- Achievement completion is derived from current state and is not individually persisted.
+- Milestone rewards and prerequisite-gated progression are not implemented yet.
+- Resident behavior, house models and house upgrade effects have not been changed in this release.
+- No build, unit test or in-game verification has been confirmed for this exact commit.
 
 Validation:
-- Run build and test tasks, inspect build/libs, then manually verify upgrades, persistence and UI in a disposable world before distributing a JAR.
+- Run the Gradle build and test tasks and inspect build/libs before distributing a JAR.
