@@ -81,7 +81,12 @@ public final class BuildingBlueprint {
     /** Check a whole layer before resources are charged. */
     public static boolean canPlaceLayer(ServerLevel level, BlockPos ground,
                                         BuildingDefinition.Type type, int layer) {
-        for (Placement p : layer(type, layer)) {
+        return canPlaceLayer(level, ground, type, layer, 0);
+    }
+
+    public static boolean canPlaceLayer(ServerLevel level, BlockPos ground,
+                                        BuildingDefinition.Type type, int layer, int rotationDegrees) {
+        for (Placement p : layer(type, layer, rotationDegrees)) {
             BlockPos target = ground.offset(p.relativePosition());
             if (!level.hasChunkAt(target)) return false;
             if (p.clearsBlock()) continue;
@@ -93,11 +98,16 @@ public final class BuildingBlueprint {
     }
 
     public static void placeLayer(ServerLevel level, BlockPos ground, BuildingDefinition.Type type, int layer) {
+        placeLayer(level, ground, type, layer, 0);
+    }
+
+    public static void placeLayer(ServerLevel level, BlockPos ground, BuildingDefinition.Type type,
+                                  int layer, int rotationDegrees) {
         List<BlockPos> deferredDoorUpdates = new ArrayList<>();
-        for (Placement p : layer(type, layer)) {
+        for (Placement p : layer(type, layer, rotationDegrees)) {
             BlockPos target = ground.offset(p.relativePosition());
             if (!level.hasChunkAt(target)) continue;
-            BlockState state = resolveState(p);
+            BlockState state = resolveState(p, rotationDegrees);
             // Door halves must exist together before neighbour updates run, otherwise
             // Minecraft may immediately drop the first half while the second is air.
             if (state.getBlock() instanceof DoorBlock) {
@@ -113,7 +123,12 @@ public final class BuildingBlueprint {
     }
 
     public static void removeLayer(ServerLevel level, BlockPos ground, BuildingDefinition.Type type, int layer) {
-        for (Placement p : layer(type, layer)) {
+        removeLayer(level, ground, type, layer, 0);
+    }
+
+    public static void removeLayer(ServerLevel level, BlockPos ground, BuildingDefinition.Type type,
+                                   int layer, int rotationDegrees) {
+        for (Placement p : layer(type, layer, rotationDegrees)) {
             if (p.clearsBlock()) continue;
             BlockPos target = ground.offset(p.relativePosition());
             if (level.hasChunkAt(target) && level.getBlockState(target).is(resolveBlock(p.blockId()))) {
