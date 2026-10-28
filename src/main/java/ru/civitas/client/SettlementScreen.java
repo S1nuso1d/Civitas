@@ -55,11 +55,19 @@ public final class SettlementScreen extends Screen {
     private EditBox itemId;
     private EditBox amount;
     private EditBox orderIndex;
+    private EditBox buildX;
+    private EditBox buildY;
+    private EditBox buildZ;
+    private EditBox buildRotation;
 
     private String settlementNameValue = "Новая деревня";
     private String itemIdValue = "minecraft:oak_log";
     private String amountValue = "16";
     private String orderIndexValue = "1";
+    private String buildXValue = "~";
+    private String buildYValue = "~-1";
+    private String buildZValue = "~";
+    private String buildRotationValue = "0";
     private String pendingBuild = "";
 
     private int buildOffset;
@@ -225,7 +233,83 @@ public final class SettlementScreen extends Screen {
                     sendAction(CivitasNetwork.Action.BUILD, definition.id(), 0);
                 }, buildingIcon(definition.type()));
             }
+
+            // Manual plot controls: coordinates point to the solid ground block
+            // under the structure, and "~ ~-1 ~" defaults to the player's feet.
+            int fieldsY = navY + 118;
+            int fieldGap = 4;
+            int fieldWidth = Math.max(18, (contentWidth - fieldGap * 3) / 4);
+            buildX = createCoordinateField(buildXValue, "X / ~", contentX,
+                    fieldsY + 10, fieldWidth);
+            buildY = createCoordinateField(buildYValue, "Y / ~-1", contentX + fieldWidth + fieldGap,
+                    fieldsY + 10, fieldWidth);
+            buildZ = createCoordinateField(buildZValue, "Z / ~", contentX + (fieldWidth + fieldGap) * 2,
+                    fieldsY + 10, fieldWidth);
+            buildRotation = new EditBox(font,
+                    contentX + (fieldWidth + fieldGap) * 3, fieldsY + 10, fieldWidth, 20,
+                    Component.literal("Поворот"));
+            buildRotation.setMaxLength(3);
+            buildRotation.setValue(buildRotationValue);
+            buildRotation.setFilter(value -> value.isEmpty() || value.chars().allMatch(Character::isDigit));
+            buildRotation.setHint(Component.literal("0/90/180/270"));
+            addRenderableWidget(buildRotation);
+
+            int actionY = fieldsY + 34;
+            int actionWidth = (contentWidth - fieldGap) / 2;
+            addButton("Чертёж", contentX, actionY, actionWidth, 20,
+                    () -> submitManualBuild(true), Items.SPYGLASS);
+            addButton("Строить здесь", contentX + actionWidth + fieldGap, actionY,
+                    contentWidth - actionWidth - fieldGap, 20,
+                    () -> submitManualBuild(false), Items.OAK_DOOR);
         }
+    }
+
+    private EditBox createCoordinateField(String value, String hint, int x, int y, int fieldWidth) {
+        EditBox field = new EditBox(font, x, y, fieldWidth, 20, Component.literal(hint));
+        field.setMaxLength(12);
+        field.setValue(value);
+        field.setFilter(text -> text.matches("(?:-?\\d*|~?-?\\d*)"));
+        field.setHint(Component.literal(hint));
+        addRenderableWidget(field);
+        return field;
+    }
+
+    private void submitManualBuild(boolean preview) {
+        rememberInputs();
+        if (pendingBuild == null || !pendingBuild.startsWith("civitas build ")) {
+            if (minecraft != null && minecraft.player != null) {
+                minecraft.player.displayClientMessage(
+                        Component.literal("Сначала выбери здание в списке выше."), false);
+            }
+            return;
+        }
+        String type = pendingBuild.substring("civitas build ".length()).trim();
+        if (BuildingDefinition.find(type).isEmpty()) return;
+
+        if (!isBuildCoordinate(buildXValue) || !isBuildCoordinate(buildYValue)
+                || !isBuildCoordinate(buildZValue)) {
+            if (minecraft != null && minecraft.player != null) {
+                minecraft.player.displayClientMessage(
+                        Component.literal("Координаты должны быть целыми числами или относительными координатами вида ~ и ~-1."),
+                        false);
+            }
+            return;
+        }
+        int rotation = safeInteger(buildRotationValue, 0, 359, -1);
+        if (rotation != 0 && rotation != 90 && rotation != 180 && rotation != 270) {
+            if (minecraft != null && minecraft.player != null) {
+                minecraft.player.displayClientMessage(
+                        Component.literal("Угол поворота должен быть 0, 90, 180 или 270 градусов."), false);
+            }
+            return;
+        }
+        String payload = type + "|" + buildXValue.trim() + "|" + buildYValue.trim() + "|" + buildZValue.trim();
+        sendAction(preview ? CivitasNetwork.Action.PREVIEW_BUILD : CivitasNetwork.Action.BUILD_AT,
+                payload, rotation);
+    }
+
+    private static boolean isBuildCoordinate(String value) {
+        return value != null && value.trim().matches("(?:-?\\d+|~(?:-?\\d+)?)");
     }
 
     private void initStorage() {
@@ -307,6 +391,10 @@ public final class SettlementScreen extends Screen {
         if (itemId != null) itemIdValue = itemId.getValue().trim();
         if (amount != null) amountValue = amount.getValue();
         if (orderIndex != null) orderIndexValue = orderIndex.getValue();
+        if (buildX != null) buildXValue = buildX.getValue();
+        if (buildY != null) buildYValue = buildY.getValue();
+        if (buildZ != null) buildZValue = buildZ.getValue();
+        if (buildRotation != null) buildRotationValue = buildRotation.getValue();
     }
 
     private static String cleanText(String value, int maxLength) {
@@ -462,14 +550,17 @@ public final class SettlementScreen extends Screen {
             drawLineAt(contentX + buttonWidth + 8, y, cost, 0xFF303030,
                     Math.max(24, contentWidth - buttonWidth - 8));
         }
+        drawLine(contentY + 107, "Участок: X / Y / Z — блок земли под зданием; угол: 0 / 90 / 180 / 270.",
+                0xFF303030, contentWidth);
         if (!pendingBuild.isEmpty()) {
             String selectedId = pendingBuild.substring("civitas build ".length());
             String preview = BuildingDefinition.find(selectedId)
-                    .map(definition -> "Подтверди: " + definition.displayName() + " — " + definition.describeCosts())
-                    .orElse("Повтори нажатие для подтверждения");
-            drawLine(contentBottom - 12, preview, 0xFF7A2828, contentWidth);
+                    .map(definition -> "Выбрано: " + definition.displayName() + " — " + definition.describeCosts())
+                    .orElse("Выбери здание в списке");
+            drawLine(contentBottom - 12, preview + " | дважды нажать по зданию = автоместо",
+                    0xFF7A2828, contentWidth);
         } else {
-            drawLine(contentBottom - 12, "Выбери здание и нажми ещё раз для подтверждения.",
+            drawLine(contentBottom - 12, "Выбери здание выше, затем «Чертёж» или «Строить здесь».",
                     0xFF303030, contentWidth);
         }
     }
