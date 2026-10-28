@@ -134,18 +134,20 @@ public final class StarterVillageGenerator {
 
     private static void buildRoads(ServerLevel level, BlockPos center) {
         for (int offset = -11; offset <= 11; offset++) {
-            level.setBlock(center.offset(0, 0, offset), Blocks.DIRT_PATH.defaultBlockState(), Block.UPDATE_ALL);
-            level.setBlock(center.offset(offset, 0, 0), Blocks.DIRT_PATH.defaultBlockState(), Block.UPDATE_ALL);
+            // Heightmap returns the first air block above the terrain. The path block
+            // must replace the ground block at y = -1, not float in that air space.
+            level.setBlock(center.offset(0, -1, offset), Blocks.DIRT_PATH.defaultBlockState(), Block.UPDATE_ALL);
+            level.setBlock(center.offset(offset, -1, 0), Blocks.DIRT_PATH.defaultBlockState(), Block.UPDATE_ALL);
         }
         for (int signX : new int[]{-1, 1}) {
             for (int signZ : new int[]{-1, 1}) {
                 int houseX = signX * 7;
                 int entranceZ = signZ * 7 - 2;
                 for (int x = 0; x <= 7; x++) {
-                    level.setBlock(center.offset(signX * x, 0, entranceZ), Blocks.DIRT_PATH.defaultBlockState(), Block.UPDATE_ALL);
+                    level.setBlock(center.offset(signX * x, -1, entranceZ), Blocks.DIRT_PATH.defaultBlockState(), Block.UPDATE_ALL);
                 }
                 for (int z = 0; z <= Math.abs(entranceZ); z++) {
-                    level.setBlock(center.offset(houseX, 0, Integer.signum(entranceZ) * z), Blocks.DIRT_PATH.defaultBlockState(), Block.UPDATE_ALL);
+                    level.setBlock(center.offset(houseX, -1, Integer.signum(entranceZ) * z), Blocks.DIRT_PATH.defaultBlockState(), Block.UPDATE_ALL);
                 }
             }
         }
