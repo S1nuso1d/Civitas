@@ -365,6 +365,14 @@ public final class SettlementBuildingManager {
         if (layer < 1 || layer > BuildingDefinition.get(type).totalLayers()) {
             return new BuildResult(false, "У заказа некорректный номер слоя; строительство остановлено без списания ресурсов.");
         }
+
+        // Re-check ownership of the complete plot on every layer. Claims can
+        // change after an order is queued, and a saved order must never continue
+        // constructing outside the settlement's current territory.
+        BuildResult territoryCheck = validateOrderTerritory(level, data, ground,
+                BuildingDefinition.get(type), order.rotationDegrees());
+        if (!territoryCheck.success()) return territoryCheck;
+
         if (!BuildingBlueprint.canPlaceLayer(level, ground, type, layer, order.rotationDegrees())) {
             return new BuildResult(false,
                     "Слой " + layer + " пока нельзя безопасно построить: участок занят или часть чанков не загружена. Материалы не списаны.");
@@ -412,6 +420,33 @@ public final class SettlementBuildingManager {
         }
         return new BuildResult(true, "Слой " + layer + " завершён.");
     }
+    private static BuildResult validateOrderTerritory(
+            ServerLevel level, CivitasSavedData data, BlockPos ground,
+            BuildingDefinition definition, int rotationDegrees) {
+        if (rotationDegrees < 0 || rotationDegrees >= 360 || rotationDegrees % 90 != 0) {
+            return new BuildResult(false, "У заказа некорректный поворот; строительство приостановлено без списания ресурсов.");
+        }
+
+        boolean swapAxes = rotationDegrees == 90 || rotationDegrees == 270;
+        int radiusX = swapAxes ? definition.radiusZ() : definition.radiusX();
+        int radiusZ = swapAxes ? definition.radiusX() : definition.radiusZ();
+        for (int dx = -radiusX; dx <= radiusX; dx++) {
+            for (int dz = -radiusZ; dz <= radiusZ; dz++) {
+                BlockPos column = ground.offset(dx, 0, dz);
+                if (!level.hasChunkAt(column)) {
+                    return new BuildResult(false, "Строительство приостановлено: часть площадки не загружена.");
+                }
+                if (!data.isWithinTerritory(column)) {
+                    return new BuildResult(false, "Строительство приостановлено: часть здания вышла за зону влияния поселения.");
+                }
+                if (!data.isChunkClaimed(column)) {
+                    return new BuildResult(false, "Строительство приостановлено: часть здания больше не находится в занятых чанках. Верни чанк под контроль командой /civitas territory claim.");
+                }
+            }
+        }
+        return new BuildResult(true, "Территория подтверждена.");
+    }
+
     private static BlockPos findSite(ServerLevel level, BlockPos center, BuildingDefinition.Type type, CivitasSavedData data) {
         BuildingDefinition definition = BuildingDefinition.get(type);
         // Automatic sites stay outside the 29x29 starter village, its four
