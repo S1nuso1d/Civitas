@@ -35,6 +35,8 @@ public final class SettlementBuildingManager {
             return new BuildResult(false,
                     "Нет свободной площадки рядом с деревней. Освободи участок примерно 7×7 блоков.");
         }
+        BuildResult validation = validateManualSite(level, warehousePos, type, data, site, 0);
+        if (!validation.success()) return validation;
         return queueAtSite(level, warehouse, type, data, site, 0);
     }
 
