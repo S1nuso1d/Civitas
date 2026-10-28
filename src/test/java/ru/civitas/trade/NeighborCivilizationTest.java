@@ -29,6 +29,21 @@ class NeighborCivilizationTest {
         assertTrue(loaded.siteGenerated());
         assertEquals(new net.minecraft.core.BlockPos(1234, 72, -456), loaded.site());
     }
+    @Test void diplomaticStanceChangesDailySimulation() {
+        NeighborCivilization allied = create();
+        NeighborCivilization hostile = create();
+        allied.setStance(NeighborCivilization.Stance.ALLIED);
+        hostile.setStance(NeighborCivilization.Stance.WAR);
+
+        allied.advanceToDay(0);
+        hostile.advanceToDay(0);
+
+        assertTrue(allied.stability() > hostile.stability(),
+                "Alliance should preserve stability better than war");
+        assertTrue(allied.food() > hostile.food(),
+                "Alliance should support food reserves better than war");
+    }
+
     @Test void warDisablesTradeAndPeaceRestoresIt() {
         NeighborCivilization c = create();
         assertTrue(c.permitsTrade());
