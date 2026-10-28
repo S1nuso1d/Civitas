@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.28.0] - Persistent Chunk Territory
+
+### Added
+- Persisted settlement chunk claims in world SavedData, with backward-compatible loading for existing saves.
+- Founding automatically claims the settlement's founding chunk; it cannot be released.
+- Added `/civitas territory claim`, `unclaim`, and `show` for current-chunk management and particle boundary visualization.
+- Claim capacity scales with settlement influence; claims are allowed only when the chunk center lies inside the influence radius.
+- Explicit-position building and blueprint preview commands now require both influence eligibility and a claimed chunk.
+
+### Scope and validation
+- Claims currently apply to the settlement in the overworld only; there is no multi-civilization ownership conflict system yet.
+- This does not protect arbitrary blocks from players, explosions, mobs, or other mods.
+- Build, unit tests, JAR packaging, and manual gameplay must be verified for the exact release commit.
+
+# Changelog
+
 ## [0.27.0] - Territory Boundaries
 
 ### Added
