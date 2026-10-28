@@ -1,9 +1,9 @@
-Civitas Alpha 0.32.1 — Living Settlement
+Civitas Alpha 0.33.0 — Persistent Achievements
 Target: Minecraft Java Edition 1.21.1 + Forge 52.1.20 + Java 21
 
 Implemented in source:
 - Settlement UI includes Buildings and Achievements tabs. Buildings supports paging, displays registered indices and cabin levels, and shows upgrade costs.
-- Achievement tree presents 21 milestone conditions across eight accurately named development areas. Conditions are derived from the server snapshot; individual unlock records and rewards are not implemented.
+- Achievement tree presents 21 milestone conditions across eight accurately named development areas. Stable IDs and first-unlock world days are persisted in NBT and sent through the version 8 snapshot protocol; rewards and prerequisite-gated unlocks are not implemented.
 - Registered Civitas cabins can be upgraded to level 2 or 3 through the owner-only /civitas buildings upgrade <index> command or the Buildings tab.
 - Level 2 adds a porch with slabs, supported fence railings, stairs and lantern. Level 3 adds a brick chimney through the roof.
 - Building records persist upgrade level and rotation; old saves default to level 1 and rotation 0.
@@ -13,7 +13,7 @@ Implemented in source:
 
 Known limitations:
 - The starter-village houses are not yet registered as upgradeable Civitas buildings; the upgrade system currently targets registered cabins built through Civitas construction.
-- Achievement states are derived from current settlement data, not individually persisted. No rewards or prerequisite-gated unlocks yet.
+- Achievements are evaluated when the owner requests/synchronizes the settlement dashboard; they are not yet evaluated continuously while the dashboard is closed. No rewards or prerequisite-gated unlocks yet.
 - Full daily resident schedules, social behavior, rest and happiness are not implemented.
 - Fire/fluid spread, mob griefing and third-party world changes are not comprehensively protected.
 
