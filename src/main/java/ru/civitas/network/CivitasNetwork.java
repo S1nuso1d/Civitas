@@ -8,6 +8,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.AABB;
@@ -28,6 +29,11 @@ import ru.civitas.worker.FarmerWorkerAI;
 import ru.civitas.economy.SettlementEconomyAI;
 import ru.civitas.CivitasConfig;
 import ru.civitas.data.StorageFoodExtension;
+import ru.civitas.trade.TradeCaravan;
+import ru.civitas.trade.TradeOffer;
+import ru.civitas.trade.TradePartner;
+import net.minecraft.world.Container;
+import net.minecraft.world.item.Items;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -105,6 +111,22 @@ public final class CivitasNetwork {
                 })
                 .add();
 
+
+        CHANNEL.messageBuilder(TradeActionPacket.class, id++)
+                .direction(PacketFlow.SERVERBOUND)
+                .encoder(TradeActionPacket::encode)
+                .decoder(TradeActionPacket::decode)
+                .consumerMainThread(CivitasNetwork::handleTradeAction)
+                .add();
+        CHANNEL.messageBuilder(TradeScreenPacket.class, id++)
+                .direction(PacketFlow.CLIENTBOUND)
+                .encoder(TradeScreenPacket::encode)
+                .decoder(TradeScreenPacket::decode)
+                .consumerMainThread((packet, context) -> {
+                    DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> ru.civitas.client.TradeScreen.open(packet));
+                    context.setPacketHandled(true);
+                })
+                .add();
         CHANNEL.build();
     }
 
@@ -587,6 +609,176 @@ public final class CivitasNetwork {
 
     private static void send(ServerPlayer player, SettlementSnapshot snapshot) {
         CHANNEL.send(new SnapshotPacket(snapshot), PacketDistributor.PLAYER.with(player));
+    }
+
+
+    public static void openTradeScreen(ServerPlayer player, TradeCaravan caravan, CivitasSavedData data) {
+        if (player == null || caravan == null || data == null || !caravan.canTrade()) return;
+        TradePartner partner = data.getTradePartner(caravan.partnerId());
+        if (partner == null) return;
+        List<TradeScreenPacket.OfferLine> lines = new ArrayList<>();
+        for (TradeOffer offer : caravan.offers()) {
+            lines.add(new TradeScreenPacket.OfferLine(offer.want().getCount() + "× " + offer.want().getHoverName().getString(),
+                    offer.offer().getCount() + "× " + offer.offer().getHoverName().getString(), offer.isAvailable()));
+        }
+        CHANNEL.send(new TradeScreenPacket(caravan.partnerId(), partner.name(), data.getTradeReputation(caravan.partnerId()),
+                caravan.traderId(), lines, data.getTradeHistory(), Math.max(0, caravan.tradeLimit() - caravan.tradesUsed())),
+                PacketDistributor.PLAYER.with(player));
+    }
+
+    private static void handleTradeAction(TradeActionPacket packet, CustomPayloadEvent.Context context) {
+        ServerPlayer player = context.getSender();
+        if (player != null && player.getServer() != null) handleTradeAction(player, packet.traderId(), packet.offerIndex(), packet.gift());
+        context.setPacketHandled(true);
+    }
+
+    private static void handleTradeAction(ServerPlayer player, UUID traderId, int offerIndex, boolean gift) {
+        if (!player.level().dimension().equals(Level.OVERWORLD)) return;
+        MinecraftServer server = player.getServer();
+        if (server == null) return;
+        CivitasSavedData data = CivitasSavedData.get(server);
+        if (!data.isFounded() || (!data.isOwner(player) && !player.createCommandSourceStack().hasPermission(2))) return;
+        ServerLevel level = server.overworld();
+        Entity entity = level.getEntity(traderId);
+        if (!(entity instanceof Villager trader) || !trader.isAlive()
+                || !trader.getPersistentData().getBoolean("civitas.trader") || player.distanceToSqr(trader) > 64.0D) return;
+        TradeCaravan caravan = data.getActiveTradeCaravans().stream().filter(c -> c.traderId().equals(traderId)).findFirst().orElse(null);
+        if (caravan == null || !caravan.canTrade()) return;
+        BlockPos warehousePos = data.getStarterVillageCenter();
+        if (!level.hasChunkAt(warehousePos) || !(level.getBlockEntity(warehousePos) instanceof SettlementWarehouseBlockEntity warehouse)) {
+            player.sendSystemMessage(Component.translatable("civitas.trade.err.no_storage")); return;
+        }
+        ItemStack cost;
+        ItemStack reward = ItemStack.EMPTY;
+        TradeOffer offer = null;
+        if (gift) {
+            cost = new ItemStack(Items.IRON_INGOT, 1);
+        } else {
+            if (offerIndex < 0 || offerIndex >= caravan.offers().size()) return;
+            offer = caravan.offers().get(offerIndex);
+            if (!offer.isAvailable()) return;
+            cost = offer.want();
+            reward = offer.offer();
+            if (!canInsertAll(warehouse, reward)) {
+                player.sendSystemMessage(Component.literal("Civitas: на складе нет места для товара.")); return;
+            }
+        }
+        Map<String, Integer> stock = ru.civitas.world.SettlementBuildingManager.inventoryCounts(warehouse);
+        String itemId = BuiltInRegistries.ITEM.getKey(cost.getItem()).toString();
+        int reserved = data.getWarehouseReservedResources().getOrDefault(itemId, 0);
+        if (stock.getOrDefault(itemId, 0) - reserved < cost.getCount() || !hasExactItems(warehouse, cost)) {
+            player.sendSystemMessage(Component.translatable("civitas.trade.err.not_enough", cost.getHoverName())); return;
+        }
+        int removed = extractExact(warehouse, cost);
+        if (removed != cost.getCount()) {
+            if (removed > 0) insertExact(warehouse, new ItemStack(cost.getItem(), removed));
+            return;
+        }
+        if (!gift && !insertExact(warehouse, reward.copy())) {
+            insertExact(warehouse, cost.copy());
+            player.sendSystemMessage(Component.literal("Civitas: сделка отменена — склад изменился."));
+            return;
+        }
+        TradePartner partner = data.getTradePartner(caravan.partnerId());
+        if (gift) {
+            int gain = CivitasConfig.GIFT_REPUTATION_GAIN.get();
+            data.addTradeReputation(caravan.partnerId(), gain);
+            data.recordTrade("Подарок партнёру «" + (partner == null ? "?" : partner.name()) + "»: +" + gain);
+        } else {
+            offer.markTraded();
+            caravan.markTraded();
+            int gain = CivitasConfig.TRADE_REPUTATION_GAIN.get();
+            data.addTradeReputation(caravan.partnerId(), gain);
+            data.recordTrade("Обмен: " + cost.getCount() + "× " + cost.getHoverName().getString()
+                    + " → " + reward.getCount() + "× " + reward.getHoverName().getString());
+        }
+        warehouse.setChanged();
+        data.markTradeDataDirty();
+        openTradeScreen(player, caravan, data);
+    }
+
+    private static boolean hasExactItems(Container c, ItemStack target) {
+        int total = 0;
+        for (int i=0;i<c.getContainerSize();i++) if (ItemStack.isSameItemSameComponents(c.getItem(i), target)) total += c.getItem(i).getCount();
+        return total >= target.getCount();
+    }
+
+    private static int extractExact(Container c, ItemStack target) {
+        int left = target.getCount(), removed = 0;
+        for (int i=0;i<c.getContainerSize() && left>0;i++) {
+            ItemStack stack = c.getItem(i);
+            if (!ItemStack.isSameItemSameComponents(stack, target)) continue;
+            int take = Math.min(left, stack.getCount());
+            stack.shrink(take);
+            if (stack.isEmpty()) c.setItem(i, ItemStack.EMPTY);
+            left -= take; removed += take;
+        }
+        return removed;
+    }
+
+    private static boolean canInsertAll(Container c, ItemStack target) {
+        int left = target.getCount();
+        for (int i=0;i<c.getContainerSize() && left>0;i++) {
+            ItemStack stack = c.getItem(i);
+            if (stack.isEmpty()) left -= Math.min(left, Math.min(c.getMaxStackSize(), target.getMaxStackSize()));
+            else if (ItemStack.isSameItemSameComponents(stack, target)) {
+                left -= Math.max(0, Math.min(stack.getMaxStackSize(), target.getMaxStackSize()) - stack.getCount());
+            }
+        }
+        return left <= 0;
+    }
+
+    private static boolean insertExact(Container c, ItemStack input) {
+        ItemStack stack = input.copy();
+        for (int i=0;i<c.getContainerSize() && !stack.isEmpty();i++) {
+            ItemStack existing = c.getItem(i);
+            if (existing.isEmpty()) {
+                int moved = Math.min(stack.getCount(), Math.min(c.getMaxStackSize(), stack.getMaxStackSize()));
+                ItemStack placed = stack.copy(); placed.setCount(moved); c.setItem(i, placed); stack.shrink(moved);
+            } else if (ItemStack.isSameItemSameComponents(existing, stack)) {
+                int moved = Math.min(stack.getCount(), Math.max(0, Math.min(existing.getMaxStackSize(), stack.getMaxStackSize()) - existing.getCount()));
+                if (moved > 0) { existing.grow(moved); stack.shrink(moved); }
+            }
+        }
+        return stack.isEmpty();
+    }
+
+    public record TradeActionPacket(UUID traderId, int offerIndex, boolean gift) {
+        public void encode(FriendlyByteBuf b) { b.writeUUID(traderId); b.writeVarInt(offerIndex); b.writeBoolean(gift); }
+        public static TradeActionPacket decode(FriendlyByteBuf b) {
+            UUID id = b.readUUID(); int index = b.readVarInt(); boolean gift = b.readBoolean();
+            if (index < -1 || index > 15) throw new IllegalArgumentException("Invalid trade offer index");
+            return new TradeActionPacket(id, index, gift);
+        }
+    }
+
+    public record TradeScreenPacket(UUID partnerId, String partnerName, int reputation, UUID traderId,
+                                    List<OfferLine> offers, List<String> history, int tradesLeft) {
+        public record OfferLine(String want, String offer, boolean available) { }
+        public TradeScreenPacket {
+            partnerName = partnerName == null ? "Unknown" : partnerName.substring(0, Math.min(64, partnerName.length()));
+            reputation = Math.max(0, Math.min(100, reputation));
+            offers = List.copyOf(offers == null ? List.of() : offers.subList(0, Math.min(8, offers.size())));
+            List<String> safeHistory = history == null ? List.of() : history;
+            history = List.copyOf(safeHistory.subList(Math.max(0, safeHistory.size() - 20), safeHistory.size()));
+            tradesLeft = Math.max(0, Math.min(20, tradesLeft));
+        }
+        public void encode(FriendlyByteBuf b) {
+            b.writeUUID(partnerId); b.writeUtf(partnerName,64); b.writeVarInt(reputation); b.writeUUID(traderId);
+            b.writeVarInt(offers.size());
+            for (OfferLine o:offers) { b.writeUtf(o.want(),128); b.writeUtf(o.offer(),128); b.writeBoolean(o.available()); }
+            b.writeVarInt(history.size()); for (String line:history) b.writeUtf(line,256);
+            b.writeVarInt(tradesLeft);
+        }
+        public static TradeScreenPacket decode(FriendlyByteBuf b) {
+            UUID p=b.readUUID(); String name=b.readUtf(64); int rep=b.readVarInt(); UUID t=b.readUUID();
+            int count=b.readVarInt(); if(count<0||count>8) throw new IllegalArgumentException("Invalid trade offer count");
+            List<OfferLine> offers=new ArrayList<>();
+            for(int i=0;i<count;i++) offers.add(new OfferLine(b.readUtf(128),b.readUtf(128),b.readBoolean()));
+            int h=b.readVarInt(); if(h<0||h>20) throw new IllegalArgumentException("Invalid trade history count");
+            List<String> history=new ArrayList<>(); for(int i=0;i<h;i++) history.add(b.readUtf(256));
+            return new TradeScreenPacket(p,name,rep,t,offers,history,b.readVarInt());
+        }
     }
 
     public record RequestSnapshotPacket() {

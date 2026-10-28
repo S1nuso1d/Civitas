@@ -21,5 +21,16 @@
   "civitas.economy.delta_7d": "Change over 7 days",
   "civitas.economy.recent_events": "Recent events",
   "civitas.economy.history": "Daily history",
-  "civitas.msg.cargo_blocks_switch": "Cannot switch profession: worker carries cargo"
+  "civitas.msg.cargo_blocks_switch": "Cannot switch profession: worker carries cargo",
+  "civitas.trade.title": "Торговец из «%s»",
+  "civitas.trade.reputation": "Репутация: %s/100",
+  "civitas.trade.trades_left": "Сделок осталось: %s",
+  "civitas.trade.offers": "Предложения",
+  "civitas.trade.history": "Последние сделки",
+  "civitas.trade.btn.trade": "Обменять",
+  "civitas.trade.btn.gift": "Подарок (+5 репутации)",
+  "civitas.trade.btn.close": "Закрыть",
+  "civitas.trade.err.far": "Слишком далеко от торговца",
+  "civitas.trade.err.no_storage": "Склад недоступен",
+  "civitas.trade.err.not_enough": "На складе недостаточно: %s"
 }

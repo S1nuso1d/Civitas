@@ -10,11 +10,14 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.util.datafix.DataFixTypes;
 import ru.civitas.CivitasConfig;
+import ru.civitas.trade.TradePartner;
+import ru.civitas.trade.TradeCaravan;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.HashMap;
 import java.util.TreeMap;
 import java.util.UUID;
 
@@ -49,6 +52,12 @@ public final class CivitasSavedData extends SavedData {
     private final Map<String, Integer> resources = new TreeMap<>();
     private final List<BuildingRecord> buildings = new ArrayList<>();
     private final List<ConstructionOrder> constructionOrders = new ArrayList<>();
+    private final Map<UUID, TradePartner> tradePartners = new HashMap<>();
+    private final Map<UUID, Integer> tradeReputation = new HashMap<>();
+    private final List<TradeCaravan> activeTradeCaravans = new ArrayList<>();
+    private final List<String> tradeHistory = new ArrayList<>();
+    private long nextCaravanTick;
+    private BlockPos tradePoint;
 
     public record BuildingRecord(String type, int x, int y, int z) { }
 
@@ -247,6 +256,32 @@ public final class CivitasSavedData extends SavedData {
                 data.resources.put(itemId, count);
             }
         }
+        CompoundTag partnerTags = tag.getCompound("trade_partners");
+        for (String key : partnerTags.getAllKeys()) {
+            try {
+                TradePartner partner = TradePartner.load(partnerTags.getCompound(key));
+                data.tradePartners.put(partner.id(), partner);
+            } catch (RuntimeException ignored) { }
+        }
+        CompoundTag reputationTags = tag.getCompound("trade_reputation");
+        for (String key : reputationTags.getAllKeys()) {
+            try {
+                UUID id = UUID.fromString(key);
+                data.tradeReputation.put(id, Math.max(0, Math.min(100, reputationTags.getInt(key))));
+            } catch (IllegalArgumentException ignored) { }
+        }
+        ListTag caravanTags = tag.getList("trade_caravans", Tag.TAG_COMPOUND);
+        for (int i = 0; i < Math.min(8, caravanTags.size()); i++) {
+            try { data.activeTradeCaravans.add(TradeCaravan.load(caravanTags.getCompound(i))); }
+            catch (RuntimeException ignored) { }
+        }
+        ListTag historyTags = tag.getList("trade_history", Tag.TAG_COMPOUND);
+        for (int i = Math.max(0, historyTags.size() - 20); i < historyTags.size(); i++) {
+            String entry = historyTags.getCompound(i).getString("text");
+            if (!entry.isBlank()) data.tradeHistory.add(entry.substring(0, Math.min(256, entry.length())));
+        }
+        data.nextCaravanTick = Math.max(0L, tag.getLong("next_caravan_tick"));
+        data.tradePoint = tag.contains("trade_point") ? BlockPos.of(tag.getLong("trade_point")) : null;
         return data;
     }
 
@@ -308,6 +343,24 @@ public final class CivitasSavedData extends SavedData {
         CompoundTag storedResources = new CompoundTag();
         resources.forEach(storedResources::putInt);
         tag.put("resources", storedResources);
+        CompoundTag partnerTags = new CompoundTag();
+        tradePartners.forEach((id, partner) -> partnerTags.put(id.toString(), partner.save()));
+        tag.put("trade_partners", partnerTags);
+        CompoundTag reputationTags = new CompoundTag();
+        tradeReputation.forEach((id, value) -> reputationTags.putInt(id.toString(), Math.max(0, Math.min(100, value))));
+        tag.put("trade_reputation", reputationTags);
+        ListTag caravanTags = new ListTag();
+        for (TradeCaravan caravan : activeTradeCaravans) caravanTags.add(caravan.save());
+        tag.put("trade_caravans", caravanTags);
+        ListTag historyTags = new ListTag();
+        for (String entry : tradeHistory) {
+            CompoundTag history = new CompoundTag();
+            history.putString("text", entry);
+            historyTags.add(history);
+        }
+        tag.put("trade_history", historyTags);
+        tag.putLong("next_caravan_tick", nextCaravanTick);
+        if (tradePoint != null) tag.putLong("trade_point", tradePoint.asLong());
         return tag;
     }
 
@@ -524,6 +577,44 @@ public final class CivitasSavedData extends SavedData {
         }
         return false;
     }
+
+    // Trade & caravans (0.20.0).
+    public Map<UUID, TradePartner> getTradePartners() { return Collections.unmodifiableMap(new HashMap<>(tradePartners)); }
+    public TradePartner getTradePartner(UUID id) { return tradePartners.get(id); }
+    public void putTradePartner(TradePartner partner) {
+        if (partner == null) return;
+        tradePartners.put(partner.id(), partner);
+        tradeReputation.putIfAbsent(partner.id(), 50);
+        setDirty();
+    }
+    public int getTradeReputation(UUID id) { return Math.max(0, Math.min(100, tradeReputation.getOrDefault(id, 50))); }
+    public int addTradeReputation(UUID id, int delta) {
+        if (id == null) return 0;
+        int value = Math.max(0, Math.min(100, getTradeReputation(id) + delta));
+        tradeReputation.put(id, value);
+        setDirty();
+        return value;
+    }
+    public List<TradeCaravan> getActiveTradeCaravans() { return activeTradeCaravans; }
+    public List<String> getTradeHistory() { return List.copyOf(tradeHistory); }
+    public void recordTrade(String entry) {
+        if (entry == null || entry.isBlank()) return;
+        tradeHistory.add(entry.substring(0, Math.min(256, entry.length())));
+        while (tradeHistory.size() > 20) tradeHistory.remove(0);
+        setDirty();
+    }
+    public long getNextCaravanTick() { return nextCaravanTick; }
+    public void setNextCaravanTick(long tick) {
+        long safe = Math.max(0L, tick);
+        if (nextCaravanTick != safe) { nextCaravanTick = safe; setDirty(); }
+    }
+    public BlockPos getTradePoint() { return tradePoint; }
+    public void setTradePoint(BlockPos pos) {
+        BlockPos safe = pos == null ? null : pos.immutable();
+        if (tradePoint == null ? safe != null : !tradePoint.equals(safe)) { tradePoint = safe; setDirty(); }
+    }
+    public void markTradeDataDirty() { setDirty(); }
+
     public boolean isFounded() {
         return founded;
     }

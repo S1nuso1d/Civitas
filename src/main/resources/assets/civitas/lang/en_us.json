@@ -21,5 +21,16 @@
   "civitas.economy.delta_7d": "Динамика за 7 дней",
   "civitas.economy.recent_events": "Последние события",
   "civitas.economy.history": "История по дням",
-  "civitas.msg.cargo_blocks_switch": "Нельзя сменить профессию: житель несёт груз"
+  "civitas.msg.cargo_blocks_switch": "Нельзя сменить профессию: житель несёт груз",
+  "civitas.trade.title": "Trader from \"%s\"",
+  "civitas.trade.reputation": "Reputation: %s/100",
+  "civitas.trade.trades_left": "Trades left: %s",
+  "civitas.trade.offers": "Offers",
+  "civitas.trade.history": "Recent trades",
+  "civitas.trade.btn.trade": "Trade",
+  "civitas.trade.btn.gift": "Gift (+5 reputation)",
+  "civitas.trade.btn.close": "Close",
+  "civitas.trade.err.far": "Too far from trader",
+  "civitas.trade.err.no_storage": "Storage unavailable",
+  "civitas.trade.err.not_enough": "Not enough in storage: %s"
 }

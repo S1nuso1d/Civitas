@@ -25,6 +25,11 @@ import ru.civitas.worker.ConstructionWorkerAI;
 import ru.civitas.worker.FarmerWorkerAI;
 import net.minecraftforge.fml.config.ModConfig;
 import ru.civitas.economy.SettlementEconomyAI;
+import ru.civitas.trade.TradeCaravanManager;
+import ru.civitas.trade.TradeCaravan;
+import net.minecraftforge.event.entity.player.PlayerInteractEvent;
+import net.minecraftforge.event.entity.living.LivingHurtEvent;
+import net.minecraft.world.entity.npc.Villager;
 
 @Mod(CivitasMod.MOD_ID)
 public final class CivitasMod {
@@ -49,6 +54,29 @@ public final class CivitasMod {
         MinecraftForge.EVENT_BUS.addListener(FarmerWorkerAI::onLivingTick);
         MinecraftForge.EVENT_BUS.addListener(FarmerWorkerAI::onLivingDeath);
         MinecraftForge.EVENT_BUS.addListener(SettlementEconomyAI::onLevelTick);
+        MinecraftForge.EVENT_BUS.addListener(TradeCaravanManager::onLevelTick);
+        MinecraftForge.EVENT_BUS.addListener(this::onTradeInteract);
+        MinecraftForge.EVENT_BUS.addListener(this::onTradeHurt);
+    }
+
+
+    private void onTradeInteract(PlayerInteractEvent.EntityInteract event) {
+        if (event.getLevel().isClientSide() || !(event.getTarget() instanceof Villager villager)
+                || !villager.getPersistentData().getBoolean("civitas.trader")
+                || !(event.getEntity() instanceof ServerPlayer player)) return;
+        CivitasSavedData data = CivitasSavedData.get(player.getServer());
+        TradeCaravan caravan = data.getActiveTradeCaravans().stream()
+                .filter(c -> c.traderId().equals(villager.getUUID())).findFirst().orElse(null);
+        if (caravan == null || !caravan.canTrade() || player.distanceToSqr(villager) > 64.0D) return;
+        ru.civitas.network.CivitasNetwork.openTradeScreen(player, caravan, data);
+        event.setCanceled(true);
+    }
+
+    private void onTradeHurt(LivingHurtEvent event) {
+        if (event.getEntity() instanceof Villager villager
+                && villager.getPersistentData().getBoolean("civitas.trader")) {
+            villager.getPersistentData().putBoolean("civitas.trader.attacked", true);
+        }
     }
 
     private void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
