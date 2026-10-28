@@ -61,6 +61,7 @@ public final class CivitasNetwork {
     private static final Pattern ITEM_ID_PATTERN =
             Pattern.compile("[a-z0-9_.-]+:[a-z0-9_./-]+");
     private static final int SNAPSHOT_REQUEST_COOLDOWN_TICKS = 10;
+    private static final int ACHIEVEMENT_SCAN_INTERVAL_TICKS = 200;
     private static final Map<UUID, Long> LAST_SNAPSHOT_REQUEST_TICK = new HashMap<>();
 
     private CivitasNetwork() {
@@ -565,6 +566,25 @@ public final class CivitasNetwork {
             cleaned = cleaned.substring(0, 40).trim();
         }
         return cleaned;
+    }
+
+    /**
+     * Periodically refreshes the authoritative settlement snapshot for its owner so
+     * milestone unlocks are evaluated even while the dashboard is closed.
+     * The scan is deliberately throttled to once every 10 seconds per world.
+     */
+    public static void tickAchievementProgress(ServerLevel level) {
+        if (level == null || level.isClientSide() || level.dimension() != Level.OVERWORLD
+                || level.getGameTime() % ACHIEVEMENT_SCAN_INTERVAL_TICKS != 0
+                || level.getServer() == null) return;
+        CivitasSavedData data = CivitasSavedData.get(level.getServer());
+        if (!data.isFounded()) return;
+        for (ServerPlayer player : level.getServer().getPlayerList().getPlayers()) {
+            if (player.level() == level && data.isOwner(player)) {
+                sendSnapshot(player, "Прогресс поселения обновлён.");
+                break;
+            }
+        }
     }
 
     private static void sendSnapshot(ServerPlayer player) {
