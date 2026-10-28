@@ -1,7 +1,7 @@
 # Civitas — Alpha 0.39.0 (Forge 1.21.1)
 
 ## Alpha 0.39.0 — Living Society (first slice)
-- Added persistent per-villager personal orders: follow the nearest player, stay in place, go to a nearby bed, guard a specified block position, or reset to profession AI.
+- Added persistent per-villager personal orders: follow the player who issued the order (or the nearest player for console-issued orders), stay in place, go to a nearby bed, guard a specified block position, or reset to profession AI.
 - Added `/civitas order <resident> <follow|stay|home|guard|reset> [position]`; `guard` requires a block position.
 - Personal orders take priority over lumberjack, farmer and builder work routines without deleting their saved task targets or cargo.
 - Navigation goals are refreshed at most once every 10 game ticks. Bed searches are bounded and retried on a cooldown.
