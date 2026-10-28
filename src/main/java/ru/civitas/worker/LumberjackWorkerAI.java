@@ -490,7 +490,7 @@ public final class LumberjackWorkerAI {
                 if (visited.contains(candidate)
                         || Math.abs(candidate.getX() - start.getX()) > 10
                         || Math.abs(candidate.getZ() - start.getZ()) > 10
-                        || candidate.getY() < start.getY() - 3
+                        || candidate.getY() < start.getY() - 40
                         || candidate.getY() > start.getY() + 40) {
                     continue;
                 }
