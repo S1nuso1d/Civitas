@@ -17,6 +17,11 @@ public final class ModItems {
             () -> new CivilizationCodexItem(new Item.Properties().stacksTo(1))
     );
 
+    public static final RegistryObject<BlueprintPlannerItem> BLUEPRINT_PLANNER = ITEMS.register(
+            "blueprint_planner",
+            () -> new BlueprintPlannerItem(new Item.Properties().stacksTo(1))
+    );
+
     public static final RegistryObject<BlockItem> WAREHOUSE_ITEM = ITEMS.register(
             "warehouse",
             () -> new BlockItem(ModBlocks.WAREHOUSE.get(), new Item.Properties())
