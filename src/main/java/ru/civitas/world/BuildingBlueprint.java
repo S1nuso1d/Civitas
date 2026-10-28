@@ -212,6 +212,71 @@ public final class BuildingBlueprint {
         return state;
     }
 
+    /**
+     * Adds a visible exterior upgrade to an existing cabin without replacing
+     * the original shell or furnishings. Only upgrade-specific positions are touched.
+     */
+    public static List<Placement> houseUpgrade(int newLevel, int rotationDegrees) {
+        if (newLevel < 2 || newLevel > 3) {
+            throw new IllegalArgumentException("House upgrade level must be 2 or 3");
+        }
+        int rotation = Math.floorMod(rotationDegrees, 360);
+        if (rotation % 90 != 0) {
+            throw new IllegalArgumentException("House upgrade rotation must be a multiple of 90 degrees");
+        }
+        Map<BlockPos, Placement> blocks = new LinkedHashMap<>();
+        if (newLevel == 2) {
+            for (int x = -1; x <= 1; x++) {
+                put(blocks, x, 1, -3, "minecraft:oak_slab");
+            }
+            put(blocks, -2, 2, -3, "minecraft:oak_fence");
+            put(blocks, 2, 2, -3, "minecraft:oak_fence");
+            put(blocks, -1, 2, -3, "minecraft:oak_fence");
+            put(blocks, 1, 2, -3, "minecraft:oak_fence");
+            put(blocks, 0, 2, -3, "minecraft:oak_stairs");
+            put(blocks, 0, 3, -3, "minecraft:lantern");
+        } else {
+            for (int y = 1; y <= 4; y++) {
+                put(blocks, 3, y, 2, "minecraft:bricks");
+            }
+            put(blocks, 3, 4, 1, "minecraft:lantern");
+            put(blocks, -3, 4, 2, "minecraft:lantern");
+        }
+        List<Placement> rotated = new ArrayList<>(blocks.size());
+        for (Placement placement : blocks.values()) {
+            BlockPos pos = placement.relativePosition();
+            BlockPos turned = switch (rotation) {
+                case 0 -> pos;
+                case 90 -> new BlockPos(-pos.getZ(), pos.getY(), pos.getX());
+                case 180 -> new BlockPos(-pos.getX(), pos.getY(), -pos.getZ());
+                case 270 -> new BlockPos(pos.getZ(), pos.getY(), -pos.getX());
+                default -> throw new IllegalStateException("Unexpected normalized rotation");
+            };
+            rotated.add(new Placement(turned, placement.blockId(), placement.cropAge()));
+        }
+        return Collections.unmodifiableList(rotated);
+    }
+
+    public static boolean canPlaceHouseUpgrade(ServerLevel level, BlockPos ground,
+                                                int newLevel, int rotationDegrees) {
+        for (Placement placement : houseUpgrade(newLevel, rotationDegrees)) {
+            BlockPos target = ground.offset(placement.relativePosition());
+            if (!level.hasChunkAt(target)) return false;
+            BlockState current = level.getBlockState(target);
+            if (!current.isAir() && !current.canBeReplaced()) return false;
+            if (!level.getFluidState(target).isEmpty()) return false;
+        }
+        return true;
+    }
+
+    public static void placeHouseUpgrade(ServerLevel level, BlockPos ground,
+                                         int newLevel, int rotationDegrees) {
+        for (Placement placement : houseUpgrade(newLevel, rotationDegrees)) {
+            BlockPos target = ground.offset(placement.relativePosition());
+            level.setBlock(target, resolveState(placement, rotationDegrees), 3);
+        }
+    }
+
     private static void put(Map<BlockPos, Placement> b, int x, int y, int z, String blockId) {
         b.put(new BlockPos(x, y, z), new Placement(new BlockPos(x, y, z), blockId, -1));
     }
