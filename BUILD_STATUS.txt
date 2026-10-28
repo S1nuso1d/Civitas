@@ -1,11 +1,13 @@
-Civitas Alpha 0.25.0 — Neighbor Resource Intelligence
+Civitas Alpha 0.26.0 — Territory Influence & Settlement Development
 Target: Minecraft Java Edition 1.21.1 + Forge 52.1.20 + Java 21
 
 Added:
-- Diplomacy screen shows neighbor population, territory, food, timber, stone, iron, stability and reputation.
-- New resource fields are encoded and decoded in the server-authoritative diplomacy packet.
-- Network protocol bumped to version 6; client and server must use the same mod build.
+- Deterministic territory influence score from registered completed buildings, population and settlement level.
+- Development tier and estimated radius shown in the Economy tab.
+- Radius is clearly presented as an estimate, not an ownership boundary.
+- No additional SavedData migration required; calculated from existing world data.
 
 Validation:
-- GitHub Actions build/test/JAR packaging must be confirmed for the exact release commit.
-- Manual GUI layout, client/server compatibility, and gameplay checks have not been performed here.
+- GitHub Actions build/test/JAR packaging for the exact release commit is not yet confirmed.
+- Manual gameplay checks and balance testing have not been performed here.
+- The influence score is informational only and does not yet prevent building or change diplomatic borders.
