@@ -249,8 +249,11 @@ public final class CivitasNetwork {
                 String name = villager.getCustomName() == null
                         ? villager.getName().getString()
                         : villager.getCustomName().getString();
-                residentLines.add(name + " — " + roleLabel + " | "
-                        + LumberjackWorkerAI.getWorkerStatus(villager));
+                String residentStatus = LumberjackWorkerAI.getWorkerStatus(villager);
+                if (!villager.getPersistentData().getString("civitas.builder_blocked_reason").isBlank()) {
+                    residentStatus += " | ждёт снабжение";
+                }
+                residentLines.add(name + " — " + roleLabel + " | " + residentStatus);
             }
         }
 
@@ -285,8 +288,19 @@ public final class CivitasNetwork {
                     .orElse(order.type());
             int totalLayers = Math.max(1, order.totalLayers());
             int percent = Math.min(100, order.progress() * 100 / totalLayers);
+            String blockage = "";
+            if (order.materialsReservedInWarehouse()) {
+                if (!order.hasValidLayerCosts()) {
+                    blockage = " — ошибка сметы";
+                } else if (!level.hasChunkAt(center)
+                        || !(level.getBlockEntity(center) instanceof SettlementWarehouseBlockEntity warehouse)
+                        || !data.warehouseContainsAllReservations(
+                                ru.civitas.world.SettlementBuildingManager.inventoryCounts(warehouse))) {
+                    blockage = " — ждёт снабжение";
+                }
+            }
             constructionLines.add((i + 1) + ". " + name + " — " + percent + "% (слой "
-                    + Math.min(order.progress() + 1, totalLayers) + "/" + totalLayers + ")");
+                    + Math.min(order.progress() + 1, totalLayers) + "/" + totalLayers + ")" + blockage);
         }
 
         List<String> storageLines = new ArrayList<>();
