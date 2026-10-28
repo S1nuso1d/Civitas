@@ -4,7 +4,7 @@
 
 Civitas — стратегическая модификация Minecraft, в которой игрок начинает с небольшого поселения и постепенно превращает его в цивилизацию. Мир не должен быть только набором меню: вблизи игрока жители физически перемещаются, добывают ресурсы и строят здания. Далёкие поселения работают на облегчённой симуляции, чтобы не перегружать сервер.
 
-## Territory and expansion (Alpha 0.26–0.29)
+## Territory and expansion (Alpha 0.26–0.30)
 
 - [x] Calculate bounded settlement influence from completed registered buildings, population and level.
 - [x] Display influence tier, score and estimated radius in the economy dashboard.
@@ -12,9 +12,13 @@ Civitas — стратегическая модификация Minecraft, в к
 - [x] Persist claimed overworld chunks, migrate existing worlds, and add contiguous claim/release commands with influence and capacity limits.
 - [x] Validate the complete rotated building footprint against territory influence and claimed chunks before construction starts.
 - [x] Protect claimed chunks from non-owner player block breaking, placement, and right-click interactions.
-- [x] Add on-demand particle visualization of the currently claimed chunk boundaries.\n- [ ] Add expansion projects and conflict resolution with neighboring civilizations.
+- [x] Prevent explosions from removing blocks in claimed overworld chunks.
+- [x] Revalidate the complete rotated construction footprint before every layer is placed.
+- [x] Add on-demand particle visualization of the currently claimed chunk boundaries.
+- [ ] Add comprehensive handling for fire/fluid spread, mob griefing, natural updates and third-party mod changes.
+- [ ] Add expansion projects and conflict resolution with neighboring civilizations.
 
-Chunk claims are persisted and construction anchors must lie in a claimed chunk. Claims do not provide general block protection, rival claims, or complete footprint validation.
+Claims persist in world SavedData. Player edit events and explosion block damage are protected, and construction pauses if the plot is no longer claimed or within influence. Rival-claim ownership and complete protection from non-player world changes remain out of scope.
 
 ## Технические принципы
 
