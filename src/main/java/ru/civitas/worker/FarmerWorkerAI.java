@@ -63,11 +63,17 @@ public final class FarmerWorkerAI {
         FoodCargo cargo = FoodCargo.load(villager.getPersistentData(), CARGO_KEY);
         boolean droppedAll = true;
         for (var entry : cargo.contents().entrySet()) {
+            ResourceLocation id = ResourceLocation.tryParse(entry.getKey());
+            if (id == null || !BuiltInRegistries.ITEM.containsKey(id)) {
+                droppedAll = false;
+                break;
+            }
+            Item cargoItem = BuiltInRegistries.ITEM.get(id);
             int remaining = entry.getValue();
             while (remaining > 0) {
-                int count = Math.min(remaining, entry.getKey().getDefaultMaxStackSize());
+                int count = Math.min(remaining, cargoItem.getDefaultMaxStackSize());
                 ItemEntity dropped = new ItemEntity(level, villager.getX(), villager.getY() + 0.3D,
-                        villager.getZ(), new ItemStack(entry.getKey(), count));
+                        villager.getZ(), new ItemStack(cargoItem, count));
                 if (!level.addFreshEntity(dropped)) {
                     droppedAll = false;
                     break;

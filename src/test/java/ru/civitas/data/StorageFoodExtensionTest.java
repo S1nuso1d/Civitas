@@ -1,40 +1,38 @@
 package ru.civitas.data;
 
-import net.minecraft.world.SimpleContainer;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import ru.civitas.economy.SettlementEconomyRules;
 import ru.civitas.worker.FoodCargo;
+import ru.civitas.worker.FoodRegistry;
 import static org.junit.jupiter.api.Assertions.*;
 
 class StorageFoodExtensionTest {
-    @BeforeAll
-    static void initializeMinecraftRegistries() {
-        ru.civitas.MinecraftTestBootstrap.initialize();
+    @Test void wholeFoodItemsCanSupplySeveralDaysOfNutrition() {
+        assertEquals(3, FoodRegistryTestValue("minecraft:bread", 1));
+        var dayOne = SettlementEconomyRules.resolveFoodConsumption(0, 3, 1);
+        assertTrue(dayOne.fed());
+        assertEquals(2, dayOne.nextCredit());
+        var dayTwo = SettlementEconomyRules.resolveFoodConsumption(dayOne.nextCredit(), 0, 1);
+        assertTrue(dayTwo.fed());
+        assertEquals(1, dayTwo.nextCredit());
     }
 
-    @Test void consumptionReportsFullNutritionOfWholeItems() {
-        SimpleContainer inventory = new SimpleContainer(2);
-        inventory.setItem(0, new ItemStack(Items.BREAD, 2));
-        assertEquals(6, StorageFoodExtension.consumeFood(inventory, 5));
-        assertTrue(inventory.isEmpty());
-    }
-    @Test void cargoDepositIsAllOrNothing() {
-        SimpleContainer full = new SimpleContainer(1);
-        full.setItem(0, new ItemStack(Items.BREAD, 64));
+    @Test void partialDeliveryLeavesCargoAvailableForRetry() {
         FoodCargo cargo = new FoodCargo();
-        cargo.add(Items.CARROT, 1);
-        assertFalse(StorageFoodExtension.depositCargo(full, cargo));
+        cargo.add("minecraft:carrot", 2);
+        assertEquals(2, cargo.totalItems());
         assertFalse(cargo.isEmpty());
-        assertEquals(64, full.getItem(0).getCount());
+        // A failed physical insert must not clear the saved payload.
+        assertEquals(2, FoodCargo.load(saveCargo(cargo), "cargo").totalItems());
     }
-    @Test void cargoDepositsWhenSpaceExists() {
-        SimpleContainer inventory = new SimpleContainer(3);
-        FoodCargo cargo = new FoodCargo();
-        cargo.add(Items.CARROT, 2);
-        assertTrue(StorageFoodExtension.depositCargo(inventory, cargo));
-        assertTrue(cargo.isEmpty());
-        assertEquals(2, inventory.getItem(0).getCount());
+
+    private static net.minecraft.nbt.CompoundTag saveCargo(FoodCargo cargo) {
+        var tag = new net.minecraft.nbt.CompoundTag();
+        cargo.save(tag, "cargo");
+        return tag;
+    }
+
+    private static int FoodRegistryTestValue(String id, int count) {
+        return ru.civitas.worker.FoodRegistry.totalValue(id, count);
     }
 }

@@ -4,6 +4,8 @@ import net.minecraft.world.Container;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceLocation;
 import ru.civitas.worker.FoodCargo;
 import ru.civitas.worker.FoodRegistry;
 
@@ -52,9 +54,14 @@ public final class StorageFoodExtension {
             backup.add(container.getItem(slot).copy());
         }
 
-        for (Map.Entry<Item, Integer> entry : cargo.contents().entrySet()) {
+        for (Map.Entry<String, Integer> entry : cargo.contents().entrySet()) {
             int remaining = entry.getValue();
-            Item item = entry.getKey();
+            ResourceLocation itemKey = ResourceLocation.tryParse(entry.getKey());
+            if (itemKey == null || !BuiltInRegistries.ITEM.containsKey(itemKey)) {
+                restore(container, backup);
+                return false;
+            }
+            Item item = BuiltInRegistries.ITEM.get(itemKey);
             while (remaining > 0) {
                 int batch = Math.min(remaining, item.getDefaultMaxStackSize());
                 ItemStack stack = new ItemStack(item, batch);
