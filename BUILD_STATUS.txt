@@ -1,7 +1,11 @@
-Civitas Alpha 0.37.0 — Achievement Progression
+Civitas Alpha 0.37.1 — Quality Pass
 Target: Minecraft Java Edition 1.21.1 + Forge 52.1.20 + Java 21
 
 Implemented in source:
+- Lumberjacks replant supported tree species after successful harvest when the base position is empty and suitable soil is present. Replanting is configurable and enabled by default.
+- Lumberjack cargo delivery is triggered at its existing capacity limit or after 200 ticks since the last harvest; it no longer needs to wait for another full load.
+- New population-growth residents receive procedural names generated from syllable lists.
+- Economy UI estimates food-stock depletion from the seven-day trend and warns when stock is below three days of current daily demand. EconomyHistory also exposes daysUntilDepletion for food, wood and stone.
 - Settlement UI includes Buildings and Achievements tabs. Buildings supports paging, displays registered indices and cabin levels, and shows upgrade costs.
 - Achievement tree presents 21 milestone conditions across eight development areas. Stable IDs and first-unlock world days are persisted and sent through protocol version 8. Unlocked milestones show their first-unlock day; locked milestones show a percentage calculated from current settlement stats. Server-side prerequisite gates enforce progression order. Achievement reward effects are not implemented.
 - Background achievement checks run every 200 overworld ticks while the owner is online without sending a status message or a full snapshot; normal dashboard refreshes still synchronize the UI.
@@ -14,10 +18,10 @@ Implemented in source:
 
 Known limitations:
 - The starter-village houses are not yet registered as upgradeable Civitas buildings; the upgrade system currently targets registered cabins built through Civitas construction.
-- Achievement conditions are checked every 200 overworld ticks (10 seconds) while the settlement owner is online, even with the dashboard closed. The scan currently reuses the authoritative snapshot builder and therefore refreshes the client snapshot periodically. No rewards or prerequisite-gated unlocks yet.
+- Achievement conditions are checked every 200 overworld ticks (10 seconds) while the settlement owner is online, even with the dashboard closed. The background scan is silent. Achievement rewards are not implemented.
 - Full daily resident schedules, social behavior, rest and happiness are not implemented.
 - Fire/fluid spread, mob griefing and third-party world changes are not comprehensively protected.
 
 Validation:
-- No local build, test execution or in-game verification is confirmed for this exact release.
+- Source committed; no local build, test execution or in-game verification is confirmed for this exact release.
 - Run Gradle build and test tasks, inspect build/libs, then manually test upgrade persistence and block/resource rollback in a disposable world before distributing a JAR.
