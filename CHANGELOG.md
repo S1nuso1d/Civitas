@@ -6,7 +6,8 @@
 - Added shared worker lifecycle behavior: night rest for assigned lumberjacks, farmers and builders, preserving persisted targets and cargo.
 - Added a non-stacking +35% base movement-speed modifier for assigned workers standing on supported road blocks.
 - Added throttled work sounds, role-specific work particles, and occasional nearby worker chatter.
-- Workers open adjacent unpowered doors while navigating; rain reduces farmer harvest progress by 25%.
+- Workers open adjacent unpowered doors while navigating and close tracked doors after passage when the doorway is clear.
+- Rain reduces farmer harvest progress by 25%; lumberjacks receive a small cumulative chopping bonus in dry weather.
 
 ### Validation
 - Source committed; local Gradle build, automated tests and in-game checks remain required.
