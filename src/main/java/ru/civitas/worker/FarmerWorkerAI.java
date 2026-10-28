@@ -57,6 +57,7 @@ public final class FarmerWorkerAI {
                 || !"farmer".equals(villager.getPersistentData().getString(ROLE_KEY))
                 || !(villager.level() instanceof ServerLevel level)
                 || level.dimension() != Level.OVERWORLD) return;
+        VillagerEquipment.ensure(villager, "farmer");
         if (PersonalOrders.get(villager) != PersonalOrders.Order.NONE) {
             PersonalOrders.tickOverride(level, villager);
             return;
