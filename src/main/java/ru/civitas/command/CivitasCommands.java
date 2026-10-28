@@ -8,6 +8,7 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.ResourceLocationArgument;
+import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.commands.arguments.coordinates.BlockPosArgument;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -96,8 +97,14 @@ public final class CivitasCommands {
                                                         .executes(ctx -> buildAt(ctx, BuildingDefinition.Type.WORKSHOP,
                                                                 IntegerArgumentType.getInteger(ctx, "rotation")))))))
                         .then(Commands.literal("worker")
-                                .then(Commands.literal("lumberjack").executes(CivitasCommands::assignLumberjack))
-                                .then(Commands.literal("builder").executes(CivitasCommands::assignBuilder))
+                                .then(Commands.literal("lumberjack")
+                                        .executes(CivitasCommands::assignLumberjack)
+                                        .then(Commands.argument("resident", EntityArgument.entity())
+                                                .executes(CivitasCommands::assignSelectedLumberjack)))
+                                .then(Commands.literal("builder")
+                                        .executes(CivitasCommands::assignBuilder)
+                                        .then(Commands.argument("resident", EntityArgument.entity())
+                                                .executes(CivitasCommands::assignSelectedBuilder)))
                                 .then(Commands.literal("pause").executes(context -> setLumberjackPaused(context, true)))
                                 .then(Commands.literal("resume").executes(context -> setLumberjackPaused(context, false)))
                                 .then(Commands.literal("clear").executes(CivitasCommands::clearLumberjack)))
@@ -125,7 +132,7 @@ public final class CivitasCommands {
         source.sendSuccess(() -> Component.literal("§e/civitas build cabin|farm|workshop §7— автоматическая площадка; добавь координаты и угол для выбора места"), false);
         source.sendSuccess(() -> Component.literal("§7Угол: 0, 90, 180 или 270. Координаты — твёрдый блок земли под зданием; стоя на поверхности используй ~ ~-1 ~."), false);
         source.sendSuccess(() -> Component.literal("§e/civitas worker lumberjack §7— назначить лесоруба"), false);
-        source.sendSuccess(() -> Component.literal("§e/civitas worker builder §7— назначить ещё одного строителя"), false);
+        source.sendSuccess(() -> Component.literal("§e/civitas worker builder|lumberjack <житель> §7— назначить выбранного жителя через селектор, например @e[type=minecraft:villager,sort=nearest,limit=1]"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas worker pause|resume §7— приостановить/продолжить"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas worker clear §7— снять профессию после доставки груза"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas storage §7— содержимое физического склада"), false);
@@ -334,6 +341,84 @@ public final class CivitasCommands {
         }
         context.getSource().sendFailure(Component.literal("Не удалось найти жителя для назначения. Проверь, что жители есть рядом с деревней."));
         return 0;
+    }
+
+    private static int assignSelectedLumberjack(CommandContext<CommandSourceStack> context)
+            throws CommandSyntaxException {
+        ServerPlayer player = context.getSource().getPlayerOrException();
+        CivitasSavedData data = CivitasSavedData.get(context.getSource().getServer());
+        if (!ensureOwner(context.getSource(), player, data)) return 0;
+        ServerLevel overworld = context.getSource().getServer().overworld();
+        if (!context.getSource().getLevel().dimension().equals(net.minecraft.world.level.Level.OVERWORLD)) {
+            context.getSource().sendFailure(Component.literal("Назначение профессий доступно только в обычном мире."));
+            return 0;
+        }
+        var entity = EntityArgument.getEntity(context, "resident");
+        if (!(entity instanceof Villager villager) || villager.level() != overworld) {
+            context.getSource().sendFailure(Component.literal("Выбранная сущность не является жителем обычного мира."));
+            return 0;
+        }
+        BlockPos center = data.hasStarterVillage() ? data.getStarterVillageCenter() : data.getCenter();
+        if (!new AABB(center).inflate(24, 12, 24).contains(villager.getX(), villager.getY(), villager.getZ())) {
+            context.getSource().sendFailure(Component.literal("Житель должен находиться рядом с поселением, в радиусе 24 блоков."));
+            return 0;
+        }
+        if (!LumberjackWorkerAI.assignLumberjackTo(overworld, center, villager)) {
+            context.getSource().sendFailure(Component.literal(
+                    "Нельзя назначить лесоруба: другой лесоруб ещё несёт груз или выбранный житель занят."));
+            return 0;
+        }
+        context.getSource().sendSuccess(() -> Component.literal("§aВыбранный житель назначен лесорубом Civitas."), false);
+        return Command.SINGLE_SUCCESS;
+    }
+
+    private static int assignSelectedBuilder(CommandContext<CommandSourceStack> context)
+            throws CommandSyntaxException {
+        ServerPlayer player = context.getSource().getPlayerOrException();
+        CivitasSavedData data = CivitasSavedData.get(context.getSource().getServer());
+        if (!ensureOwner(context.getSource(), player, data)) return 0;
+        ServerLevel overworld = context.getSource().getServer().overworld();
+        if (!context.getSource().getLevel().dimension().equals(net.minecraft.world.level.Level.OVERWORLD)) {
+            context.getSource().sendFailure(Component.literal("Назначение профессий доступно только в обычном мире."));
+            return 0;
+        }
+        var entity = EntityArgument.getEntity(context, "resident");
+        if (!(entity instanceof Villager villager) || villager.level() != overworld) {
+            context.getSource().sendFailure(Component.literal("Выбранная сущность не является жителем обычного мира."));
+            return 0;
+        }
+        BlockPos center = data.hasStarterVillage() ? data.getStarterVillageCenter() : data.getCenter();
+        if (!new AABB(center).inflate(24, 12, 24).contains(villager.getX(), villager.getY(), villager.getZ())) {
+            context.getSource().sendFailure(Component.literal("Житель должен находиться рядом с поселением, в радиусе 24 блоков."));
+            return 0;
+        }
+
+        var persistent = villager.getPersistentData();
+        String currentRole = persistent.getString("civitas.worker_role");
+        if ("builder".equals(currentRole)) {
+            context.getSource().sendSuccess(() -> Component.literal("§eЭтот житель уже назначен строителем."), false);
+            return Command.SINGLE_SUCCESS;
+        }
+        if ("lumberjack".equals(currentRole)) {
+            if (persistent.getInt("civitas.worker_carried_count") > 0
+                    || !LumberjackWorkerAI.releaseLumberjackRole(villager)) {
+                context.getSource().sendFailure(Component.literal(
+                        "Сначала дождись, пока лесоруб доставит все брёвна на склад."));
+                return 0;
+            }
+        }
+        ConstructionWorkerAI.releaseBuilderRole(villager);
+        persistent.putString("civitas.worker_role", "builder");
+        persistent.putInt("civitas.builder_work_progress_ticks", 0);
+        persistent.remove("civitas.builder_blocked_reason");
+        villager.setCustomName(Component.literal("Строитель Civitas"));
+        villager.setCustomNameVisible(true);
+        villager.setPersistenceRequired();
+
+        context.getSource().sendSuccess(() -> Component.literal(
+                "§aВыбранный житель назначен строителем. Активные заказы сохраняются и могут перейти другому строителю."),
+                false);
+        return Command.SINGLE_SUCCESS;
     }
 
     private static int assignBuilder(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
