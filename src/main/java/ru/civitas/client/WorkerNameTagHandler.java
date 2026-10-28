@@ -5,6 +5,7 @@ import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.RenderNameTagEvent;
+import net.minecraftforge.eventbus.api.Event;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
@@ -32,8 +33,8 @@ public final class WorkerNameTagHandler {
             return;
         }
 
-        // RenderNameTagEvent is not cancelable in this Forge version.
-        // Use its supported visibility flag instead of Event#setCanceled().
-        event.setCanRender(false);
+        // RenderNameTagEvent is not cancelable; DENY is the supported way
+        // to tell EntityRenderer not to draw this name tag.
+        event.setResult(Event.Result.DENY);
     }
 }
