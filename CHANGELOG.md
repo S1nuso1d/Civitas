@@ -18,7 +18,7 @@
 
 ### Added
 - Added a Buildings tab with registered building indices and cabin upgrade levels.
-- Added owner-only `/civitas buildings upgrade <index>`: level 2 adds a porch, fence railings and lantern; level 3 adds a brick chimney and extra lanterns.
+- Added owner-only `/civitas buildings upgrade <index>`: level 2 adds a porch, fence railings and lantern; level 3 adds a brick chimney that rises through the roof.
 - House upgrades use free warehouse stock only; resources reserved by construction orders are excluded. The upgrade blueprint is validated before material deduction and has a block/resource rollback path.
 - Building records now persist upgrade level and orientation while old saves default to level 1 and rotation 0.
 - Added an achievement-tree tab derived from persistent settlement progress: founding, population, houses, farm, workshop, worker specializations and settlement development.
