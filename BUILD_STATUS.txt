@@ -11,6 +11,7 @@ Included territory and construction protections:
 Added automated blueprint regression coverage:
 - Checks every building type, layer, and supported rotation for duplicate positions and footprint bounds.
 - Checks that 360° normalizes to 0° and 450° normalizes to 90°.
+- Checks legacy cancellation refund calculations, fully completed orders, clamped progress, and immutable refund results.
 
 Known limitations:
 - Fire/fluid spread, mob griefing, natural updates, and third-party mod changes are not comprehensively prevented.
