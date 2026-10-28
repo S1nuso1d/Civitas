@@ -40,7 +40,11 @@ public final class TradeCaravanManager {
         if (!data.hasStarterVillage()) return;
         BlockPos center = data.getStarterVillageCenter();
         if (!level.hasChunkAt(center)) return;
-        if (data.getTradePoint() == null) data.setTradePoint(findTradePoint(level, center));
+        if (data.getTradePoint() == null) {
+            // Avoid scanning the surrounding area every second if a settlement has no bell.
+            if (level.getGameTime() % 1200L != 0L) return;
+            data.setTradePoint(findTradePoint(level, center));
+        }
         BlockPos tradePoint = data.getTradePoint();
         if (tradePoint == null || !level.hasChunkAt(tradePoint)) return;
 
@@ -90,6 +94,7 @@ public final class TradeCaravanManager {
             }
             case WAIT -> {
                 caravan.tickWait();
+                data.markTradeDataDirty();
                 if (caravan.waitTicksLeft() <= 0 || caravan.tradesUsed() >= caravan.tradeLimit()) {
                     caravan.setState(TradeCaravan.State.LEAVE);
                     data.markTradeDataDirty();
