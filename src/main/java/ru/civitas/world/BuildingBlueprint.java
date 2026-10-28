@@ -1,6 +1,7 @@
 package ru.civitas.world;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
@@ -8,7 +9,9 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.CropBlock;
 import net.minecraft.world.level.block.DoorBlock;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
+import net.minecraft.world.level.block.Rotation;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -38,6 +41,15 @@ public final class BuildingBlueprint {
     private BuildingBlueprint() {}
 
     public static List<Placement> layer(BuildingDefinition.Type type, int layer) {
+        return layer(type, layer, 0);
+    }
+
+    /** Returns a blueprint layer rotated clockwise by 0, 90, 180 or 270 degrees. */
+    public static List<Placement> layer(BuildingDefinition.Type type, int layer, int rotationDegrees) {
+        int normalizedRotation = Math.floorMod(rotationDegrees, 360);
+        if (normalizedRotation % 90 != 0) {
+            throw new IllegalArgumentException("Blueprint rotation must be 0, 90, 180 or 270 degrees");
+        }
         if (type == null) throw new IllegalArgumentException("Building type must not be null");
         BuildingDefinition definition = BuildingDefinition.get(type);
         if (layer < 1 || layer > definition.totalLayers())
@@ -49,7 +61,21 @@ public final class BuildingBlueprint {
             case FARM -> farm(blocks, layer);
             case WORKSHOP -> workshop(blocks, layer);
         }
-        return Collections.unmodifiableList(new ArrayList<>(blocks.values()));
+        if (normalizedRotation == 0) {
+            return Collections.unmodifiableList(new ArrayList<>(blocks.values()));
+        }
+        List<Placement> rotated = new ArrayList<>(blocks.size());
+        for (Placement placement : blocks.values()) {
+            BlockPos pos = placement.relativePosition();
+            BlockPos turned = switch (normalizedRotation) {
+                case 90 -> new BlockPos(-pos.getZ(), pos.getY(), pos.getX());
+                case 180 -> new BlockPos(-pos.getX(), pos.getY(), -pos.getZ());
+                case 270 -> new BlockPos(pos.getZ(), pos.getY(), -pos.getX());
+                default -> throw new IllegalStateException("Unexpected normalized rotation");
+            };
+            rotated.add(new Placement(turned, placement.blockId(), placement.cropAge()));
+        }
+        return Collections.unmodifiableList(rotated);
     }
 
     /** Check a whole layer before resources are charged. */
@@ -105,6 +131,10 @@ public final class BuildingBlueprint {
     }
 
     private static BlockState resolveState(Placement placement) {
+        return resolveState(placement, 0);
+    }
+
+    private static BlockState resolveState(Placement placement, int rotationDegrees) {
         Block block = resolveBlock(placement.blockId());
         BlockState state = block.defaultBlockState();
         if (placement.cropAge() >= 0) {
@@ -118,6 +148,17 @@ public final class BuildingBlueprint {
         if (block instanceof DoorBlock && state.hasProperty(DoorBlock.HALF)) {
             state = state.setValue(DoorBlock.HALF,
                     placement.relativePosition().getY() == 3 ? DoubleBlockHalf.UPPER : DoubleBlockHalf.LOWER);
+        }
+        if (state.hasProperty(BlockStateProperties.HORIZONTAL_FACING)) {
+            Rotation rotation = switch (Math.floorMod(rotationDegrees, 360)) {
+                case 0 -> Rotation.NONE;
+                case 90 -> Rotation.CLOCKWISE_90;
+                case 180 -> Rotation.CLOCKWISE_180;
+                case 270 -> Rotation.COUNTERCLOCKWISE_90;
+                default -> throw new IllegalArgumentException("Rotation must be a multiple of 90 degrees");
+            };
+            state = state.setValue(BlockStateProperties.HORIZONTAL_FACING,
+                    rotation.rotate(state.getValue(BlockStateProperties.HORIZONTAL_FACING)));
         }
         return state;
     }
