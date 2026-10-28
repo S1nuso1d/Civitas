@@ -9,6 +9,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ServerboundChatCommandPacket;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import ru.civitas.world.BuildingDefinition;
 
 /** Vanilla-inspired settlement dashboard with real Minecraft item icons. */
 public final class SettlementScreen extends Screen {
@@ -73,9 +74,9 @@ public final class SettlementScreen extends Screen {
         addButton("   Список зданий", left, top + 294, BUTTON_WIDTH, "civitas buildings", Items.BRICKS);
         addButton("   Очередь стройки", right, top + 294, BUTTON_WIDTH, "civitas construction", Items.OAK_PLANKS);
 
-        addButton("   Дом", left, top + 337, BUTTON_WIDTH, "civitas build cabin", Items.OAK_DOOR);
-        addButton("   Ферма", right, top + 337, BUTTON_WIDTH, "civitas build farm", Items.WHEAT);
-        addButton("   Мастерская", left, top + 363, INNER_WIDTH, "civitas build workshop", Items.CRAFTING_TABLE);
+        addButton("   " + BuildingDefinition.get(BuildingDefinition.Type.CABIN).displayName(), left, top + 337, BUTTON_WIDTH, "civitas build cabin", Items.OAK_DOOR);
+        addButton("   " + BuildingDefinition.get(BuildingDefinition.Type.FARM).displayName(), right, top + 337, BUTTON_WIDTH, "civitas build farm", Items.WHEAT);
+        addButton("   " + BuildingDefinition.get(BuildingDefinition.Type.WORKSHOP).displayName(), left, top + 363, INNER_WIDTH, "civitas build workshop", Items.CRAFTING_TABLE);
 
         orderIndex = new EditBox(font, left, top + 389, 55, 20, Component.literal("№"));
         orderIndex.setMaxLength(3);
@@ -172,12 +173,10 @@ public final class SettlementScreen extends Screen {
         super.render(graphics, mouseX, mouseY, partialTick);
         for (IconPosition icon : iconPositions) graphics.renderItem(icon.stack(), icon.x(), icon.y());
         if (!pendingBuild.isEmpty()) {
-            String preview = switch (pendingBuild) {
-                case "civitas build cabin" -> "Дом: 32 доски, 8 брёвен, 4 стекла";
-                case "civitas build farm" -> "Ферма: 49 земли, 24 семени, ведро воды";
-                case "civitas build workshop" -> "Мастерская: 32 доски, 25 булыжника, верстак";
-                default -> "Проверь стоимость и наличие материалов на складе";
-            };
+            String buildingId = pendingBuild.substring("civitas build ".length());
+            String preview = BuildingDefinition.find(buildingId)
+                    .map(definition -> definition.displayName() + ": " + definition.describeCosts())
+                    .orElse("Проверь стоимость и наличие материалов на складе");
             graphics.fill(left + 8, top + 433, left + PANEL_WIDTH - 8, top + 464, 0xFF777777);
             graphics.fill(left + 9, top + 434, left + PANEL_WIDTH - 9, top + 463, 0xFFE7D8A8);
             graphics.drawCenteredString(font, Component.literal(preview), width / 2, top + 439, 0xFF303030);
