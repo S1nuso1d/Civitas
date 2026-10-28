@@ -25,6 +25,7 @@ import ru.civitas.CivitasMod;
 import ru.civitas.block.SettlementWarehouseBlockEntity;
 import ru.civitas.client.ClientNetworkHandler;
 import ru.civitas.data.CivitasSavedData;
+import ru.civitas.data.TerritoryInfluence;
 import ru.civitas.world.BuildingDefinition;
 import ru.civitas.worker.LumberjackWorkerAI;
 import ru.civitas.worker.ConstructionWorkerAI;
@@ -732,7 +733,13 @@ public final class CivitasNetwork {
                 (long) residentCount * CivitasConfig.FOOD_PER_DAY.get());
         int foodDaysLeft = foodNeed <= 0 ? 999 : foodStock / foodNeed;
         List<String> eventLines = data.getEconomyHistory().recentEvents();
-        List<String> economyLines = data.getEconomyHistory().formattedRecentDays(20);
+        List<String> economyLines = new ArrayList<>(data.getEconomyHistory().formattedRecentDays(20));
+        TerritoryInfluence.Result influence = TerritoryInfluence.calculate(
+                residentCount, data.getLevel(), data.getBuildings());
+        economyLines.add(0, "Влияние: " + influence.score() + "/1000 · " + influence.tier());
+        economyLines.add(1, "Радиус развития: " + influence.radius() + " блоков (оценка, не граница владения)");
+        economyLines.add(2, "Вклад: здания " + influence.buildingPoints() + ", население "
+                + influence.populationPoints() + ", уровень " + influence.levelPoints());
         SettlementSnapshot snapshot = new SettlementSnapshot(
                 true, data.getSettlementName(), data.getOwnerName(), data.getLevel(), residentCount,
                 foodStock, foodNeed, foodDaysLeft, data.getHungerDays(), data.getGrowthProgressDays(),
