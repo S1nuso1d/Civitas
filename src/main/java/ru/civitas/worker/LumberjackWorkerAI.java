@@ -524,7 +524,7 @@ public final class LumberjackWorkerAI {
         }
 
         BlockState rootState = level.getBlockState(treeLog);
-        if (!rootState.is(BlockTags.LOGS) || isProtectedLog(treeLog, worldData, warehousePos)) {
+        if (!rootState.is(BlockTags.LOGS) || isProtectedLog(level, treeLog, worldData, warehousePos)) {
             clearTreeTarget(persistent);
             persistent.putInt(CHOP_PROGRESS_KEY, 0);
             return;
@@ -543,7 +543,7 @@ public final class LumberjackWorkerAI {
         for (BlockPos logPos : currentTree) {
             BlockState current = level.getBlockState(logPos);
             if (!current.is(BlockTags.LOGS) || current.getBlock().asItem() != logItem
-                    || isProtectedLog(logPos, worldData, warehousePos)) {
+                    || isProtectedLog(level, logPos, worldData, warehousePos)) {
                 continue;
             }
             if (level.destroyBlock(logPos, false)) {
