@@ -105,6 +105,28 @@ public final class NeighborCivilization {
         timber = clamp(timber + Math.max(1, workers / 2) - (territory > 12 ? 2 : 0), 0, 1_000_000);
         stone = clamp(stone + Math.max(0, workers / 3) - (territory > 8 ? 1 : 0), 0, 1_000_000);
         iron = clamp(iron + (workers >= 8 ? 1 : 0), 0, 1_000_000);
+
+        // Diplomatic stance has tangible economic and social consequences.
+        // These effects are intentionally small and are applied only during
+        // the bounded daily simulation, never per tick.
+        switch (stance) {
+            case ALLIED -> {
+                food = clamp(food + Math.max(1, population / 6), 0, 1_000_000);
+                stability = clamp(stability + 1, 0, 100);
+            }
+            case RIVAL -> {
+                stability = clamp(stability - 1, 0, 100);
+                if (timber > 0 && territory > 4) timber--;
+            }
+            case WAR -> {
+                stability = clamp(stability - 2, 0, 100);
+                if (timber > 0) timber--;
+                if (iron > 0 && population >= 20) iron--;
+                food = Math.max(0, food - Math.max(1, population / 10));
+            }
+            case NEUTRAL -> { }
+        }
+
         if (food < population * 2) {
             hungerDays = Math.min(1_000_000, hungerDays + 1);
             stability = clamp(stability - 3, 0, 100);
@@ -117,7 +139,9 @@ public final class NeighborCivilization {
                 food -= 4;
             }
         }
-        if (stability >= 80 && population >= territory * 12 && timber >= 30 && stone >= 20 && territory < 100_000) {
+        int expansionThreshold = stance == Stance.ALLIED ? 72 : 80;
+        if (stability >= expansionThreshold && population >= territory * 12
+                && timber >= 30 && stone >= 20 && territory < 100_000) {
             timber -= 15; stone -= 10; territory++;
         }
     }
