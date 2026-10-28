@@ -290,7 +290,7 @@ public final class BuildingBlueprint {
             if (level.hasChunkAt(target)
                     && level.getBlockState(target).is(resolveBlock(placement.blockId()))) {
                 boolean roofOpening = newLevel == 3
-                        && placement.relativePosition().equals(new BlockPos(3, 5, 2));
+                        && placement.relativePosition().equals(rotatePosition(new BlockPos(3, 5, 2), rotationDegrees));
                 level.setBlock(target, roofOpening
                         ? resolveState(new Placement(placement.relativePosition(), "minecraft:oak_planks", -1))
                         : net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(), 3);
