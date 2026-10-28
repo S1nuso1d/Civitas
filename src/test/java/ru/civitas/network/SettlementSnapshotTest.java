@@ -22,7 +22,7 @@ class SettlementSnapshotTest {
                 List.of(residentId, UUID.randomUUID().toString()),
                 List.of("lumberjack", ""), List.of("Рубит дерево: 2/5 сек", "Нет задачи"),
                 List.of("Дом — 0, 64, 0"), List.of("1. Дом — 50%"),
-                List.of("Дубовые брёвна × 12"));
+                List.of("Дубовые брёвна × 12"), List.of("population_5|4"));
         FriendlyByteBuf buffer = new FriendlyByteBuf(Unpooled.buffer());
         try {
             snapshot.encode(buffer);
@@ -48,7 +48,7 @@ class SettlementSnapshotTest {
                 70, 1, 1, 2, 66,
                 4, 1, 1, 0, 0, 0, 27,
                 0, 0, 0, "Ок", List.of(), List.of(),
-                names, ids, roles, statuses, List.of(), List.of(), List.of());
+                names, ids, roles, statuses, List.of(), List.of(), List.of(), List.of());
         assertEquals(64, snapshot.residents().size());
         assertEquals(64, snapshot.residentUuids().size());
         assertEquals(64, snapshot.residentRoles().size());
