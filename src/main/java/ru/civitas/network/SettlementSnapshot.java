@@ -65,7 +65,7 @@ public record SettlementSnapshot(
                 readBoundedInt(b,1_000_000),readBoundedInt(b,1_000_000),readBoundedInt(b,1_000_000),
                 readBoundedInt(b,1_000_000),readBoundedInt(b,1_000_000),readBoundedInt(b,1_000_000),
                 readBoundedInt(b,1_000_000),readBoundedInt(b,1_000_000),readBoundedInt(b,1_000_000),
-                readBoundedInt(b,1_000_000),readBoundedInt(b,1_000_000),readBoundedInt(b,27),readBoundedInt(b,27),
+                readBoundedInt(b,1_000_000),readBoundedInt(b,27),readBoundedInt(b,27),
                 b.readInt(),b.readInt(),b.readInt(),b.readUtf(MAX_LINE_LENGTH),
                 readLines(b,MAX_EVENT_LINES),readLines(b,MAX_ECONOMY_LINES),
                 readLines(b,MAX_RESIDENT_LINES),readLines(b,MAX_RESIDENT_LINES),

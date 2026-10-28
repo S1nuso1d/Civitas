@@ -28,7 +28,6 @@ import ru.civitas.worker.FarmerWorkerAI;
 import ru.civitas.economy.SettlementEconomyAI;
 import ru.civitas.CivitasConfig;
 import ru.civitas.data.StorageFoodExtension;
-import net.minecraft.world.item.Item;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -444,23 +443,6 @@ public final class CivitasNetwork {
                 ? foundWarehouse : null;
         int foodStock = StorageFoodExtension.totalFoodValue(foodWarehouse);
         int beds = SettlementEconomyAI.countBeds(level, center);
-        int woodStock = 0;
-        int stoneStock = 0;
-        if (foodWarehouse != null) {
-            for (Item wood : List.of(net.minecraft.world.item.Items.OAK_LOG, net.minecraft.world.item.Items.BIRCH_LOG,
-                    net.minecraft.world.item.Items.SPRUCE_LOG, net.minecraft.world.item.Items.JUNGLE_LOG,
-                    net.minecraft.world.item.Items.ACACIA_LOG, net.minecraft.world.item.Items.DARK_OAK_LOG,
-                    net.minecraft.world.item.Items.MANGROVE_LOG, net.minecraft.world.item.Items.CHERRY_LOG,
-                    net.minecraft.world.item.Items.CRIMSON_STEM, net.minecraft.world.item.Items.WARPED_STEM)) {
-                woodStock = (int) Math.min(Integer.MAX_VALUE, (long) woodStock + SettlementEconomyAI.countItem(foodWarehouse, wood));
-            }
-            for (Item stone : List.of(net.minecraft.world.item.Items.COBBLESTONE, net.minecraft.world.item.Items.STONE,
-                    net.minecraft.world.item.Items.DEEPSLATE, net.minecraft.world.item.Items.COBBLED_DEEPSLATE,
-                    net.minecraft.world.item.Items.ANDESITE, net.minecraft.world.item.Items.DIORITE,
-                    net.minecraft.world.item.Items.GRANITE)) {
-                stoneStock = (int) Math.min(Integer.MAX_VALUE, (long) stoneStock + SettlementEconomyAI.countItem(foodWarehouse, stone));
-            }
-        }
         int lumberjacks = 0;
         int builders = 0;
         int idle = 0;

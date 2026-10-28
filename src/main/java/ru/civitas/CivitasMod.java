@@ -23,7 +23,6 @@ import ru.civitas.world.StarterVillageGenerator;
 import ru.civitas.worker.LumberjackWorkerAI;
 import ru.civitas.worker.ConstructionWorkerAI;
 import ru.civitas.worker.FarmerWorkerAI;
-import ru.civitas.economy.SettlementEconomyAI;
 import net.minecraftforge.fml.config.ModConfig;
 import ru.civitas.economy.SettlementEconomyAI;
 
