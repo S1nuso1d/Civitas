@@ -27,6 +27,8 @@ public final class NeighborCivilization {
     private Stance stance;
     private int population, food, timber, stone, iron, territory, stability, hungerDays;
     private long lastSimulatedDay;
+    private int siteX, siteY, siteZ;
+    private boolean siteAssigned, siteGenerated;
 
     public NeighborCivilization(TradePartner partner, long seed) {
         id = partner.id();
@@ -74,6 +76,17 @@ public final class NeighborCivilization {
     public int territory() { return territory; }
     public int stability() { return stability; }
     public long lastSimulatedDay() { return lastSimulatedDay; }
+    public boolean hasSite() { return siteAssigned; }
+    public boolean siteGenerated() { return siteGenerated; }
+    public net.minecraft.core.BlockPos site() {
+        return siteAssigned ? new net.minecraft.core.BlockPos(siteX, siteY, siteZ) : net.minecraft.core.BlockPos.ZERO;
+    }
+    public void setSite(net.minecraft.core.BlockPos pos, boolean generated) {
+        if (pos == null) return;
+        siteX = pos.getX(); siteY = pos.getY(); siteZ = pos.getZ();
+        siteAssigned = true; siteGenerated = generated;
+    }
+    public void markSiteGenerated() { if (siteAssigned) siteGenerated = true; }
     public void setStance(Stance value) { stance = value == null ? Stance.NEUTRAL : value; }
     public boolean permitsTrade() { return stance != Stance.WAR; }
 
@@ -116,6 +129,11 @@ public final class NeighborCivilization {
         tag.putInt("food", food); tag.putInt("timber", timber); tag.putInt("stone", stone);
         tag.putInt("iron", iron); tag.putInt("territory", territory); tag.putInt("stability", stability);
         tag.putInt("hunger_days", hungerDays); tag.putLong("last_simulated_day", lastSimulatedDay);
+        tag.putBoolean("site_assigned", siteAssigned);
+        if (siteAssigned) {
+            tag.putInt("site_x", siteX); tag.putInt("site_y", siteY); tag.putInt("site_z", siteZ);
+        }
+        tag.putBoolean("site_generated", siteGenerated);
         return tag;
     }
 
@@ -124,10 +142,15 @@ public final class NeighborCivilization {
         Stance stance;
         try { stance = Stance.valueOf(tag.getString("stance")); }
         catch (IllegalArgumentException ignored) { stance = Stance.NEUTRAL; }
-        return new NeighborCivilization(id, tag.getString("name"), tag.getInt("distance"), stance,
+        NeighborCivilization civilization = new NeighborCivilization(id, tag.getString("name"), tag.getInt("distance"), stance,
                 tag.getInt("population"), tag.getInt("food"), tag.getInt("timber"), tag.getInt("stone"),
                 tag.getInt("iron"), tag.getInt("territory"), tag.getInt("stability"),
                 tag.getInt("hunger_days"), tag.contains("last_simulated_day") ? tag.getLong("last_simulated_day") : -1);
+        if (tag.getBoolean("site_assigned")) {
+            civilization.setSite(new net.minecraft.core.BlockPos(tag.getInt("site_x"), tag.getInt("site_y"),
+                    tag.getInt("site_z")), tag.getBoolean("site_generated"));
+        }
+        return civilization;
     }
     private static int clamp(int value, int min, int max) { return Math.max(min, Math.min(max, value)); }
 }
