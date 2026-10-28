@@ -143,6 +143,12 @@ public final class CivitasNetwork {
                 .decoder(DiplomacyActionPacket::decode)
                 .consumerMainThread(CivitasNetwork::handleDiplomacyAction)
                 .add();
+        CHANNEL.messageBuilder(DiplomacyVisitPacket.class, id++)
+                .direction(PacketFlow.SERVERBOUND)
+                .encoder(DiplomacyVisitPacket::encode)
+                .decoder(DiplomacyVisitPacket::decode)
+                .consumerMainThread(CivitasNetwork::handleDiplomacyVisit)
+                .add();
         CHANNEL.messageBuilder(DiplomacyScreenPacket.class, id++)
                 .direction(PacketFlow.CLIENTBOUND)
                 .encoder(DiplomacyScreenPacket::encode)
@@ -226,6 +232,36 @@ public final class CivitasNetwork {
             data.recordTrade("Дипломатия: с «" + civilization.name() + "» установлено отношение «" + stance.displayName() + "»");
             player.sendSystemMessage(Component.literal("Civitas: отношения с «" + civilization.name() + "» изменены: " + stance.displayName() + "."));
             sendDiplomacyScreen(player, data);
+        }
+        context.setPacketHandled(true);
+    }
+
+    private static void handleDiplomacyVisit(DiplomacyVisitPacket packet, CustomPayloadEvent.Context context) {
+        ServerPlayer player = context.getSender();
+        if (player == null || player.getServer() == null) {
+            context.setPacketHandled(true);
+            return;
+        }
+        CivitasSavedData data = CivitasSavedData.get(player.getServer());
+        if (!canManageDiplomacy(player, data)) {
+            player.sendSystemMessage(Component.literal("Civitas: посещать соседние поселения может только управляющий."));
+            context.setPacketHandled(true);
+            return;
+        }
+        if (!player.level().dimension().equals(Level.OVERWORLD)) {
+            player.sendSystemMessage(Component.literal("Civitas: сначала вернись в обычный мир."));
+            context.setPacketHandled(true);
+            return;
+        }
+        NeighborCivilization civilization = data.getNeighborCivilization(packet.civilizationId());
+        if (civilization == null) {
+            player.sendSystemMessage(Component.literal("Civitas: цивилизация не найдена. Обнови список."));
+            sendDiplomacyScreen(player, data);
+            context.setPacketHandled(true);
+            return;
+        }
+        if (!ru.civitas.world.NeighborSettlementGenerator.visit(player, data, civilization)) {
+            player.sendSystemMessage(Component.literal("Civitas: не удалось найти безопасную площадку для поселения. Существующие постройки не изменены."));
         }
         context.setPacketHandled(true);
     }
@@ -854,6 +890,16 @@ public final class CivitasNetwork {
         public void encode(FriendlyByteBuf b) { b.writeUUID(civilizationId); b.writeUtf(stance, 16); }
         public static DiplomacyActionPacket decode(FriendlyByteBuf b) {
             return new DiplomacyActionPacket(b.readUUID(), b.readUtf(16));
+        }
+    }
+
+    public record DiplomacyVisitPacket(UUID civilizationId) {
+        public DiplomacyVisitPacket {
+            if (civilizationId == null) throw new IllegalArgumentException("Civilization UUID is required");
+        }
+        public void encode(FriendlyByteBuf b) { b.writeUUID(civilizationId); }
+        public static DiplomacyVisitPacket decode(FriendlyByteBuf b) {
+            return new DiplomacyVisitPacket(b.readUUID());
         }
     }
 
