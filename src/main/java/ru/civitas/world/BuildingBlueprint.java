@@ -187,7 +187,15 @@ public final class BuildingBlueprint {
         if (block instanceof BedBlock && state.hasProperty(BedBlock.PART)
                 && state.hasProperty(BedBlock.FACING)) {
             BlockPos pos = placement.relativePosition();
-            state = state.setValue(BedBlock.PART, pos.getZ() == 1 ? BedPart.FOOT : BedPart.HEAD);
+            boolean foot = switch (Math.floorMod(rotationDegrees, 360)) {
+                case 0 -> pos.getX() == -1 && pos.getZ() == 1;
+                case 90 -> pos.getX() == -1 && pos.getZ() == -1;
+                case 180 -> pos.getX() == 1 && pos.getZ() == -1;
+                case 270 -> pos.getX() == 1 && pos.getZ() == 1;
+                default -> false;
+            };
+            state = state.setValue(BedBlock.PART, foot ? BedPart.FOOT : BedPart.HEAD);
+            // Facing is set before the generic horizontal-state rotation below.
             state = state.setValue(BedBlock.FACING, Direction.NORTH);
         }
         if (state.hasProperty(BlockStateProperties.HORIZONTAL_FACING)) {
