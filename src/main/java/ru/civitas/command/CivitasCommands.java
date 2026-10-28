@@ -140,11 +140,14 @@ public final class CivitasCommands {
         int farms = 0;
         int workshops = 0;
         for (CivitasSavedData.BuildingRecord building : data.getBuildings()) {
-            switch (building.type()) {
-                case "cabin" -> cabins++;
-                case "farm" -> farms++;
-                case "workshop" -> workshops++;
-                default -> { }
+            BuildingDefinition definition = BuildingDefinition.find(building.type()).orElse(null);
+            if (definition == null) {
+                continue;
+            }
+            switch (definition.type()) {
+                case CABIN -> cabins++;
+                case FARM -> farms++;
+                case WORKSHOP -> workshops++;
             }
         }
 
