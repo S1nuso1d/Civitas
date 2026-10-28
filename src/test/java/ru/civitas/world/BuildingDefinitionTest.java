@@ -58,6 +58,27 @@ class BuildingDefinitionTest {
     }
 
     @Test
+    void everyBuildingHasAnExactImmutableCostPlanForEveryLayer() {
+        for (BuildingDefinition definition : BuildingDefinition.all()) {
+            var layers = definition.layerCosts();
+            assertEquals(definition.totalLayers(), layers.size());
+
+            Map<String, Integer> totals = new java.util.TreeMap<>();
+            for (Map<String, Integer> layer : layers) {
+                layer.forEach((itemId, amount) -> {
+                    assertTrue(amount > 0);
+                    totals.merge(itemId, amount, Integer::sum);
+                });
+                assertThrows(UnsupportedOperationException.class,
+                        () -> layer.put("minecraft:diamond", 1));
+            }
+            assertEquals(new java.util.TreeMap<>(definition.costs()), totals);
+            assertThrows(UnsupportedOperationException.class,
+                    () -> layers.clear());
+        }
+    }
+
+    @Test
     void lookupIsCaseInsensitiveAndRejectsUnknownIds() {
         assertEquals(BuildingDefinition.Type.CABIN,
                 BuildingDefinition.find("CABIN").orElseThrow().type());
