@@ -371,10 +371,10 @@ public final class SettlementScreen extends Screen {
         List<String> buildings = snapshot == null ? List.of() : snapshot.buildings();
         listOffset = Math.min(listOffset, Math.max(0, buildings.size() - rows));
         for (int i = 0; i < rows && listOffset + i < buildings.size(); i++) {
-            final int offset = listOffset;
-            addButton(buildings.get(offset + i), contentX, startY + i * 13,
+            final int buildingNumber = listOffset + i + 1;
+            addButton(buildings.get(buildingNumber - 1), contentX, startY + i * 13,
                     contentWidth, 13, () -> {
-                        buildingIndexValue = Integer.toString(offset + i + 1);
+                        buildingIndexValue = Integer.toString(buildingNumber);
                         rebuildWidgets();
                     }, null, true);
         }
@@ -754,18 +754,10 @@ public final class SettlementScreen extends Screen {
             drawLine(contentY + 28, "Загружаю список зданий…", 0xFF777777, contentWidth);
             return;
         }
-        drawLine(contentY + 3, "Выбери дом в списке или введи его номер ниже.", 0xFF303030, contentWidth);
+        drawLine(contentY + 3, "Выбери здание в списке; уровень дома указан рядом с названием.",
+                0xFF303030, contentWidth);
         if (snapshot.buildings().isEmpty()) {
             drawLine(contentY + 28, "Пока нет зарегистрированных построек.", 0xFF777777, contentWidth);
-        }
-        int startY = contentY + 22;
-        int footerY = contentBottom - 24;
-        int rows = Math.max(1, (footerY - startY) / 13);
-        int maxOffset = Math.max(0, snapshot.buildings().size() - rows);
-        listOffset = Math.min(listOffset, maxOffset);
-        for (int i = 0; i < rows && listOffset + i < snapshot.buildings().size(); i++) {
-            drawLine(startY + i * 13, snapshot.buildings().get(listOffset + i),
-                    0xFF303030, contentWidth);
         }
     }
 
