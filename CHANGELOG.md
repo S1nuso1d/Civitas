@@ -1,5 +1,14 @@
 # Changelog
 
+## Alpha 0.13.0 — резерв материалов и безопасная отмена строительства
+
+- Every queued order stores an immutable snapshot of its reserved material costs in world saved data.
+- Reservations are allocated proportionally by completed construction layers. Cancelling an order refunds only the reservation associated with remaining layers; one-count items are allocated to the final layer.
+- Started orders can be cancelled after their construction chunk is loaded. The manager removes only block types expected from completed Civitas template layers and leaves blocks changed to other types untouched.
+- Orders from saves created before the reservation ledger was introduced remain supported by falling back to the current building definition.
+- Added automated tests for proportional refunds, progress clamping and reservation immutability.
+- CI compilation and test verification are required before the revision is considered ready; manual in-game checks are still needed.
+
 ## Alpha 0.12.0 — параллельная работа строителей
 
 - The owner can assign multiple residents as builders; assigning a new builder no longer removes the role from existing builders.
