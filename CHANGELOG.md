@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.40.2] - Blueprint Catalog
+
+### Added
+- Added `/civitas blueprints` to list supported building types, dimensions, construction stages, and costs.
+- Documents the preview-then-confirm workflow and preserves existing site/resource validation.
+
+### Validation
+- Source change committed; CI compilation/tests and in-game validation are still required.
+
 ## [0.40.1] - Optional Mod Integration
 
 ### Added
