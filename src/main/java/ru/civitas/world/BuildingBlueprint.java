@@ -244,17 +244,20 @@ public final class BuildingBlueprint {
         }
         List<Placement> rotated = new ArrayList<>(blocks.size());
         for (Placement placement : blocks.values()) {
-            BlockPos pos = placement.relativePosition();
-            BlockPos turned = switch (rotation) {
-                case 0 -> pos;
-                case 90 -> new BlockPos(-pos.getZ(), pos.getY(), pos.getX());
-                case 180 -> new BlockPos(-pos.getX(), pos.getY(), -pos.getZ());
-                case 270 -> new BlockPos(pos.getZ(), pos.getY(), -pos.getX());
-                default -> throw new IllegalStateException("Unexpected normalized rotation");
-            };
+            BlockPos turned = rotatePosition(placement.relativePosition(), rotation);
             rotated.add(new Placement(turned, placement.blockId(), placement.cropAge()));
         }
         return Collections.unmodifiableList(rotated);
+    }
+
+    private static BlockPos rotatePosition(BlockPos pos, int rotationDegrees) {
+        return switch (Math.floorMod(rotationDegrees, 360)) {
+            case 0 -> pos;
+            case 90 -> new BlockPos(-pos.getZ(), pos.getY(), pos.getX());
+            case 180 -> new BlockPos(-pos.getX(), pos.getY(), -pos.getZ());
+            case 270 -> new BlockPos(pos.getZ(), pos.getY(), -pos.getX());
+            default -> throw new IllegalArgumentException("Rotation must be a multiple of 90 degrees");
+        };
     }
 
     public static boolean canPlaceHouseUpgrade(ServerLevel level, BlockPos ground,
@@ -264,7 +267,7 @@ public final class BuildingBlueprint {
             if (!level.hasChunkAt(target)) return false;
             BlockState current = level.getBlockState(target);
             boolean chimneyRoofOpening = newLevel == 3
-                    && placement.relativePosition().equals(new BlockPos(3, 5, 2))
+                    && placement.relativePosition().equals(rotatePosition(new BlockPos(3, 5, 2), rotationDegrees))
                     && current.is(resolveBlock("minecraft:oak_planks"));
             if (!chimneyRoofOpening && !current.isAir() && !current.canBeReplaced()) return false;
             if (!level.getFluidState(target).isEmpty()) return false;
