@@ -38,6 +38,6 @@ public final class AiLodController {
 
     public static boolean shouldTick(ServerLevel level, Villager villager) {
         int interval = tickInterval(level, villager);
-        return Math.floorMod(villager.tickCount, interval) == 0;
+        return Math.floorMod(level.getGameTime(), interval) == 0;
     }
 }
