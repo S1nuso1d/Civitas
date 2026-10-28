@@ -39,7 +39,7 @@ public final class SettlementBuildingManager {
             }
         }
         cost.forEach((id, amount) -> remove(warehouse, id, amount));
-        data.addConstructionOrder(definition.id(), site, definition.totalLayers());
+        data.addConstructionOrder(definition.id(), site, definition.totalLayers(), definition.costs());
         return new BuildResult(true, "Заказ принят: " + definition.displayName() + ". Материалы списаны со склада; строительство будет идти послойно. Статус: /civitas construction.");
     }
 
@@ -53,13 +53,30 @@ public final class SettlementBuildingManager {
             return new BuildResult(false, "Заказ №" + orderNumber + " не найден. В очереди заказов: " + orders.size() + ".");
         }
         CivitasSavedData.ConstructionOrder order = orders.get(orderNumber - 1);
-        if (order.progress() > 0) {
-            return new BuildResult(false, "Заказ №" + orderNumber + " уже начат. Его нельзя отменить, чтобы не оставить недостроенное здание и не потерять материалы.");
-        }
         BuildingDefinition definition = BuildingDefinition.find(order.type()).orElse(null);
         if (definition == null) return new BuildResult(false, "Неизвестный тип заказа: " + order.type());
-        Map<String, Integer> refund = definition.costs();
-        if (!data.removeConstructionOrder(order)) return new BuildResult(false, "Заказ уже изменился. Обнови очередь строительства.");
+
+        ServerLevel level = player.getServer().overworld();
+        BlockPos site = new BlockPos(order.x(), order.y(), order.z());
+        if (order.progress() > 0 && !level.hasChunkAt(site)) {
+            return new BuildResult(false,
+                    "Чтобы безопасно отменить начатое строительство, сначала подойди к его площадке и загрузи чанк.");
+        }
+
+        Map<String, Integer> originalReservation = order.reservedResources().isEmpty()
+                ? definition.costs() : order.reservedResources();
+        Map<String, Integer> refund = refundableResources(
+                originalReservation, order.progress(), order.totalLayers());
+
+        // Remove only the block types that Civitas placed in completed layers.
+        // Player replacements using other block types are intentionally preserved.
+        if (order.progress() > 0) {
+            removeConstructedLayers(level, order);
+        }
+        if (!data.removeConstructionOrder(order)) {
+            return new BuildResult(false, "Заказ уже изменился. Обнови очередь строительства.");
+        }
+
         for (Map.Entry<String, Integer> entry : refund.entrySet()) {
             ResourceLocation id = ResourceLocation.parse(entry.getKey());
             if (!BuiltInRegistries.ITEM.containsKey(id)) continue;
@@ -72,7 +89,131 @@ public final class SettlementBuildingManager {
                 remaining -= batch;
             }
         }
-        return new BuildResult(true, "Заказ №" + orderNumber + " отменён. Полный комплект материалов возвращён игроку; при заполненном инвентаре предметы выпали рядом.");
+        String refundMessage = refund.isEmpty()
+                ? "Возвращать материалы больше не требуется."
+                : "Неиспользованные материалы возвращены игроку; при заполненном инвентаре предметы выпали рядом.";
+        return new BuildResult(true, "Заказ №" + orderNumber + " отменён. "
+                + (order.progress() > 0
+                ? "Построенные Civitas слои разобраны; заменённые другими блоками детали сохранены. "
+                : "")
+                + refundMessage);
+    }
+
+    /**
+     * Splits an order's original resource reservation across its construction
+     * layers. Resources allocated to completed layers are considered consumed.
+     */
+    static Map<String, Integer> refundableResources(
+            Map<String, Integer> reservation, int progress, int totalLayers) {
+        if (reservation == null || reservation.isEmpty()) return Map.of();
+
+        int safeLayers = Math.max(1, totalLayers);
+        int completedLayers = Math.max(0, Math.min(progress, safeLayers));
+        Map<String, Integer> refund = new java.util.LinkedHashMap<>();
+        for (Map.Entry<String, Integer> entry : reservation.entrySet()) {
+            if (entry.getKey() == null || entry.getKey().isBlank() || entry.getValue() == null) continue;
+            int amount = Math.max(0, entry.getValue());
+            int consumed = (int) (((long) amount * completedLayers) / safeLayers);
+            int remaining = amount - consumed;
+            if (remaining > 0) refund.put(entry.getKey(), remaining);
+        }
+        return java.util.Collections.unmodifiableMap(refund);
+    }
+
+    /**
+     * Removes up to the completed construction layers. A block is removed only
+     * when its current type belongs to that Civitas template layer.
+     */
+    public static void removeConstructedLayers(ServerLevel level, CivitasSavedData.ConstructionOrder order) {
+        BuildingDefinition.Type type = BuildingDefinition.Type.byId(order.type()).orElse(null);
+        if (type == null) return;
+
+        BlockPos ground = new BlockPos(order.x(), order.y(), order.z());
+        int progress = Math.max(0, Math.min(order.progress(), order.totalLayers()));
+        for (int layer = progress; layer >= 1; layer--) {
+            switch (type) {
+                case CABIN -> removeCabinLayer(level, ground, layer);
+                case FARM -> removeFarmLayer(level, ground, layer);
+                case WORKSHOP -> removeWorkshopLayer(level, ground, layer);
+            }
+        }
+    }
+
+    private static void removeCabinLayer(ServerLevel level, BlockPos ground, int layer) {
+        if (layer == 1) {
+            for (int x = -2; x <= 2; x++) {
+                for (int z = -2; z <= 2; z++) {
+                    removeIfOneOf(level, ground.offset(x, 1, z),
+                            Blocks.OAK_PLANKS, Blocks.CRAFTING_TABLE, Blocks.BARREL, Blocks.RED_BED);
+                }
+            }
+        } else if (layer <= 4) {
+            for (int x = -2; x <= 2; x++) {
+                for (int z = -2; z <= 2; z++) {
+                    if (Math.abs(x) != 2 && Math.abs(z) != 2) continue;
+                    removeIfOneOf(level, ground.offset(x, layer, z), Blocks.OAK_LOG, Blocks.GLASS);
+                }
+            }
+        } else {
+            for (int x = -3; x <= 3; x++) {
+                for (int z = -3; z <= 3; z++) {
+                    removeIfOneOf(level, ground.offset(x, 5, z), Blocks.SPRUCE_PLANKS);
+                }
+            }
+        }
+    }
+
+    private static void removeFarmLayer(ServerLevel level, BlockPos ground, int layer) {
+        if (layer == 1) {
+            for (int x = -3; x <= 3; x++) {
+                for (int z = -3; z <= 3; z++) {
+                    removeIfOneOf(level, ground.offset(x, 1, z),
+                            Blocks.OAK_FENCE, Blocks.FARMLAND, Blocks.WATER, Blocks.COMPOSTER, Blocks.BARREL);
+                }
+            }
+        } else {
+            for (int x = -3; x <= 3; x++) {
+                for (int z = -3; z <= 3; z++) {
+                    if (Math.abs(x) == 3 || Math.abs(z) == 3 || (x == 0 && z == 0)) continue;
+                    removeIfOneOf(level, ground.offset(x, 2, z), Blocks.WHEAT);
+                }
+            }
+        }
+    }
+
+    private static void removeWorkshopLayer(ServerLevel level, BlockPos ground, int layer) {
+        if (layer == 1) {
+            for (int x = -2; x <= 2; x++) {
+                for (int z = -2; z <= 2; z++) {
+                    removeIfOneOf(level, ground.offset(x, 1, z),
+                            Blocks.COBBLESTONE, Blocks.CRAFTING_TABLE, Blocks.FURNACE, Blocks.BARREL, Blocks.ANVIL);
+                }
+            }
+        } else if (layer <= 3) {
+            for (int x = -2; x <= 2; x++) {
+                for (int z = -2; z <= 2; z++) {
+                    if (Math.abs(x) != 2 && Math.abs(z) != 2) continue;
+                    removeIfOneOf(level, ground.offset(x, layer, z), Blocks.COBBLESTONE);
+                }
+            }
+        } else {
+            for (int x = -3; x <= 3; x++) {
+                for (int z = -3; z <= 3; z++) {
+                    removeIfOneOf(level, ground.offset(x, 4, z), Blocks.OAK_PLANKS);
+                }
+            }
+        }
+    }
+
+    private static void removeIfOneOf(ServerLevel level, BlockPos position, Block... expectedBlocks) {
+        if (!level.hasChunkAt(position)) return;
+        var state = level.getBlockState(position);
+        for (Block expected : expectedBlocks) {
+            if (state.is(expected)) {
+                level.setBlock(position, Blocks.AIR.defaultBlockState(), 3);
+                return;
+            }
+        }
     }
 
     public static void placeConstructionLayer(ServerLevel level, CivitasSavedData data, CivitasSavedData.ConstructionOrder order) {
