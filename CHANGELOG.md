@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.36.0] - Achievement progress display
+
+### Added
+- Locked achievement rows show a percentage computed from the current authoritative settlement snapshot.
+- Compound milestones use their limiting component so progress is not overstated when one requirement is still far behind.
+- Existing unlock history and protocol version 8 are unchanged.
+
+### Validation
+- Source committed; run build, tests and a client UI check locally.
+
+
 ## [0.35.0] - Background achievement progress
 
 ### Added
