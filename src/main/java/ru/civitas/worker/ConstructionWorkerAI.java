@@ -128,7 +128,17 @@ public final class ConstructionWorkerAI {
                     workPos.getX() + 0.5D, workPos.getY(), workPos.getZ() + 0.5D);
             if (distance > WORK_DISTANCE_SQUARED) {
                 persistent.putInt(WORK_PROGRESS_KEY, 0);
-                if (builder.getNavigation().isDone()) {
+                WorkerNavigationGuard.Outcome navigation = WorkerNavigationGuard.inspect(
+                        builder, "builder", WorkerNavigationPolicy.STAGNANT_CHECK_LIMIT, WorkerNavigationPolicy.MAX_RETRIES);
+                if (navigation == WorkerNavigationGuard.Outcome.EXHAUSTED) {
+                    builder.getNavigation().stop();
+                    persistent.putString(BLOCKED_REASON_KEY,
+                            "Не удалось добраться до площадки после 3 попыток. Проверь путь и назначь другого жителя.");
+                } else if (navigation == WorkerNavigationGuard.Outcome.RETRY) {
+                    builder.getNavigation().stop();
+                    builder.getNavigation().moveTo(
+                            workPos.getX() + 0.5D, workPos.getY(), workPos.getZ() + 0.5D, MOVE_SPEED);
+                } else if (builder.getNavigation().isDone()) {
                     builder.getNavigation().moveTo(
                             workPos.getX() + 0.5D, workPos.getY(), workPos.getZ() + 0.5D, MOVE_SPEED);
                 }
@@ -136,6 +146,7 @@ public final class ConstructionWorkerAI {
                 continue;
             }
 
+            WorkerNavigationGuard.reset(builder, "builder");
             builder.getNavigation().stop();
             int progressTicks = Math.min(WORK_PROGRESS_TICKS,
                     Math.max(0, persistent.getInt(WORK_PROGRESS_KEY)) + WORK_UPDATE_TICKS);
@@ -164,7 +175,8 @@ public final class ConstructionWorkerAI {
         Villager closest = null;
         double bestDistance = Double.MAX_VALUE;
         for (Villager builder : builders) {
-            if (assignedThisTick.contains(builder.getUUID())) {
+            if (assignedThisTick.contains(builder.getUUID())
+                    || WorkerNavigationGuard.isExhausted(builder, "builder")) {
                 continue;
             }
             if (!site.equals(readTarget(builder))) {
@@ -185,7 +197,9 @@ public final class ConstructionWorkerAI {
         Villager closest = null;
         double bestDistance = Double.MAX_VALUE;
         for (Villager builder : builders) {
-            if (assignedThisTick.contains(builder.getUUID()) || readTarget(builder) != null) {
+            if (assignedThisTick.contains(builder.getUUID())
+                    || readTarget(builder) != null
+                    || WorkerNavigationGuard.isExhausted(builder, "builder")) {
                 continue;
             }
             double distance = builder.distanceToSqr(
@@ -301,6 +315,7 @@ public final class ConstructionWorkerAI {
         if (!site.equals(readTarget(villager))) {
             tag.putInt(WORK_PROGRESS_KEY, 0);
             tag.remove(BLOCKED_REASON_KEY);
+            WorkerNavigationGuard.reset(villager, "builder");
         }
         tag.putBoolean(TARGET_ASSIGNED_KEY, true);
         tag.putInt(TARGET_X_KEY, site.getX());
@@ -337,6 +352,7 @@ public final class ConstructionWorkerAI {
         tag.putString(ROLE_KEY, "builder");
         tag.putInt(WORK_PROGRESS_KEY, 0);
         tag.remove(BLOCKED_REASON_KEY);
+        WorkerNavigationGuard.reset(villager, "builder");
         villager.setCustomName(Component.literal("Строитель Civitas"));
         villager.setCustomNameVisible(true);
         villager.setPersistenceRequired();
@@ -368,5 +384,6 @@ public final class ConstructionWorkerAI {
         tag.remove(TARGET_Y_KEY);
         tag.remove(TARGET_Z_KEY);
         tag.putInt(WORK_PROGRESS_KEY, 0);
+        WorkerNavigationGuard.reset(villager, "builder");
     }
 }

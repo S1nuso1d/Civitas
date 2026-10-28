@@ -183,6 +183,7 @@ public final class LumberjackWorkerAI {
         chosen.getPersistentData().putInt(CHOP_PROGRESS_KEY, 0);
         chosen.getPersistentData().putString(ISSUE_KEY, "");
         chosen.getPersistentData().putBoolean(PAUSED_KEY, false);
+        WorkerNavigationGuard.reset(chosen, "lumberjack");
         chosen.getPersistentData().putString(ROLE_KEY, "lumberjack");
         updateWorkerName(chosen, "");
         return true;
@@ -293,6 +294,26 @@ public final class LumberjackWorkerAI {
             persistent.putString(CARRIED_ITEM_KEY, "");
         }
 
+        // An exhausted path must not silently discard cargo. Deliver the saved
+        // load first, then leave an explicit issue until the player reassigns the worker.
+        if (WorkerNavigationGuard.isExhausted(villager, "lumberjack")) {
+            villager.getNavigation().stop();
+            persistent.putString(ISSUE_KEY,
+                    "Маршрут заблокирован после 3 попыток. Переназначь лесоруба для возобновления работы.");
+            if (carriedCount > 0) {
+                BlockPos safeDeliveryStand = warehousePos.offset(0, 1, 2);
+                if (villager.distanceToSqr(safeDeliveryStand.getX() + 0.5D, safeDeliveryStand.getY(),
+                        safeDeliveryStand.getZ() + 0.5D) > 5.0D) {
+                    villager.getNavigation().moveTo(safeDeliveryStand.getX() + 0.5D, safeDeliveryStand.getY(),
+                            safeDeliveryStand.getZ() + 0.5D, 0.9D);
+                } else {
+                    depositCarriedLogs(warehouse, persistent, carriedItemId, carriedCount);
+                }
+            }
+            updateWorkerName(villager, " — путь заблокирован");
+            return;
+        }
+
         // Keep one tree assigned while the villager walks and chops. Re-scanning
         // for the nearest log every second made the target jump between trunk
         // blocks, so the worker could orbit the tree or abandon a half-finished cut.
@@ -391,12 +412,27 @@ public final class LumberjackWorkerAI {
 
         if (villager.distanceToSqr(workPos.getX() + 0.5D, workPos.getY(), workPos.getZ() + 0.5D) > 4.0D) {
             persistent.putInt(CHOP_PROGRESS_KEY, 0);
-            villager.getNavigation().moveTo(workPos.getX() + 0.5D, workPos.getY(),
-                    workPos.getZ() + 0.5D, 0.9D);
-            updateWorkerName(villager, " — идёт к дереву");
+            WorkerNavigationGuard.Outcome navigation = WorkerNavigationGuard.inspect(
+                    villager, "lumberjack", WorkerNavigationPolicy.STAGNANT_CHECK_LIMIT, WorkerNavigationPolicy.MAX_RETRIES);
+            if (navigation == WorkerNavigationGuard.Outcome.EXHAUSTED) {
+                villager.getNavigation().stop();
+                persistent.putString(ISSUE_KEY,
+                        "Не удалось добраться до дерева после 3 попыток. Переназначь лесоруба для повтора.");
+                clearTreeTarget(persistent);
+                updateWorkerName(villager, " — путь заблокирован");
+            } else if (navigation == WorkerNavigationGuard.Outcome.RETRY) {
+                villager.getNavigation().stop();
+                villager.getNavigation().moveTo(workPos.getX() + 0.5D, workPos.getY(),
+                        workPos.getZ() + 0.5D, 0.9D);
+                updateWorkerName(villager, " — повторный поиск пути");
+            } else if (villager.getNavigation().isDone()) {
+                villager.getNavigation().moveTo(workPos.getX() + 0.5D, workPos.getY(),
+                        workPos.getZ() + 0.5D, 0.9D);
+            }
             return;
         }
 
+        WorkerNavigationGuard.reset(villager, "lumberjack");
         villager.getNavigation().stop();
         java.util.List<BlockPos> currentTree = findConnectedTreeLogs(level, treeLog, worldData, warehousePos);
         if (currentTree.isEmpty()) {
