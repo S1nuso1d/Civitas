@@ -1,5 +1,6 @@
 package ru.civitas.world;
 
+import net.minecraft.core.BlockPos;
 import org.junit.jupiter.api.Test;
 import ru.civitas.data.CivitasSavedData;
 
@@ -47,6 +48,20 @@ class ConstructionReservationTest {
         assertEquals(reservation(),
                 SettlementBuildingManager.refundableResources(reservation(), -5, 4));
         assertTrue(SettlementBuildingManager.refundableResources(reservation(), 99, 4).isEmpty());
+    }
+
+    @Test
+    void reservationSurvivesConstructionProgressUpdates() {
+        CivitasSavedData data = new CivitasSavedData();
+        data.addConstructionOrder("cabin", new BlockPos(5, 64, 7), 4, reservation());
+
+        CivitasSavedData.ConstructionOrder before = data.getConstructionOrders().get(0);
+        data.advanceConstructionOrder(before);
+
+        CivitasSavedData.ConstructionOrder after = data.getConstructionOrders().get(0);
+        assertEquals(1, after.progress());
+        assertEquals(reservation(), after.reservedResources());
+        assertEquals(24, after.remainingReservedResources().get("minecraft:oak_planks"));
     }
 
     @Test
