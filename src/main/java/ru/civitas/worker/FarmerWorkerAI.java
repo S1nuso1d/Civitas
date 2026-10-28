@@ -23,6 +23,7 @@ import net.minecraftforge.event.entity.living.LivingEvent;
 import ru.civitas.CivitasConfig;
 import ru.civitas.block.SettlementWarehouseBlockEntity;
 import ru.civitas.data.CivitasSavedData;
+import ru.civitas.worker.PersonalOrders;
 import ru.civitas.data.StorageFoodExtension;
 
 import java.util.Comparator;
@@ -51,9 +52,13 @@ public final class FarmerWorkerAI {
         LivingEntity entity = event.getEntity();
         if (!(entity instanceof Villager villager) || villager.level().isClientSide
                 || !"farmer".equals(villager.getPersistentData().getString(ROLE_KEY))
-                || villager.tickCount % UPDATE_TICKS != 0
                 || !(villager.level() instanceof ServerLevel level)
                 || level.dimension() != Level.OVERWORLD) return;
+        if (PersonalOrders.get(villager) != PersonalOrders.Order.NONE) {
+            PersonalOrders.tickOverride(level, villager);
+            return;
+        }
+        if (villager.tickCount % UPDATE_TICKS != 0) return;
         if (WorkerLifeCycle.shouldRest(level, villager, "farmer")) return;
         WorkerLifeCycle.openNearbyDoor(level, villager);
         tickWorker(level, villager);
