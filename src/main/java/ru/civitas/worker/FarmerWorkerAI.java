@@ -54,6 +54,8 @@ public final class FarmerWorkerAI {
                 || villager.tickCount % UPDATE_TICKS != 0
                 || !(villager.level() instanceof ServerLevel level)
                 || level.dimension() != Level.OVERWORLD) return;
+        if (WorkerLifeCycle.shouldRest(level, villager, "farmer")) return;
+        WorkerLifeCycle.openNearbyDoor(level, villager);
         tickWorker(level, villager);
     }
 
@@ -180,8 +182,10 @@ public final class FarmerWorkerAI {
             clearTarget(villager);
             return;
         }
+        WorkerLifeCycle.workFeedback(level, villager, "farmer", target);
         int harvestProgress = Math.min(HARVEST_WORK_TICKS,
-                Math.max(0, tag.getInt(HARVEST_PROGRESS)) + UPDATE_TICKS);
+                Math.max(0, tag.getInt(HARVEST_PROGRESS))
+                        + WorkerLifeCycle.progressIncrement(level, villager, "farmer", UPDATE_TICKS));
         tag.putInt(HARVEST_PROGRESS, harvestProgress);
         villager.getLookControl().setLookAt(
                 target.getX() + 0.5D, target.getY() + 0.5D, target.getZ() + 0.5D);
