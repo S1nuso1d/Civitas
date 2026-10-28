@@ -1,6 +1,7 @@
 package ru.civitas.trade;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
@@ -15,6 +16,7 @@ import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.AABB;
 import net.minecraftforge.event.TickEvent;
 import ru.civitas.CivitasConfig;
+import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import ru.civitas.block.SettlementWarehouseBlockEntity;
 import ru.civitas.data.CivitasSavedData;
 import java.util.ArrayList;
@@ -62,9 +64,8 @@ public final class TradeCaravanManager {
         Entity entity = level.getEntity(caravan.traderId());
         if (!(entity instanceof Villager trader) || !trader.isAlive()) {
             // Entity lookup only sees loaded entities. Give a missing trader time to load back in.
-            caravan.tickMissing();
-            if (caravan.missingTicks() < MISSING_GRACE_TICKS) return false;
-            return true;
+            // An unloaded entity is not a dead entity. Death is handled by LivingDeathEvent.
+            return false;
         }
         caravan.resetMissing();
         if (trader.getPersistentData().getBoolean("civitas.trader.attacked")) {
@@ -137,8 +138,13 @@ public final class TradeCaravanManager {
                 partner.personality().tradeLimit);
         caravan.offers().addAll(TradeOfferGenerator.generate(partner.id(),
                 Math.max(0L, level.getDayTime() / 24000L), partner.personality(), data.getEconomyHistory()));
+        caravan.setWaitTicksLeft(CivitasConfig.CARAVAN_WAIT_SECONDS.get() * 20);
         data.getActiveTradeCaravans().add(caravan);
-        data.setNextCaravanTick(now + (long) partner.arrivalIntervalDays() * 24000L);
+        int personalityOffset = partner.personality() == TradePersonality.FRIENDLY ? -1
+                : partner.personality() == TradePersonality.WARLIKE ? 1 : 0;
+        int intervalDays = Math.max(1, Math.min(30,
+                CivitasConfig.CARAVAN_BASE_INTERVAL_DAYS.get() + partner.distance() / 100 + personalityOffset));
+        data.setNextCaravanTick(now + (long) intervalDays * 24000L);
         data.recordTrade("Караван из «" + partner.name() + "» прибывает");
         data.markTradeDataDirty();
     }
@@ -173,10 +179,27 @@ public final class TradeCaravanManager {
         if (!level.hasChunkAt(rough)) return null;
         int y = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, rough.getX(), rough.getZ());
         BlockPos feet = new BlockPos(rough.getX(), y, rough.getZ());
-        if (!level.hasChunkAt(feet) || !level.getBlockState(feet.below()).isSolid()
+        if (!level.hasChunkAt(feet) || !level.getBlockState(feet.below()).isFaceSturdy(level, feet.below(), Direction.UP)
                 || !level.getBlockState(feet).isAir() || !level.getBlockState(feet.above()).isAir()
                 || !level.getFluidState(feet).isEmpty()) return null;
         return feet;
+    }
+
+
+    public static void onLivingDeath(LivingDeathEvent event) {
+        if (!(event.getEntity() instanceof Villager trader)
+                || !trader.getPersistentData().getBoolean("civitas.trader")
+                || !(trader.level() instanceof ServerLevel level)) return;
+        CivitasSavedData data = CivitasSavedData.get(level.getServer());
+        for (int i = data.getActiveTradeCaravans().size() - 1; i >= 0; i--) {
+            TradeCaravan caravan = data.getActiveTradeCaravans().get(i);
+            if (!caravan.traderId().equals(trader.getUUID())) continue;
+            data.addTradeReputation(caravan.partnerId(), -10);
+            data.recordTrade("Торговец погиб: репутация партнёра −10");
+            data.getActiveTradeCaravans().remove(i);
+            data.setNextCaravanTick(level.getGameTime() + 24000L);
+            data.markTradeDataDirty();
+        }
     }
 
     private static String partnerName(CivitasSavedData data, UUID id) {

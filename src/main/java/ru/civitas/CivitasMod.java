@@ -55,6 +55,7 @@ public final class CivitasMod {
         MinecraftForge.EVENT_BUS.addListener(FarmerWorkerAI::onLivingDeath);
         MinecraftForge.EVENT_BUS.addListener(SettlementEconomyAI::onLevelTick);
         MinecraftForge.EVENT_BUS.addListener(TradeCaravanManager::onLevelTick);
+        MinecraftForge.EVENT_BUS.addListener(TradeCaravanManager::onLivingDeath);
         MinecraftForge.EVENT_BUS.addListener(this::onTradeInteract);
         MinecraftForge.EVENT_BUS.addListener(this::onTradeHurt);
     }
