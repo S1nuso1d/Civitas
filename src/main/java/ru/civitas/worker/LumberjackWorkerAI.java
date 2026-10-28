@@ -36,6 +36,8 @@ public final class LumberjackWorkerAI {
     private static final String CARRIED_COUNT_KEY = "civitas.worker_carried_count";
     private static final String CHOP_PROGRESS_KEY = "civitas.worker_chop_progress";
     private static final String LAST_CHOP_KEY = "civitas.lumberjack.last_chop";
+    private static final String NEXT_TREE_SEARCH_KEY = "civitas.lumberjack.next_tree_search";
+    private static final long TREE_SEARCH_RETRY_TICKS = 100L;
     private static final String PAUSED_KEY = "civitas.worker_paused";
     private static final String ISSUE_KEY = "civitas.worker_issue";
     private static final String TARGET_TREE_ASSIGNED_KEY = "civitas.worker_tree_target_assigned";
@@ -397,10 +399,16 @@ public final class LumberjackWorkerAI {
             persistent.putInt(CHOP_PROGRESS_KEY, 0);
             treeLog = null;
         }
-        if (treeLog == null && carriedCount < MAX_CARRIED) {
+        if (treeLog == null && carriedCount < MAX_CARRIED
+                && level.getGameTime() >= persistent.getLong(NEXT_TREE_SEARCH_KEY)) {
             treeLog = findNearestTreeLog(level, villager.blockPosition(), worldData, warehousePos);
             if (treeLog != null) {
+                persistent.remove(NEXT_TREE_SEARCH_KEY);
                 writeTreeTarget(persistent, treeLog);
+            } else {
+                // A failed 37x25x37 block scan is cached for five seconds instead of
+                // being repeated by every lumberjack every work interval.
+                persistent.putLong(NEXT_TREE_SEARCH_KEY, level.getGameTime() + TREE_SEARCH_RETRY_TICKS);
             }
         }
 
@@ -410,6 +418,7 @@ public final class LumberjackWorkerAI {
         if (treeLog != null && treeLogs.isEmpty()) {
             clearTreeTarget(persistent);
             persistent.putInt(CHOP_PROGRESS_KEY, 0);
+            persistent.remove(NEXT_TREE_SEARCH_KEY);
             treeLog = null;
         }
 
