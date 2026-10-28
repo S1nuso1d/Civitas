@@ -91,7 +91,18 @@ public final class LumberjackWorkerAI {
     /** Human-readable activity, cargo, pause state and last blocking issue. */
     public static String getWorkerStatus(Villager villager) {
         var persistent = villager.getPersistentData();
-        if (persistent.getBoolean(PAUSED_KEY) && "lumberjack".equals(getWorkerRole(villager))) return "Приостановлен";
+        String role = getWorkerRole(villager);
+        if (persistent.getBoolean(PAUSED_KEY) && "lumberjack".equals(role)) return "Приостановлен";
+        if ("builder".equals(role)) {
+            String blocked = persistent.getString("civitas.builder_blocked_reason");
+            if (!blocked.isBlank()) return "Стройка ожидает: " + blocked;
+            int buildTicks = Math.max(0, persistent.getInt("civitas.builder_work_progress_ticks"));
+            if (buildTicks > 0) return "Строит: " + Math.min(3, buildTicks / 20) + "/3 сек";
+            if (persistent.getBoolean("civitas.builder_target_assigned")) {
+                return villager.getNavigation().isDone() ? "Готовится к строительству" : "Идёт на площадку";
+            }
+            return "Ожидает заказ строительства";
+        }
         String issue = persistent.getString(ISSUE_KEY);
         if (!issue.isBlank()) return issue;
         int carried = Math.max(0, persistent.getInt(CARRIED_COUNT_KEY));
@@ -308,10 +319,17 @@ public final class LumberjackWorkerAI {
         if (workPos == null) {
             persistent.putString(ISSUE_KEY, "Нет безопасного места для рубки");
             persistent.putInt(CHOP_PROGRESS_KEY, 0);
+            clearTreeTarget(persistent);
             updateWorkerName(villager, " — нет места для рубки");
             if (carriedCount > 0) {
-                villager.getNavigation().moveTo(deliveryStand.getX() + 0.5D, deliveryStand.getY(),
-                        deliveryStand.getZ() + 0.5D, 0.9D);
+                if (villager.distanceToSqr(deliveryStand.getX() + 0.5D, deliveryStand.getY(),
+                        deliveryStand.getZ() + 0.5D) > 5.0D) {
+                    villager.getNavigation().moveTo(deliveryStand.getX() + 0.5D, deliveryStand.getY(),
+                            deliveryStand.getZ() + 0.5D, 0.9D);
+                } else {
+                    villager.getNavigation().stop();
+                    depositCarriedLogs(warehouse, persistent, carriedItemId, carriedCount);
+                }
             } else {
                 villager.getNavigation().stop();
             }
