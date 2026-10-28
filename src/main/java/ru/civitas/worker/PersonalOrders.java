@@ -4,6 +4,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.entity.player.Player;
+import java.util.UUID;
 import net.minecraft.world.level.block.BedBlock;
 import net.minecraft.world.level.block.state.BlockState;
 
@@ -13,6 +14,7 @@ public final class PersonalOrders {
 
     private static final String ORDER_KEY = "civitas.personal_order";
     private static final String TARGET_KEY = "civitas.personal_order_target";
+    private static final String OWNER_KEY = "civitas.personal_order_owner";
     private static final String NEXT_UPDATE_KEY = "civitas.personal_order_next_update";
     private static final String BED_TARGET_KEY = "civitas.personal_order_bed_target";
     private static final String BED_SCAN_KEY = "civitas.personal_order_bed_scan";
@@ -29,10 +31,16 @@ public final class PersonalOrders {
     }
 
     public static void set(Villager villager, Order order, BlockPos target) {
+        set(villager, order, target, null);
+    }
+
+    public static void set(Villager villager, Order order, BlockPos target, UUID owner) {
         var tag = villager.getPersistentData();
         tag.putString(ORDER_KEY, order.name());
         if (target != null) tag.putLong(TARGET_KEY, target.asLong());
         else tag.remove(TARGET_KEY);
+        if (order == Order.FOLLOW && owner != null) tag.putString(OWNER_KEY, owner.toString());
+        else tag.remove(OWNER_KEY);
         tag.remove(NEXT_UPDATE_KEY);
         tag.remove(BED_TARGET_KEY);
         tag.remove(BED_SCAN_KEY);
@@ -51,7 +59,14 @@ public final class PersonalOrders {
 
         switch (order) {
             case FOLLOW -> {
-                Player player = level.getNearestPlayer(villager, 64.0D);
+                Player player = null;
+                try {
+                    String owner = tag.getString(OWNER_KEY);
+                    if (!owner.isBlank()) player = level.getServer().getPlayerList().getPlayer(UUID.fromString(owner));
+                } catch (IllegalArgumentException ignored) {
+                    tag.remove(OWNER_KEY);
+                }
+                if (player == null) player = level.getNearestPlayer(villager, 64.0D);
                 if (player == null) {
                     villager.getNavigation().stop();
                     tag.putString(ISSUE_KEY, "Ожидает игрока");
