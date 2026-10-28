@@ -12,6 +12,23 @@ class EconomyHistoryTest {
         assertEquals(35, history.deltaStone(7));
         assertEquals(14, history.deltaFood(7));
     }
+    @Test void depletionForecastUsesWeeklyNetChange() {
+        EconomyHistory history = new EconomyHistory(30);
+        for (long day = 1; day <= 8; day++) {
+            history.recordDaily(day, 100 - (int) day * 10, 80 - (int) day * 5,
+                    100 - (int) day * 7, 5);
+        }
+        assertEquals(10, history.daysUntilDepletion("wood", 100));
+        assertEquals(20, history.daysUntilDepletion("stone", 100));
+        assertEquals(14, history.daysUntilDepletion("food", 100));
+        EconomyHistory growing = new EconomyHistory(7);
+        growing.recordDaily(1, 10, 10, 10, 1);
+        growing.recordDaily(8, 20, 20, 20, 1);
+        assertEquals(-1, growing.daysUntilDepletion("wood", 100));
+        assertEquals(-1, history.daysUntilDepletion("unknown", 100));
+        assertEquals(0, history.daysUntilDepletion("food", 0));
+    }
+
     @Test void historyAndEventsHaveBoundedCapacityAndPersist() {
         EconomyHistory history = new EconomyHistory(7);
         for (long day=1;day<=100;day++) history.recordDaily(day,0,0,0,5);
