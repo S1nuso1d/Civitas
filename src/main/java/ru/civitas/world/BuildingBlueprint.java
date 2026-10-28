@@ -4,6 +4,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.tags.BlockTags;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.CropBlock;
@@ -89,9 +90,17 @@ public final class BuildingBlueprint {
         for (Placement p : layer(type, layer, rotationDegrees)) {
             BlockPos target = ground.offset(p.relativePosition());
             if (!level.hasChunkAt(target)) return false;
-            if (p.clearsBlock()) continue;
-            Block expected = resolveBlock(p.blockId());
             BlockState current = level.getBlockState(target);
+            if (p.clearsBlock()) {
+                // Air placements are doorway/entrance gaps, not permission to
+                // erase a solid block a player put there after ordering a build.
+                if (!current.isAir() && !current.canBeReplaced() && !current.is(BlockTags.LEAVES)) {
+                    return false;
+                }
+                if (!level.getFluidState(target).isEmpty()) return false;
+                continue;
+            }
+            Block expected = resolveBlock(p.blockId());
             if (!current.canBeReplaced() && !current.is(expected)) return false;
         }
         return true;
