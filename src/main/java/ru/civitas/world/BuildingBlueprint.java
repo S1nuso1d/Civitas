@@ -67,9 +67,22 @@ public final class BuildingBlueprint {
     }
 
     public static void placeLayer(ServerLevel level, BlockPos ground, BuildingDefinition.Type type, int layer) {
+        List<BlockPos> deferredDoorUpdates = new ArrayList<>();
         for (Placement p : layer(type, layer)) {
             BlockPos target = ground.offset(p.relativePosition());
-            if (level.hasChunkAt(target)) level.setBlock(target, resolveState(p), 3);
+            if (!level.hasChunkAt(target)) continue;
+            BlockState state = resolveState(p);
+            // Door halves must exist together before neighbour updates run, otherwise
+            // Minecraft may immediately drop the first half while the second is air.
+            if (state.getBlock() instanceof DoorBlock) {
+                level.setBlock(target, state, 2);
+                deferredDoorUpdates.add(target.immutable());
+            } else {
+                level.setBlock(target, state, 3);
+            }
+        }
+        for (BlockPos doorPos : deferredDoorUpdates) {
+            level.updateNeighborsAt(doorPos, level.getBlockState(doorPos).getBlock());
         }
     }
 
