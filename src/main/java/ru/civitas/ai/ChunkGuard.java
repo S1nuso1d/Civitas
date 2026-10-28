@@ -15,6 +15,10 @@ public final class ChunkGuard {
 
     public static boolean targetAvailable(ServerLevel level, Villager villager, BlockPos target, String statusKey) {
         if (target == null || level.hasChunkAt(target)) {
+            String issue = villager.getPersistentData().getString(statusKey);
+            if (issue.startsWith("Ждёт загрузки")) {
+                villager.getPersistentData().putString(statusKey, "");
+            }
             return true;
         }
         villager.getNavigation().stop();
