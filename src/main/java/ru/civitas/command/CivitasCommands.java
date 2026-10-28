@@ -25,6 +25,7 @@ import net.minecraftforge.event.RegisterCommandsEvent;
 import ru.civitas.block.SettlementWarehouseBlock;
 import ru.civitas.block.SettlementWarehouseBlockEntity;
 import ru.civitas.data.CivitasSavedData;
+import ru.civitas.worker.ConstructionWorkerAI;
 import ru.civitas.worker.LumberjackWorkerAI;
 import ru.civitas.world.BuildingDefinition;
 import ru.civitas.world.SettlementBuildingManager;
