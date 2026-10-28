@@ -63,7 +63,7 @@ public final class SettlementBuildingManager {
                 if (placement.clearsBlock()) continue;
                 BlockPos target = site.offset(placement.relativePosition());
                 if (!level.hasChunkAt(target)) continue;
-                level.sendParticles(valid ? ParticleTypes.END_ROD : ParticleTypes.SMOKE,
+                level.sendParticles(valid ? ParticleTypes.HAPPY_VILLAGER : ParticleTypes.SMOKE,
                         target.getX() + 0.5D, target.getY() + 0.5D, target.getZ() + 0.5D,
                         1, 0.0D, 0.0D, 0.0D, 0.0D);
             }
