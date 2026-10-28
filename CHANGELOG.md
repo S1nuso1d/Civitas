@@ -1,5 +1,12 @@
 # Changelog
 
+## Alpha 0.12.0 — параллельная работа строителей
+
+- The owner can assign multiple residents as builders; assigning a new builder no longer removes the role from existing builders.
+- Builders persist their target coordinates and are allocated to distinct construction orders, allowing multiple jobs to advance in parallel.
+- Stale assignments are cleared when a matching order is no longer in the queue.
+- Added a targeted build verification note for multi-builder operation, save/load and queue progression. Manual in-game verification remains outstanding.
+
 ## Alpha 0.11.0 — реестр зданий, сетевое состояние и вкладки
 
 - Added a central `BuildingDefinition` registry for buildable ids, display labels, material costs, footprints and layer counts.
