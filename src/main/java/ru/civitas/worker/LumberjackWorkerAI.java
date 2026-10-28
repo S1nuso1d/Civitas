@@ -1,6 +1,7 @@
 package ru.civitas.worker;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -30,8 +31,16 @@ public final class LumberjackWorkerAI {
     private static final String CHOP_PROGRESS_KEY = "civitas.worker_chop_progress";
     private static final String PAUSED_KEY = "civitas.worker_paused";
     private static final String ISSUE_KEY = "civitas.worker_issue";
+    private static final String TARGET_TREE_ASSIGNED_KEY = "civitas.worker_tree_target_assigned";
+    private static final String TARGET_TREE_X_KEY = "civitas.worker_tree_target_x";
+    private static final String TARGET_TREE_Y_KEY = "civitas.worker_tree_target_y";
+    private static final String TARGET_TREE_Z_KEY = "civitas.worker_tree_target_z";
+    private static final String TARGET_TREE_SIZE_KEY = "civitas.worker_tree_target_size";
     private static final int MAX_CARRIED = 8;
     private static final int WORK_INTERVAL = 20;
+    private static final int TREE_SEARCH_RADIUS = 18;
+    private static final int STARTER_VILLAGE_PROTECTION_RADIUS = 14;
+    private static final int MAX_TREE_LOGS = 512;
 
     private LumberjackWorkerAI() {
     }
@@ -87,7 +96,11 @@ public final class LumberjackWorkerAI {
         if (!issue.isBlank()) return issue;
         int carried = Math.max(0, persistent.getInt(CARRIED_COUNT_KEY));
         if (carried > 0) return "Несёт брёвна: " + carried + "/" + MAX_CARRIED;
-        if (persistent.getInt(CHOP_PROGRESS_KEY) > 0) return "Рубит дерево";
+        if (persistent.getInt(CHOP_PROGRESS_KEY) > 0) {
+            int progress = persistent.getInt(CHOP_PROGRESS_KEY);
+            int total = Math.max(progress, persistent.getInt(TARGET_TREE_SIZE_KEY));
+            return "Рубит дерево: " + progress + "/" + total + " сек";
+        }
         if (!"lumberjack".equals(getWorkerRole(villager))) return "Нет задачи";
         return villager.getNavigation().isDone() ? "Ищет дерево" : "Идёт к дереву";
     }
@@ -97,8 +110,13 @@ public final class LumberjackWorkerAI {
         for (Villager villager : level.getEntitiesOfClass(Villager.class, area)) {
             if ("lumberjack".equals(getWorkerRole(villager))) {
                 villager.getPersistentData().putBoolean(PAUSED_KEY, paused);
-                if (paused) villager.getNavigation().stop();
-                else villager.getPersistentData().putString(ISSUE_KEY, "");
+                if (paused) {
+                    villager.getNavigation().stop();
+                    updateWorkerName(villager, " — пауза");
+                } else {
+                    villager.getPersistentData().putString(ISSUE_KEY, "");
+                    updateWorkerName(villager, "");
+                }
                 return true;
             }
         }
@@ -205,9 +223,9 @@ public final class LumberjackWorkerAI {
         if (!(level.getBlockEntity(warehousePos) instanceof SettlementWarehouseBlockEntity warehouse)) {
             villager.getPersistentData().putString(ISSUE_KEY, "Склад не найден");
             villager.getNavigation().stop();
+            updateWorkerName(villager, " — нет склада");
             return;
         }
-        villager.getPersistentData().putString(ISSUE_KEY, "");
 
         var persistent = villager.getPersistentData();
         String carriedItemId = persistent.getString(CARRIED_ITEM_KEY);
@@ -217,44 +235,82 @@ public final class LumberjackWorkerAI {
             persistent.putString(CARRIED_ITEM_KEY, "");
         }
 
-        BlockPos treeLog = findNearestTreeLog(level, villager.blockPosition(), worldData, warehousePos);
+        // Keep one tree assigned while the villager walks and chops. Re-scanning
+        // for the nearest log every second made the target jump between trunk
+        // blocks, so the worker could orbit the tree or abandon a half-finished cut.
+        BlockPos treeLog = readTreeTarget(persistent);
+        if (treeLog != null && !isHarvestableTarget(level, treeLog, worldData, warehousePos)) {
+            clearTreeTarget(persistent);
+            persistent.putInt(CHOP_PROGRESS_KEY, 0);
+            treeLog = null;
+        }
+        if (treeLog == null && carriedCount < MAX_CARRIED) {
+            treeLog = findNearestTreeLog(level, villager.blockPosition(), worldData, warehousePos);
+            if (treeLog != null) {
+                writeTreeTarget(persistent, treeLog);
+            }
+        }
+
         java.util.List<BlockPos> treeLogs = treeLog == null
                 ? java.util.List.of()
                 : findConnectedTreeLogs(level, treeLog, worldData, warehousePos);
-        String targetItemId = treeLog == null ? "" : BuiltInRegistries.ITEM.getKey(level.getBlockState(treeLog).getBlock().asItem()).toString();
+        if (treeLog != null && treeLogs.isEmpty()) {
+            clearTreeTarget(persistent);
+            persistent.putInt(CHOP_PROGRESS_KEY, 0);
+            treeLog = null;
+        }
+
+        String targetItemId = treeLog == null ? "" :
+                BuiltInRegistries.ITEM.getKey(level.getBlockState(treeLog).getBlock().asItem()).toString();
         boolean mustDeliver = carriedCount >= MAX_CARRIED
                 || carriedCount > 0 && (treeLog == null || !carriedItemId.equals(targetItemId));
-        if (treeLog == null && carriedCount == 0) persistent.putString(ISSUE_KEY, "Нет деревьев поблизости");
 
         BlockPos deliveryStand = warehousePos.offset(0, 1, 2);
-        if (mustDeliver || treeLog == null && carriedCount > 0) {
-            if (villager.distanceToSqr(deliveryStand.getX() + 0.5D, deliveryStand.getY(), deliveryStand.getZ() + 0.5D) > 5.0D) {
-                villager.getNavigation().moveTo(deliveryStand.getX() + 0.5D, deliveryStand.getY(), deliveryStand.getZ() + 0.5D, 0.9D);
+        if (mustDeliver) {
+            updateWorkerName(villager, " — несёт брёвна");
+            if (villager.distanceToSqr(deliveryStand.getX() + 0.5D, deliveryStand.getY(),
+                    deliveryStand.getZ() + 0.5D) > 5.0D) {
+                villager.getNavigation().moveTo(deliveryStand.getX() + 0.5D, deliveryStand.getY(),
+                        deliveryStand.getZ() + 0.5D, 0.9D);
                 return;
             }
+            villager.getNavigation().stop();
             depositCarriedLogs(warehouse, persistent, carriedItemId, carriedCount);
+            updateWorkerName(villager, persistent.getInt(CARRIED_COUNT_KEY) > 0
+                    ? " — склад заполнен" : "");
             return;
         }
 
         if (treeLog == null) {
+            persistent.putInt(CHOP_PROGRESS_KEY, 0);
+            persistent.putInt(TARGET_TREE_SIZE_KEY, 0);
             if (carriedCount > 0) {
-                if (villager.distanceToSqr(deliveryStand.getX() + 0.5D, deliveryStand.getY(), deliveryStand.getZ() + 0.5D) > 5.0D) {
-                    villager.getNavigation().moveTo(deliveryStand.getX() + 0.5D, deliveryStand.getY(), deliveryStand.getZ() + 0.5D, 0.9D);
+                updateWorkerName(villager, " — несёт брёвна");
+                if (villager.distanceToSqr(deliveryStand.getX() + 0.5D, deliveryStand.getY(),
+                        deliveryStand.getZ() + 0.5D) > 5.0D) {
+                    villager.getNavigation().moveTo(deliveryStand.getX() + 0.5D, deliveryStand.getY(),
+                            deliveryStand.getZ() + 0.5D, 0.9D);
                 } else {
+                    villager.getNavigation().stop();
                     depositCarriedLogs(warehouse, persistent, carriedItemId, carriedCount);
                 }
             } else {
+                persistent.putString(ISSUE_KEY, "Нет деревьев поблизости");
+                updateWorkerName(villager, " — ищет дерево");
                 villager.getNavigation().stop();
             }
             return;
         }
 
+        persistent.putString(ISSUE_KEY, "");
         BlockPos workPos = findWorkPosition(level, treeLog);
         if (workPos == null) {
             persistent.putString(ISSUE_KEY, "Нет безопасного места для рубки");
             persistent.putInt(CHOP_PROGRESS_KEY, 0);
+            updateWorkerName(villager, " — нет места для рубки");
             if (carriedCount > 0) {
-                villager.getNavigation().moveTo(deliveryStand.getX() + 0.5D, deliveryStand.getY(), deliveryStand.getZ() + 0.5D, 0.9D);
+                villager.getNavigation().moveTo(deliveryStand.getX() + 0.5D, deliveryStand.getY(),
+                        deliveryStand.getZ() + 0.5D, 0.9D);
             } else {
                 villager.getNavigation().stop();
             }
@@ -262,48 +318,55 @@ public final class LumberjackWorkerAI {
         }
 
         if (villager.distanceToSqr(workPos.getX() + 0.5D, workPos.getY(), workPos.getZ() + 0.5D) > 4.0D) {
-            persistent.putString(ISSUE_KEY, "");
             persistent.putInt(CHOP_PROGRESS_KEY, 0);
-            villager.getNavigation().moveTo(workPos.getX() + 0.5D, workPos.getY(), workPos.getZ() + 0.5D, 0.9D);
+            villager.getNavigation().moveTo(workPos.getX() + 0.5D, workPos.getY(),
+                    workPos.getZ() + 0.5D, 0.9D);
+            updateWorkerName(villager, " — идёт к дереву");
             return;
         }
 
         villager.getNavigation().stop();
-        // One work tick is one second. Keep the villager stationary until the
-        // whole connected tree has been processed, rather than chopping one log
-        // and immediately selecting a different block on the next cycle.
-        int progress = persistent.getInt(CHOP_PROGRESS_KEY) + 1;
-        int requiredSeconds = Math.max(1, treeLogs.size());
-        if (progress < requiredSeconds) {
-            persistent.putInt(CHOP_PROGRESS_KEY, progress);
+        java.util.List<BlockPos> currentTree = findConnectedTreeLogs(level, treeLog, worldData, warehousePos);
+        if (currentTree.isEmpty()) {
+            clearTreeTarget(persistent);
+            persistent.putInt(CHOP_PROGRESS_KEY, 0);
+            updateWorkerName(villager, " — ищет дерево");
             return;
         }
 
-        BlockState logState = level.getBlockState(treeLog);
-        if (!logState.is(BlockTags.LOGS) || treeLogs.isEmpty()) {
+        // One AI work step is one second. The full connected tree is removed at
+        // once after one second per log, so no floating treetop is left behind.
+        int requiredSeconds = Math.max(1, currentTree.size());
+        persistent.putInt(TARGET_TREE_SIZE_KEY, requiredSeconds);
+        int progress = persistent.getInt(CHOP_PROGRESS_KEY) + 1;
+        persistent.putInt(CHOP_PROGRESS_KEY, Math.min(progress, requiredSeconds));
+        updateWorkerName(villager, " " + progressBar(Math.min(progress, requiredSeconds), requiredSeconds)
+                + " " + Math.min(progress, requiredSeconds) + "/" + requiredSeconds + " сек");
+        if (progress < requiredSeconds) {
+            return;
+        }
+
+        BlockState rootState = level.getBlockState(treeLog);
+        if (!rootState.is(BlockTags.LOGS) || isProtectedLog(treeLog, worldData, warehousePos)) {
+            clearTreeTarget(persistent);
             persistent.putInt(CHOP_PROGRESS_KEY, 0);
             return;
         }
 
-        Item logItem = logState.getBlock().asItem();
+        Item logItem = rootState.getBlock().asItem();
         String actualItemId = BuiltInRegistries.ITEM.getKey(logItem).toString();
         if (logItem == net.minecraft.world.item.Items.AIR
                 || carriedCount > 0 && !carriedItemId.equals(actualItemId)) {
+            clearTreeTarget(persistent);
             persistent.putInt(CHOP_PROGRESS_KEY, 0);
             return;
         }
 
-        // Revalidate each log immediately before removal. The connected-tree
-        // scan excludes registered buildings and the protected starter-village
-        // footprint, so logs belonging to houses are never harvested here.
         int harvested = 0;
-        for (BlockPos logPos : treeLogs) {
+        for (BlockPos logPos : currentTree) {
             BlockState current = level.getBlockState(logPos);
-            if (!current.is(BlockTags.LOGS)) {
-                continue;
-            }
-            Item currentItem = current.getBlock().asItem();
-            if (currentItem != logItem) {
+            if (!current.is(BlockTags.LOGS) || current.getBlock().asItem() != logItem
+                    || isProtectedLog(logPos, worldData, warehousePos)) {
                 continue;
             }
             if (level.destroyBlock(logPos, false)) {
@@ -316,84 +379,125 @@ public final class LumberjackWorkerAI {
                 carriedItemId = actualItemId;
                 persistent.putString(CARRIED_ITEM_KEY, carriedItemId);
             }
-            // The worker delivers the complete harvest on the next cycle when
-            // the carried amount reaches or exceeds its normal capacity.
             persistent.putInt(CARRIED_COUNT_KEY, carriedCount + harvested);
         }
+        clearTreeTarget(persistent);
         persistent.putInt(CHOP_PROGRESS_KEY, 0);
+        persistent.putInt(TARGET_TREE_SIZE_KEY, 0);
+        updateWorkerName(villager, harvested > 0 ? " — срубил " + harvested + " бр." : " — ищет дерево");
     }
 
-    private static BlockPos findNearestTreeLog(ServerLevel level, BlockPos origin, CivitasSavedData worldData, BlockPos villageCenter) {
-        BlockPos best = null;
+    private static BlockPos findNearestTreeLog(ServerLevel level, BlockPos origin,
+                                                CivitasSavedData worldData, BlockPos villageCenter) {
+        BlockPos nearestLeafLog = null;
         double bestDistance = Double.MAX_VALUE;
-        for (int dx = -12; dx <= 12; dx++) {
-            for (int dz = -12; dz <= 12; dz++) {
-                for (int dy = -3; dy <= 9; dy++) {
+        for (int dx = -TREE_SEARCH_RADIUS; dx <= TREE_SEARCH_RADIUS; dx++) {
+            for (int dz = -TREE_SEARCH_RADIUS; dz <= TREE_SEARCH_RADIUS; dz++) {
+                for (int dy = -6; dy <= 18; dy++) {
                     BlockPos pos = origin.offset(dx, dy, dz);
+                    if (!level.hasChunkAt(pos)) continue;
                     BlockState state = level.getBlockState(pos);
-                    if (!state.is(BlockTags.LOGS) || !hasNearbyLeaves(level, pos)) {
-                        continue;
-                    }
-
-                    // Never treat timber close to the starter village as a harvestable tree:
-                    // the starter houses and warehouse contain log blocks too.
-                    // Keep this conservative until every generated structure has a registered footprint.
-                    if (Math.abs(pos.getX() - villageCenter.getX()) <= 10
-                            && Math.abs(pos.getZ() - villageCenter.getZ()) <= 10) {
-                        continue;
-                    }
-
-                    // Protect registered buildings and the immediate area around their footprint.
-                    if (worldData.hasBuildingNear(pos, 5)) {
+                    if (!state.is(BlockTags.LOGS) || isProtectedLog(pos, worldData, villageCenter)
+                            || !hasNearbyLeaves(level, pos)) {
                         continue;
                     }
                     double distance = origin.distSqr(pos);
                     if (distance < bestDistance) {
-                        best = pos.immutable();
+                        nearestLeafLog = pos.immutable();
                         bestDistance = distance;
                     }
                 }
             }
         }
-        return best;
+        if (nearestLeafLog == null) return null;
+
+        BlockState state = level.getBlockState(nearestLeafLog);
+        Item targetItem = state.getBlock().asItem();
+        java.util.List<BlockPos> connected = findConnectedTreeLogs(
+                level, nearestLeafLog, worldData, villageCenter, targetItem);
+        if (connected.isEmpty()) return null;
+
+        // Target the lowest block in the connected tree, not a branch or a
+        // canopy log. This puts the worker beside the trunk base consistently.
+        BlockPos base = null;
+        for (BlockPos log : connected) {
+            if (base == null || log.getY() < base.getY()
+                    || log.getY() == base.getY() && origin.distSqr(log) < origin.distSqr(base)) {
+                base = log;
+            }
+        }
+        return base;
     }
 
-    /**
-     * Collects the connected logs of one tree with a strict search bound.
-     * Registered building areas and the starter village footprint are excluded
-     * at every step, not just when choosing the initial target.
-     */
+    private static boolean isHarvestableTarget(ServerLevel level, BlockPos target,
+                                                CivitasSavedData worldData, BlockPos villageCenter) {
+        return level.hasChunkAt(target)
+                && level.getBlockState(target).is(BlockTags.LOGS)
+                && !isProtectedLog(target, worldData, villageCenter);
+    }
+
+    private static BlockPos readTreeTarget(net.minecraft.nbt.CompoundTag persistent) {
+        if (!persistent.getBoolean(TARGET_TREE_ASSIGNED_KEY)) return null;
+        return new BlockPos(persistent.getInt(TARGET_TREE_X_KEY),
+                persistent.getInt(TARGET_TREE_Y_KEY), persistent.getInt(TARGET_TREE_Z_KEY));
+    }
+
+    private static void writeTreeTarget(net.minecraft.nbt.CompoundTag persistent, BlockPos target) {
+        persistent.putBoolean(TARGET_TREE_ASSIGNED_KEY, true);
+        persistent.putInt(TARGET_TREE_X_KEY, target.getX());
+        persistent.putInt(TARGET_TREE_Y_KEY, target.getY());
+        persistent.putInt(TARGET_TREE_Z_KEY, target.getZ());
+        persistent.putInt(TARGET_TREE_SIZE_KEY, 0);
+        persistent.putInt(CHOP_PROGRESS_KEY, 0);
+    }
+
+    private static void clearTreeTarget(net.minecraft.nbt.CompoundTag persistent) {
+        persistent.remove(TARGET_TREE_ASSIGNED_KEY);
+        persistent.remove(TARGET_TREE_X_KEY);
+        persistent.remove(TARGET_TREE_Y_KEY);
+        persistent.remove(TARGET_TREE_Z_KEY);
+        persistent.putInt(TARGET_TREE_SIZE_KEY, 0);
+    }
+
+    /** Collect only face-connected logs of the same tree species. */
     private static java.util.List<BlockPos> findConnectedTreeLogs(
             ServerLevel level, BlockPos start, CivitasSavedData worldData, BlockPos villageCenter) {
+        BlockState state = level.getBlockState(start);
+        if (!state.is(BlockTags.LOGS)) return java.util.List.of();
+        return findConnectedTreeLogs(level, start, worldData, villageCenter, state.getBlock().asItem());
+    }
+
+    private static java.util.List<BlockPos> findConnectedTreeLogs(
+            ServerLevel level, BlockPos start, CivitasSavedData worldData,
+            BlockPos villageCenter, Item targetItem) {
         java.util.List<BlockPos> result = new java.util.ArrayList<>();
         java.util.ArrayDeque<BlockPos> queue = new java.util.ArrayDeque<>();
         java.util.Set<BlockPos> visited = new java.util.HashSet<>();
         queue.add(start.immutable());
         visited.add(start.immutable());
 
-        while (!queue.isEmpty() && result.size() < 64) {
+        while (!queue.isEmpty() && result.size() < MAX_TREE_LOGS) {
             BlockPos current = queue.removeFirst();
-            BlockState state = level.getBlockState(current);
-            if (!state.is(BlockTags.LOGS) || isProtectedLog(current, worldData, villageCenter)) {
-                continue;
-            }
+            if (!level.hasChunkAt(current) || isProtectedLog(current, worldData, villageCenter)) continue;
+            BlockState currentState = level.getBlockState(current);
+            if (!currentState.is(BlockTags.LOGS) || currentState.getBlock().asItem() != targetItem) continue;
             result.add(current.immutable());
 
-            for (BlockPos next : BlockPos.betweenClosed(
-                    current.offset(-1, -1, -1), current.offset(1, 1, 1))) {
-                BlockPos candidate = next.immutable();
-                if (candidate.equals(current) || visited.contains(candidate)) {
+            // Six-direction adjacency avoids combining two neighbouring trees
+            // that merely touch at a corner.
+            for (Direction direction : Direction.values()) {
+                BlockPos candidate = current.relative(direction);
+                if (visited.contains(candidate)
+                        || Math.abs(candidate.getX() - start.getX()) > 10
+                        || Math.abs(candidate.getZ() - start.getZ()) > 10
+                        || candidate.getY() < start.getY() - 3
+                        || candidate.getY() > start.getY() + 40) {
                     continue;
                 }
-                if (Math.abs(candidate.getX() - start.getX()) > 6
-                        || Math.abs(candidate.getZ() - start.getZ()) > 6
-                        || candidate.getY() < start.getY() - 2
-                        || candidate.getY() > start.getY() + 12) {
-                    continue;
-                }
-                if (level.getBlockState(candidate).is(BlockTags.LOGS)
+                visited.add(candidate);
+                if (level.hasChunkAt(candidate) && level.getBlockState(candidate).is(BlockTags.LOGS)
+                        && level.getBlockState(candidate).getBlock().asItem() == targetItem
                         && !isProtectedLog(candidate, worldData, villageCenter)) {
-                    visited.add(candidate);
                     queue.addLast(candidate);
                 }
             }
@@ -402,16 +506,19 @@ public final class LumberjackWorkerAI {
     }
 
     private static boolean isProtectedLog(BlockPos pos, CivitasSavedData worldData, BlockPos villageCenter) {
-        return (Math.abs(pos.getX() - villageCenter.getX()) <= 10
-                && Math.abs(pos.getZ() - villageCenter.getZ()) <= 10)
+        // The generated village footprint is 29x29 (from -14 to +14), which
+        // includes all four starter houses, their roofs, paths and the core.
+        return (Math.abs(pos.getX() - villageCenter.getX()) <= STARTER_VILLAGE_PROTECTION_RADIUS
+                && Math.abs(pos.getZ() - villageCenter.getZ()) <= STARTER_VILLAGE_PROTECTION_RADIUS)
                 || worldData.hasBuildingNear(pos, 5);
     }
 
     private static boolean hasNearbyLeaves(ServerLevel level, BlockPos logPos) {
         for (int dx = -3; dx <= 3; dx++) {
             for (int dz = -3; dz <= 3; dz++) {
-                for (int dy = 0; dy <= 6; dy++) {
-                    if (level.getBlockState(logPos.offset(dx, dy, dz)).is(BlockTags.LEAVES)) {
+                for (int dy = -1; dy <= 8; dy++) {
+                    BlockPos candidate = logPos.offset(dx, dy, dz);
+                    if (level.hasChunkAt(candidate) && level.getBlockState(candidate).is(BlockTags.LEAVES)) {
                         return true;
                     }
                 }
@@ -421,21 +528,40 @@ public final class LumberjackWorkerAI {
     }
 
     private static BlockPos findWorkPosition(ServerLevel level, BlockPos logPos) {
-        BlockPos[] adjacent = {
-                logPos.east(), logPos.west(), logPos.north(), logPos.south()
-        };
+        BlockPos[] adjacent = {logPos.east(), logPos.west(), logPos.north(), logPos.south()};
         for (BlockPos side : adjacent) {
-            for (int y = logPos.getY(); y >= Math.max(level.getMinBuildHeight() + 1, logPos.getY() - 16); y--) {
+            for (int y = logPos.getY(); y >= Math.max(level.getMinBuildHeight() + 1, logPos.getY() - 8); y--) {
                 BlockPos candidate = new BlockPos(side.getX(), y, side.getZ());
                 BlockPos below = candidate.below();
-                if (level.getBlockState(candidate).isAir()
-                        && !level.getBlockState(below).isAir()
+                if (!level.hasChunkAt(candidate) || !level.hasChunkAt(below)) continue;
+                BlockState feet = level.getBlockState(candidate);
+                BlockState head = level.getBlockState(candidate.above());
+                BlockState floor = level.getBlockState(below);
+                if ((feet.isAir() || feet.canBeReplaced()) && feet.getFluidState().isEmpty()
+                        && (head.isAir() || head.canBeReplaced()) && head.getFluidState().isEmpty()
+                        && floor.isFaceSturdy(level, below, Direction.UP)
                         && level.getFluidState(below).isEmpty()) {
                     return candidate;
                 }
             }
         }
         return null;
+    }
+
+    private static void updateWorkerName(Villager villager, String suffix) {
+        String displayName = "Лесоруб Civitas" + (suffix == null ? "" : suffix);
+        if (villager.getCustomName() == null
+                || !villager.getCustomName().getString().equals(displayName)) {
+            villager.setCustomName(Component.literal(displayName));
+        }
+        villager.setCustomNameVisible(true);
+        villager.setPersistenceRequired();
+    }
+
+    private static String progressBar(int progress, int total) {
+        int safeTotal = Math.max(1, total);
+        int filled = Math.max(0, Math.min(10, (int) Math.ceil(progress * 10.0D / safeTotal)));
+        return "§e[" + "■".repeat(filled) + "§7" + "□".repeat(10 - filled) + "§e]";
     }
 
     private static void depositCarriedLogs(SettlementWarehouseBlockEntity warehouse,
