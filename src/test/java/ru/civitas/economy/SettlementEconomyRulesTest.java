@@ -18,6 +18,27 @@ class SettlementEconomyRulesTest {
     }
 
     @Test
+    void excessNutritionIsCarriedAcrossDaysWithoutLosingFoodValue() {
+        var firstDay = SettlementEconomyRules.resolveFoodConsumption(0, 3, 1);
+        assertTrue(firstDay.fed());
+        assertEquals(1, firstDay.suppliedNutrition());
+        assertEquals(2, firstDay.nextCredit());
+
+        var secondDay = SettlementEconomyRules.resolveFoodConsumption(firstDay.nextCredit(), 0, 1);
+        assertTrue(secondDay.fed());
+        assertEquals(1, secondDay.suppliedNutrition());
+        assertEquals(1, secondDay.nextCredit());
+    }
+
+    @Test
+    void shortageClearsUnusedCreditAndDoesNotPretendTheDayWasFed() {
+        var result = SettlementEconomyRules.resolveFoodConsumption(1, 2, 5);
+        assertFalse(result.fed());
+        assertEquals(3, result.suppliedNutrition());
+        assertEquals(0, result.nextCredit());
+    }
+
+    @Test
     void growthRequiresTwoFedDaysFreeBedAndFoodReserve() {
         assertFalse(SettlementEconomyRules.canGrow(true, 1, 1));
         assertFalse(SettlementEconomyRules.canGrow(true, 0, 2));

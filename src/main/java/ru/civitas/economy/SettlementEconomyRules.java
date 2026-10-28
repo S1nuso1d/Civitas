@@ -22,6 +22,20 @@ public final class SettlementEconomyRules {
         return storedNutrition >= reserveForGrowth(dailyNeed, reserveDays);
     }
 
+    public record FoodConsumptionResult(int suppliedNutrition, int nextCredit, boolean fed) { }
+
+    /** Resolves whole-item over-consumption into a saved credit, without losing its nutrition value. */
+    public static FoodConsumptionResult resolveFoodConsumption(int previousCredit, int removedNutrition, int dailyNeed) {
+        int need = Math.max(0, dailyNeed);
+        int credit = Math.max(0, previousCredit);
+        int removed = Math.max(0, removedNutrition);
+        int usedCredit = Math.min(credit, need);
+        int remainingNeed = need - usedCredit;
+        if (remainingNeed == 0) return new FoodConsumptionResult(need, credit - usedCredit, true);
+        if (removed >= remainingNeed) return new FoodConsumptionResult(need, removed - remainingNeed, true);
+        return new FoodConsumptionResult(usedCredit + removed, 0, false);
+    }
+
     public static boolean canGrow(boolean fed, int freeBeds, int progressDays) {
         return fed && freeBeds > 0 && progressDays >= GROWTH_DAYS_REQUIRED;
     }

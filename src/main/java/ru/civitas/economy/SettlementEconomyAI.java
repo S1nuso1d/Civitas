@@ -133,19 +133,12 @@ public final class SettlementEconomyAI {
     /** Uses any saved nutrition credit first and retains over-consumed value for following days. */
     private static int consumeDailyNeed(CivitasSavedData data, SettlementWarehouseBlockEntity warehouse, int need) {
         int credit = data.getFoodCredit();
-        int usedCredit = Math.min(credit, need);
-        int remainingNeed = need - usedCredit;
-        if (remainingNeed <= 0) {
-            data.setFoodCredit(credit - usedCredit);
-            return need;
-        }
-        int removed = StorageFoodExtension.consumeFood(warehouse, remainingNeed);
-        if (removed >= remainingNeed) {
-            data.setFoodCredit(removed - remainingNeed);
-            return need;
-        }
-        data.setFoodCredit(0);
-        return usedCredit + removed;
+        int remainingNeed = Math.max(0, need - Math.min(credit, need));
+        int removed = remainingNeed > 0 ? StorageFoodExtension.consumeFood(warehouse, remainingNeed) : 0;
+        SettlementEconomyRules.FoodConsumptionResult result =
+                SettlementEconomyRules.resolveFoodConsumption(credit, removed, need);
+        data.setFoodCredit(result.nextCredit());
+        return result.suppliedNutrition();
     }
 
     private static void recordDailySnapshot(ServerLevel level, CivitasSavedData data,

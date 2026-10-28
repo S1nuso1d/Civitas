@@ -24,5 +24,15 @@ class EconomyHistoryTest {
         assertEquals(7,loaded.snapshot().size());
         assertEquals(32,loaded.recentEvents().size());
         assertEquals("День 100: event 99",loaded.recentEvents().get(31));
+
+        EconomyHistory flow = new EconomyHistory(7);
+        flow.recordDaily(3, 10, 4, 8, 5);
+        flow.recordFoodProduction(3, 6);
+        flow.recordFoodConsumption(3, 5);
+        CompoundTag flowTag = new CompoundTag();
+        flow.save(flowTag, "economy");
+        EconomyHistory flowLoaded = EconomyHistory.load(flowTag, "economy", 7);
+        assertEquals(6, flowLoaded.snapshot().get(0).foodProduced);
+        assertEquals(5, flowLoaded.snapshot().get(0).foodConsumed);
     }
 }

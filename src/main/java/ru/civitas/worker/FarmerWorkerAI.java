@@ -37,6 +37,7 @@ public final class FarmerWorkerAI {
     private static final String LEGACY_CARRIED_ITEM = "civitas.farmer_carried_item";
     private static final String LEGACY_CARRIED_COUNT = "civitas.farmer_carried_count";
     private static final String STATUS = "civitas.farmer_status";
+    private static final String NEXT_SCAN_TICK = "civitas.farmer_next_scan_tick";
     private static final int UPDATE_TICKS = 20;
     private static final double MOVE_SPEED = 0.8D;
     private static final double WORK_DISTANCE_SQUARED = 4.0D;
@@ -128,11 +129,18 @@ public final class FarmerWorkerAI {
             target = null;
         }
         if (target == null) {
-            target = findTarget(level, data, villager, center);
-            if (target == null) {
+            long nextScanTick = tag.getLong(NEXT_SCAN_TICK);
+            if (level.getGameTime() < nextScanTick) {
                 setStatus(villager, "Нет свободных зрелых грядок");
                 return;
             }
+            target = findTarget(level, data, villager, center);
+            if (target == null) {
+                tag.putLong(NEXT_SCAN_TICK, level.getGameTime() + 100L);
+                setStatus(villager, "Нет свободных зрелых грядок");
+                return;
+            }
+            tag.putLong(NEXT_SCAN_TICK, 0L);
             if (!data.tryReserveFarmland(target, villager.getUUID())) {
                 setStatus(villager, "Грядка занята другим фермером");
                 return;
@@ -198,6 +206,7 @@ public final class FarmerWorkerAI {
         tag.putString(LEGACY_CARRIED_ITEM, "");
         tag.putInt(LEGACY_CARRIED_COUNT, 0);
         tag.putString(ROLE_KEY, "farmer");
+        tag.putLong(NEXT_SCAN_TICK, 0L);
         tag.putString(STATUS, "Ищет зрелые культуры");
         setName(villager, "");
         return true;
@@ -326,6 +335,7 @@ public final class FarmerWorkerAI {
         tag.remove(TARGET_X);
         tag.remove(TARGET_Y);
         tag.remove(TARGET_Z);
+        tag.putLong(NEXT_SCAN_TICK, 0L);
     }
 
     private static void setStatus(Villager villager, String status) {
