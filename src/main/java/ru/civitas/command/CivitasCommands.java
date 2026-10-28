@@ -24,8 +24,8 @@ import ru.civitas.block.SettlementWarehouseBlock;
 import ru.civitas.block.SettlementWarehouseBlockEntity;
 import ru.civitas.data.CivitasSavedData;
 import ru.civitas.worker.LumberjackWorkerAI;
+import ru.civitas.world.BuildingDefinition;
 import ru.civitas.world.SettlementBuildingManager;
-import ru.civitas.world.SettlementBuildingManager.BuildingType;
 
 public final class CivitasCommands {
     private CivitasCommands() {
@@ -51,9 +51,9 @@ public final class CivitasCommands {
                                         .executes(CivitasCommands::cancelConstruction)
                                         .then(Commands.argument("index", IntegerArgumentType.integer(1))
                                                 .executes(CivitasCommands::cancelConstructionByIndex))))
-                        .then(Commands.literal("build").then(Commands.literal("cabin").executes(ctx -> build(ctx, BuildingType.CABIN)))
-                                .then(Commands.literal("farm").executes(ctx -> build(ctx, BuildingType.FARM)))
-                                .then(Commands.literal("workshop").executes(ctx -> build(ctx, BuildingType.WORKSHOP))))
+                        .then(Commands.literal("build").then(Commands.literal("cabin").executes(ctx -> build(ctx, BuildingDefinition.Type.CABIN)))
+                                .then(Commands.literal("farm").executes(ctx -> build(ctx, BuildingDefinition.Type.FARM)))
+                                .then(Commands.literal("workshop").executes(ctx -> build(ctx, BuildingDefinition.Type.WORKSHOP))))
                         .then(Commands.literal("worker")
                                 .then(Commands.literal("lumberjack").executes(CivitasCommands::assignLumberjack))
                                 .then(Commands.literal("builder").executes(CivitasCommands::assignBuilder))
@@ -350,7 +350,7 @@ public final class CivitasCommands {
         return 0;
     }
 
-    private static int build(CommandContext<CommandSourceStack> context, BuildingType type) throws CommandSyntaxException {
+    private static int build(CommandContext<CommandSourceStack> context, BuildingDefinition.Type type) throws CommandSyntaxException {
         ServerPlayer player = context.getSource().getPlayerOrException();
         CivitasSavedData data = CivitasSavedData.get(context.getSource().getServer());
         if (!ensureOwner(context.getSource(), player, data)) return 0;
@@ -389,12 +389,9 @@ public final class CivitasCommands {
         ServerLevel level = context.getSource().getServer().overworld();
         for (int i = 0; i < orders.size(); i++) {
             var order = orders.get(i);
-            String label = switch (order.type()) {
-                case "cabin" -> "Жилой дом";
-                case "farm" -> "Ферма";
-                case "workshop" -> "Мастерская";
-                default -> order.type();
-            };
+            String label = BuildingDefinition.find(order.type())
+                    .map(BuildingDefinition::displayName)
+                    .orElse(order.type());
             int percent = Math.min(100, order.progress() * 100 / order.totalLayers());
             String progressLine = (i + 1) + ". " + label + " — " + percent + "% (слой "
                     + Math.min(order.progress() + 1, order.totalLayers()) + "/" + order.totalLayers() + ")";
@@ -468,12 +465,9 @@ public final class CivitasCommands {
         }
         for (int i = 0; i < buildings.size(); i++) {
             var building = buildings.get(i);
-            String label = switch (building.type()) {
-                case "cabin" -> "Жилой дом";
-                case "farm" -> "Ферма";
-                case "workshop" -> "Мастерская";
-                default -> building.type();
-            };
+            String label = BuildingDefinition.find(building.type())
+                    .map(BuildingDefinition::displayName)
+                    .orElse(building.type());
             String line = (i + 1) + ". " + label + " — " + building.x() + ", " + building.y() + ", " + building.z();
             context.getSource().sendSuccess(() -> Component.literal(line), false);
         }
