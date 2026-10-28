@@ -492,7 +492,8 @@ public final class CivitasCommands {
                     .orElse(order.type());
             int percent = Math.min(100, order.progress() * 100 / order.totalLayers());
             String progressLine = (i + 1) + ". " + label + " — " + percent + "% (слой "
-                    + Math.min(order.progress() + 1, order.totalLayers()) + "/" + order.totalLayers() + ")";
+                    + Math.min(order.progress() + 1, order.totalLayers()) + "/" + order.totalLayers()
+                    + ", поворот " + order.rotationDegrees() + "°)";
             context.getSource().sendSuccess(() -> Component.literal(progressLine), false);
 
             BlockPos site = new BlockPos(order.x(), order.y(), order.z());
