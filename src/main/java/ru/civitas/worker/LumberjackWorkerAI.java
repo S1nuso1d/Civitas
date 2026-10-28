@@ -353,6 +353,7 @@ public final class LumberjackWorkerAI {
                 && WorkerLifeCycle.shouldRest(scheduleLevel, villager, "lumberjack")) {
             return;
         }
+        VillagerEquipment.ensure(villager, "lumberjack");
         if (villager.getPersistentData().getBoolean(PAUSED_KEY)) {
             villager.getNavigation().stop();
             return;
