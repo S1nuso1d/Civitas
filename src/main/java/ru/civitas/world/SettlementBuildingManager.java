@@ -58,9 +58,10 @@ public final class SettlementBuildingManager {
 
         ServerLevel level = player.getServer().overworld();
         BlockPos site = new BlockPos(order.x(), order.y(), order.z());
-        if (order.progress() > 0 && !level.hasChunkAt(site)) {
+        if (order.progress() > 0
+                && !areConstructedLayersLoaded(level, site, definition, order.progress())) {
             return new BuildResult(false,
-                    "Чтобы безопасно отменить начатое строительство, сначала подойди к его площадке и загрузи чанк.");
+                    "Чтобы безопасно отменить начатое строительство, подойди к площадке и загрузи всю постройку.");
         }
 
         Map<String, Integer> refund = order.reservedResources().isEmpty()
@@ -137,6 +138,23 @@ public final class SettlementBuildingManager {
                 case WORKSHOP -> removeWorkshopLayer(level, ground, layer);
             }
         }
+    }
+
+    private static boolean areConstructedLayersLoaded(
+            ServerLevel level, BlockPos ground, BuildingDefinition definition, int completedLayers) {
+        int radiusX = definition.radiusX();
+        int radiusZ = definition.radiusZ();
+        int height = Math.min(Math.max(0, completedLayers), definition.height());
+        for (int x = -radiusX; x <= radiusX; x++) {
+            for (int z = -radiusZ; z <= radiusZ; z++) {
+                for (int y = 1; y <= height; y++) {
+                    if (!level.hasChunkAt(ground.offset(x, y, z))) {
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
     }
 
     private static void removeCabinLayer(ServerLevel level, BlockPos ground, int layer) {
