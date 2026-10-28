@@ -1,5 +1,13 @@
 # Changelog
 
+## Alpha 0.16.0 — атомарное списание материалов
+
+- Warehouse contents are snapshotted before per-layer deductions.
+- If any individual deduction fails, every slot is restored and construction does not place the layer.
+- The transaction rejects invalid item IDs and malformed amounts before committing the stage.
+- CI compilation and tests must pass; manual in-game validation remains outstanding.
+
+
 ## Alpha 0.15.0 — поэтапное списание и резерв склада
 
 - New construction orders retain their materials in the physical warehouse and reserve the full outstanding cost in world saved data.
