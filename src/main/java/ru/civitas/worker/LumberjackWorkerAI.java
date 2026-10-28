@@ -107,7 +107,11 @@ public final class LumberjackWorkerAI {
         String issue = persistent.getString(ISSUE_KEY);
         if (!issue.isBlank()) return issue;
         int carried = Math.max(0, persistent.getInt(CARRIED_COUNT_KEY));
-        if (carried > 0) return "Несёт брёвна: " + carried + "/" + MAX_CARRIED;
+        if (carried > 0) {
+            return carried >= MAX_CARRIED
+                    ? "Несёт брёвна: " + carried + " (доставка)"
+                    : "Несёт брёвна: " + carried + "/" + MAX_CARRIED;
+        }
         if (persistent.getInt(CHOP_PROGRESS_KEY) > 0) {
             int progress = persistent.getInt(CHOP_PROGRESS_KEY);
             int total = Math.max(progress, persistent.getInt(TARGET_TREE_SIZE_KEY));
