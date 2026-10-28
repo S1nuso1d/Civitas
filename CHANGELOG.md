@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.27.0] - Territory Boundaries
+
+### Added
+- Added a live territory-boundary check using the settlement influence radius and physical settlement center.
+- Added `/civitas territory` to report the settlement's influence tier, score, radius, center, and whether the player is inside the zone.
+- Explicit-position building orders and blueprint previews are rejected when their anchor position lies outside the current influence radius.
+- Added deterministic unit tests for influence growth, bounded values, and unknown building types.
+
+### Scope
+- The zone is a horizontal circular influence radius, not chunk ownership or block protection.
+- The current rule checks the requested building anchor, not every block of a large structure footprint.
+- The radius is derived from saved buildings, population, and settlement level; no new world-save fields are required.
+
+### Validation
+- Build, unit tests, and manual gameplay verification must be confirmed for the exact release commit.
+
+# Changelog
+
 ## [0.26.0] - Territory Influence & Settlement Development
 
 ### Added
