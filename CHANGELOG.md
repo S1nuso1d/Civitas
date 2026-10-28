@@ -3,10 +3,10 @@
 ## [0.28.0] - Persistent Chunk Territory
 
 ### Added
-- Persisted settlement chunk claims in world SavedData, with backward-compatible loading for existing saves.
+- Persisted settlement chunk claims in world SavedData; existing founded settlements are migrated to their founding chunk when loading old saves.
 - Founding automatically claims the settlement's founding chunk; it cannot be released.
 - Added `/civitas territory claim`, `unclaim`, and `show` for current-chunk management and particle boundary visualization.
-- Claim capacity scales with settlement influence; claims are allowed only when the chunk center lies inside the influence radius.
+- Claim capacity scales from 2 to 16 chunks with settlement influence; claims require the chunk center to be inside the influence radius and an edge-adjacent existing claim.
 - Explicit-position building and blueprint preview commands now require both influence eligibility and a claimed chunk.
 
 ### Scope and validation
