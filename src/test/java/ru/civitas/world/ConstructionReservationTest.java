@@ -133,6 +133,52 @@ class ConstructionReservationTest {
     }
 
     @Test
+    void warehouseReservationsPreventTwoOrdersFromClaimingTheSameStock() {
+        BuildingDefinition definition = BuildingDefinition.get(BuildingDefinition.Type.CABIN);
+        CivitasSavedData data = new CivitasSavedData();
+        Map<String, Integer> stock = new LinkedHashMap<>(definition.costs());
+
+        data.addConstructionOrder(definition.id(), new BlockPos(5, 64, 7),
+                definition.totalLayers(), definition.costs(), definition.layerCosts(), true);
+
+        assertEquals(definition.costs(), data.getWarehouseReservedResources());
+        assertTrue(data.warehouseContainsAllReservations(stock));
+        assertTrue(!data.canReserveWarehouseResources(stock, definition.costs()));
+
+        Map<String, Integer> doubleStock = new LinkedHashMap<>();
+        stock.forEach((itemId, amount) -> doubleStock.put(itemId, amount * 2));
+        assertTrue(data.canReserveWarehouseResources(doubleStock, definition.costs()));
+    }
+
+    @Test
+    void warehouseReservationShrinksWhenLayerCompletesAndReleasesOnCancellation() {
+        BuildingDefinition definition = BuildingDefinition.get(BuildingDefinition.Type.FARM);
+        CivitasSavedData data = new CivitasSavedData();
+        data.addConstructionOrder(definition.id(), new BlockPos(5, 64, 7),
+                definition.totalLayers(), definition.costs(), definition.layerCosts(), true);
+
+        CivitasSavedData.ConstructionOrder first = data.getConstructionOrders().get(0);
+        data.advanceConstructionOrder(first);
+
+        assertEquals(Map.of("minecraft:wheat_seeds", 24), data.getWarehouseReservedResources());
+        CivitasSavedData.ConstructionOrder active = data.getConstructionOrders().get(0);
+        assertTrue(active.materialsReservedInWarehouse());
+        assertTrue(data.removeConstructionOrder(active));
+        assertTrue(data.getWarehouseReservedResources().isEmpty());
+    }
+
+    @Test
+    void legacyUpfrontPaidOrdersDoNotReservePhysicalWarehouseStock() {
+        BuildingDefinition definition = BuildingDefinition.get(BuildingDefinition.Type.CABIN);
+        CivitasSavedData data = new CivitasSavedData();
+        data.addConstructionOrder(definition.id(), new BlockPos(5, 64, 7),
+                definition.totalLayers(), definition.costs(), definition.layerCosts(), false);
+
+        assertTrue(data.getWarehouseReservedResources().isEmpty());
+        assertTrue(!data.getConstructionOrders().get(0).materialsReservedInWarehouse());
+    }
+
+    @Test
     void legacyReservationWithoutLayerPlanKeepsProportionalRefundBehavior() {
         CivitasSavedData.ConstructionOrder legacy =
                 new CivitasSavedData.ConstructionOrder("cabin", 1, 64, 1, 1, 4, reservation());
