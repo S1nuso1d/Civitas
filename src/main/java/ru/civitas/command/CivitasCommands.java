@@ -273,7 +273,7 @@ public final class CivitasCommands {
             return 0;
         }
         if (!data.claimChunk(chunk.x, chunk.z)) {
-            context.getSource().sendFailure(Component.literal("Этот чанк вне доступной зоны влияния. Подойдите ближе к поселению или увеличьте его влияние."));
+            context.getSource().sendFailure(Component.literal("Этот чанк недоступен: его центр должен быть в зоне влияния, а сам чанк должен граничить с уже закреплённой территорией."));
             return 0;
         }
         context.getSource().sendSuccess(() -> Component.literal("§aЧанк [" + chunk.x + ", " + chunk.z
