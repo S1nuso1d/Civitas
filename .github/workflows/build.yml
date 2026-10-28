@@ -7,6 +7,11 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# New pushes supersede older builds for the same branch; avoid wasting runners on stale commits.
+concurrency:
+  group: civitas-build-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
