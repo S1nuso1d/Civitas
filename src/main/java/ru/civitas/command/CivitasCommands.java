@@ -104,6 +104,7 @@ public final class CivitasCommands {
                                                 .then(Commands.argument("rotation", IntegerArgumentType.integer(0, 359))
                                                         .executes(ctx -> preview(ctx, BuildingDefinition.Type.WORKSHOP,
                                                                 IntegerArgumentType.getInteger(ctx, "rotation")))))))
+                        .then(Commands.literal("blueprints").executes(CivitasCommands::blueprints))
                         .then(Commands.literal("build")
                                 .then(Commands.literal("cabin")
                                         .executes(ctx -> build(ctx, BuildingDefinition.Type.CABIN))
@@ -251,6 +252,7 @@ public final class CivitasCommands {
         source.sendSuccess(() -> Component.literal("§e/civitas territory §7— влияние и закреплённые чанки"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas territory claim|unclaim|show §7— захват, освобождение и подсветка текущих чанков"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas status §7— состояние поселения"), false);
+        source.sendSuccess(() -> Component.literal("§e/civitas blueprints §7— каталог чертежей, размеров, этапов и стоимости"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas addons §7— проверка четырёх дополнительных модов и зависимостей"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas map §7— координаты поселения для метки на мини-карте"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas overview §7— сводка поселения: жители, здания, стройка и склад"), false);
@@ -816,6 +818,21 @@ public final class CivitasCommands {
         }
         context.getSource().sendFailure(Component.literal(result.message()));
         return 0;
+    }
+
+    private static int blueprints(CommandContext<CommandSourceStack> context) {
+        CommandSourceStack source = context.getSource();
+        source.sendSuccess(() -> Component.literal("§6§lCivitas — каталог чертежей"), false);
+        source.sendSuccess(() -> Component.literal("§7Предпросмотр: /civitas preview <тип> <позиция> [поворот 0/90/180/270]. Подтверждение: /civitas build <тип> <позиция> [поворот]."), false);
+        for (BuildingDefinition definition : BuildingDefinition.all()) {
+            String dimensions = definition.width() + "×" + definition.depth() + "×" + definition.height();
+            String costs = definition.describeCosts();
+            source.sendSuccess(() -> Component.literal("§e" + definition.id() + " §f— "
+                    + definition.displayName() + " §7| " + dimensions + " блоков | "
+                    + definition.totalLayers() + " этапов | §f" + costs), false);
+        }
+        source.sendSuccess(() -> Component.literal("§8Чертёж сначала проверяет площадку и ресурсы; материалы резервируются только при подтверждении заказа."), false);
+        return Command.SINGLE_SUCCESS;
     }
 
     private static int preview(CommandContext<CommandSourceStack> context,
