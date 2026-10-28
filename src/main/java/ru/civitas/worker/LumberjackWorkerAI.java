@@ -1,6 +1,7 @@
 package ru.civitas.worker;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.ChatFormatting;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
@@ -356,8 +357,7 @@ public final class LumberjackWorkerAI {
         persistent.putInt(TARGET_TREE_SIZE_KEY, requiredSeconds);
         int progress = persistent.getInt(CHOP_PROGRESS_KEY) + 1;
         persistent.putInt(CHOP_PROGRESS_KEY, Math.min(progress, requiredSeconds));
-        updateWorkerName(villager, " " + progressBar(Math.min(progress, requiredSeconds), requiredSeconds)
-                + " " + Math.min(progress, requiredSeconds) + "/" + requiredSeconds + " сек");
+        updateChoppingName(villager, Math.min(progress, requiredSeconds), requiredSeconds);
         if (progress < requiredSeconds) {
             return;
         }
@@ -574,10 +574,21 @@ public final class LumberjackWorkerAI {
         villager.setPersistenceRequired();
     }
 
-    private static String progressBar(int progress, int total) {
+    private static void updateChoppingName(Villager villager, int progress, int total) {
         int safeTotal = Math.max(1, total);
         int filled = Math.max(0, Math.min(10, (int) Math.ceil(progress * 10.0D / safeTotal)));
-        return "§e[" + "■".repeat(filled) + "§7" + "□".repeat(10 - filled) + "§e]";
+        Component displayName = Component.literal("Лесоруб Civitas ")
+                .append(Component.literal("[").withStyle(ChatFormatting.YELLOW))
+                .append(Component.literal("■".repeat(filled)).withStyle(ChatFormatting.GREEN))
+                .append(Component.literal("□".repeat(10 - filled)).withStyle(ChatFormatting.DARK_GRAY))
+                .append(Component.literal("] " + progress + "/" + safeTotal + " сек")
+                        .withStyle(ChatFormatting.YELLOW));
+        if (villager.getCustomName() == null
+                || !villager.getCustomName().getString().equals(displayName.getString())) {
+            villager.setCustomName(displayName);
+        }
+        villager.setCustomNameVisible(true);
+        villager.setPersistenceRequired();
     }
 
     private static void depositCarriedLogs(SettlementWarehouseBlockEntity warehouse,
