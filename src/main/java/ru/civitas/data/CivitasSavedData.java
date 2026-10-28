@@ -43,6 +43,7 @@ public final class CivitasSavedData extends SavedData {
     private int centerZ;
     private int population = 5;
     private long lastEconomyDay = -1L;
+    private long lastBuildingWearDay = -1L;
     private int hungerDays;
     private int growthProgressDays;
     private int foodCredit;
@@ -68,15 +69,21 @@ public final class CivitasSavedData extends SavedData {
     /** Permanent milestone unlocks: stable achievement id -> world day first reached. */
     private final Map<String, Long> unlockedAchievements = new TreeMap<>();
 
-    public record BuildingRecord(String type, int x, int y, int z, int upgradeLevel, int rotationDegrees) {
+    public record BuildingRecord(String type, int x, int y, int z, int upgradeLevel,
+                                 int rotationDegrees, int damage) {
         public BuildingRecord(String type, int x, int y, int z) {
-            this(type, x, y, z, 1, 0);
+            this(type, x, y, z, 1, 0, 0);
+        }
+
+        public BuildingRecord(String type, int x, int y, int z, int upgradeLevel, int rotationDegrees) {
+            this(type, x, y, z, upgradeLevel, rotationDegrees, 0);
         }
 
         public BuildingRecord {
             upgradeLevel = Math.max(1, Math.min(3, upgradeLevel));
             rotationDegrees = Math.floorMod(rotationDegrees, 360);
             if (rotationDegrees % 90 != 0) rotationDegrees = 0;
+            damage = Math.max(0, Math.min(100, damage));
         }
     }
 
@@ -211,6 +218,8 @@ public final class CivitasSavedData extends SavedData {
         data.centerZ = tag.getInt("center_z");
         data.population = Math.max(0, tag.getInt("population"));
         data.lastEconomyDay = tag.contains("last_economy_day") ? tag.getLong("last_economy_day") : -1L;
+        data.lastBuildingWearDay = tag.contains("last_building_wear_day")
+                ? tag.getLong("last_building_wear_day") : -1L;
         data.hungerDays = Math.max(0, Math.min(1_000_000, tag.getInt("hunger_days")));
         data.growthProgressDays = Math.max(0, Math.min(30, tag.getInt("growth_progress_days")));
         data.foodCredit = Math.max(0, Math.min(1_000_000, tag.getInt("food_credit")));
@@ -269,7 +278,8 @@ public final class CivitasSavedData extends SavedData {
             if (!type.isBlank()) data.buildings.add(new BuildingRecord(type, building.getInt("x"),
                     building.getInt("y"), building.getInt("z"),
                     building.contains("upgrade_level") ? building.getInt("upgrade_level") : 1,
-                    building.contains("rotation_degrees") ? building.getInt("rotation_degrees") : 0));
+                    building.contains("rotation_degrees") ? building.getInt("rotation_degrees") : 0,
+                    building.contains("damage") ? building.getInt("damage") : 0));
         }
         CompoundTag storedResources = tag.getCompound("resources");
         for (String itemId : storedResources.getAllKeys()) {
@@ -348,6 +358,7 @@ public final class CivitasSavedData extends SavedData {
         tag.putInt("center_z", centerZ);
         tag.putInt("population", population);
         tag.putLong("last_economy_day", lastEconomyDay);
+        tag.putLong("last_building_wear_day", lastBuildingWearDay);
         tag.putInt("hunger_days", hungerDays);
         tag.putInt("growth_progress_days", growthProgressDays);
         tag.putInt("food_credit", foodCredit);
@@ -391,6 +402,7 @@ public final class CivitasSavedData extends SavedData {
             building.putInt("z", record.z());
             building.putInt("upgrade_level", record.upgradeLevel());
             building.putInt("rotation_degrees", record.rotationDegrees());
+            building.putInt("damage", record.damage());
             storedBuildings.add(building);
         }
         tag.put("buildings", storedBuildings);
@@ -660,12 +672,51 @@ public final class CivitasSavedData extends SavedData {
         BuildingRecord current = buildings.get(index);
         if (current.upgradeLevel() != expectedLevel || current.upgradeLevel() >= 3) return false;
         buildings.set(index, new BuildingRecord(current.type(), current.x(), current.y(), current.z(),
-                current.upgradeLevel() + 1, current.rotationDegrees()));
+                current.upgradeLevel() + 1, current.rotationDegrees(), current.damage()));
         setDirty();
         return true;
     }
     public List<BuildingRecord> getBuildings() {
         return Collections.unmodifiableList(new ArrayList<>(buildings));
+    }
+
+    /** Applies once-per-world-day passive wear. Old saves default to no damage. */
+    public boolean tickBuildingWear(long worldDay, boolean raining, boolean thundering) {
+        if (worldDay < 0 || worldDay <= lastBuildingWearDay || buildings.isEmpty()) return false;
+        lastBuildingWearDay = worldDay;
+        for (int i = 0; i < buildings.size(); i++) {
+            BuildingRecord building = buildings.get(i);
+            int wear = 1;
+            if (raining) wear++;
+            if (thundering) wear += 2;
+            wear = Math.max(1, (int) Math.ceil(wear / ru.civitas.building.MaterialTier.forBuildingType(building.type()).durabilityMultiplier));
+            buildings.set(i, new BuildingRecord(building.type(), building.x(), building.y(), building.z(),
+                    building.upgradeLevel(), building.rotationDegrees(), Math.min(100, building.damage() + wear)));
+        }
+        setDirty();
+        return true;
+    }
+
+    /** Repairs a registered building without changing its identity or upgrade level. */
+    public boolean repairBuilding(int index, int amount) {
+        if (index < 0 || index >= buildings.size() || amount <= 0) return false;
+        BuildingRecord current = buildings.get(index);
+        if (current.damage() == 0) return false;
+        buildings.set(index, new BuildingRecord(current.type(), current.x(), current.y(), current.z(),
+                current.upgradeLevel(), current.rotationDegrees(), Math.max(0, current.damage() - amount)));
+        setDirty();
+        return true;
+    }
+
+    public boolean damageBuilding(int index, int amount) {
+        if (index < 0 || index >= buildings.size() || amount <= 0) return false;
+        BuildingRecord current = buildings.get(index);
+        int next = Math.min(100, current.damage() + amount);
+        if (next == current.damage()) return false;
+        buildings.set(index, new BuildingRecord(current.type(), current.x(), current.y(), current.z(),
+                current.upgradeLevel(), current.rotationDegrees(), next));
+        setDirty();
+        return true;
     }
 
     /** Current territory influence is derived from saved settlement state. */
