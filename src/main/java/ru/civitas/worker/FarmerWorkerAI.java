@@ -355,6 +355,7 @@ public final class FarmerWorkerAI {
         tag.remove(TARGET_X);
         tag.remove(TARGET_Y);
         tag.remove(TARGET_Z);
+        tag.remove(HARVEST_PROGRESS);
         tag.putLong(NEXT_SCAN_TICK, 0L);
     }
 
