@@ -1,17 +1,22 @@
-Civitas Alpha 0.32.0 — Achievement Branches & Dashboard Improvements
+Civitas Alpha 0.32.0 — Living Settlement
 Target: Minecraft Java Edition 1.21.1 + Forge 52.1.20 + Java 21
 
-Included:
-- Achievement dashboard reorganized into a scrollable tree with nine named branches.
-- Twenty-one milestone conditions cover founding, population, housing, crafts, construction, economy, trade/resource trends, territory, worker assignment and development.
-- Previous/next navigation and completed/pending visual states.
-- Milestones are computed from the server-provided settlement snapshot.
+Implemented in source:
+- Settlement UI includes Buildings and Achievements tabs. Buildings supports paging, displays registered indices and cabin levels, and shows upgrade costs.
+- Achievement tree presents 21 milestone conditions across nine branches. Conditions are derived from the server snapshot; individual unlock records and rewards are not implemented.
+- Registered Civitas cabins can be upgraded to level 2 or 3 through the owner-only /civitas buildings upgrade <index> command or the Buildings tab.
+- Level 2 adds a porch with slabs, supported fence railings, stairs and lantern. Level 3 adds a brick chimney through the roof.
+- Building records persist upgrade level and rotation; old saves default to level 1 and rotation 0.
+- Upgrade validation checks claimed chunks, settlement influence, block occupancy, fluids and loaded chunks. Free warehouse stock is used, not reserved construction materials.
+- Builders face the worksite and swing while working; lumberjacks visibly chop; farmers use a timed harvest cycle before consuming a seed.
+- Added automated tests for house upgrade blueprint geometry and invalid parameters.
 
 Known limitations:
-- Achievement completion is derived from current state and is not individually persisted.
-- Milestone rewards and prerequisite-gated progression are not implemented yet.
-- Resident behavior, house models and house upgrade effects have not been changed in this release.
-- No build, unit test or in-game verification has been confirmed for this exact commit.
+- The starter-village houses are not yet registered as upgradeable Civitas buildings; the upgrade system currently targets registered cabins built through Civitas construction.
+- Achievement states are derived from current settlement data, not individually persisted. No rewards or prerequisite-gated unlocks yet.
+- Full daily resident schedules, social behavior, rest and happiness are not implemented.
+- Fire/fluid spread, mob griefing and third-party world changes are not comprehensively protected.
 
 Validation:
-- Run the Gradle build and test tasks and inspect build/libs before distributing a JAR.
+- No local build, test execution or in-game verification is confirmed for this exact release.
+- Run Gradle build and test tasks, inspect build/libs, then manually test upgrade persistence and block/resource rollback in a disposable world before distributing a JAR.
