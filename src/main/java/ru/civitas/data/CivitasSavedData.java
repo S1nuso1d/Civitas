@@ -57,22 +57,64 @@ public final class CivitasSavedData extends SavedData {
             int z,
             int progress,
             int totalLayers,
-            Map<String, Integer> reservedResources
+            Map<String, Integer> reservedResources,
+            List<Map<String, Integer>> layerCosts
     ) {
         public ConstructionOrder(String type, int x, int y, int z, int progress, int totalLayers) {
-            this(type, x, y, z, progress, totalLayers, Map.of());
+            this(type, x, y, z, progress, totalLayers, Map.of(), List.of());
+        }
+
+        public ConstructionOrder(String type, int x, int y, int z, int progress,
+                                 int totalLayers, Map<String, Integer> reservedResources) {
+            this(type, x, y, z, progress, totalLayers, reservedResources, List.of());
         }
 
         public ConstructionOrder {
-            reservedResources = reservedResources == null
+            reservedResources = reservedResources == null || reservedResources.isEmpty()
                     ? Map.of()
                     : Collections.unmodifiableMap(new TreeMap<>(reservedResources));
+
+            if (layerCosts == null || layerCosts.isEmpty()) {
+                layerCosts = List.of();
+            } else {
+                List<Map<String, Integer>> copiedLayers = new ArrayList<>();
+                for (Map<String, Integer> layer : layerCosts) {
+                    Map<String, Integer> copied = new TreeMap<>();
+                    if (layer != null) {
+                        layer.forEach((itemId, amount) -> {
+                            if (itemId != null && !itemId.isBlank() && amount != null && amount > 0) {
+                                copied.put(itemId, amount);
+                            }
+                        });
+                    }
+                    copiedLayers.add(Collections.unmodifiableMap(copied));
+                }
+                layerCosts = Collections.unmodifiableList(copiedLayers);
+            }
         }
 
         /**
-         * Returns only the reserved amount allocated to layers that have not
-         * been completed. Integer division means indivisible resources (such
-         * as one water bucket) are allocated to the final layer.
+         * A layer plan is accepted only when it covers every layer and its
+         * aggregate exactly matches the reservation snapshot. Invalid or
+         * legacy plans fall back to the proportional 0.13 calculation.
+         */
+        public boolean hasValidLayerCosts() {
+            if (layerCosts.isEmpty() || layerCosts.size() != Math.max(1, totalLayers)
+                    || reservedResources.isEmpty()) {
+                return false;
+            }
+
+            Map<String, Integer> totals = new TreeMap<>();
+            for (Map<String, Integer> layer : layerCosts) {
+                layer.forEach((itemId, amount) -> totals.merge(itemId, amount, Integer::sum));
+            }
+            return totals.equals(new TreeMap<>(reservedResources));
+        }
+
+        /**
+         * Returns the reservation still assigned to unbuilt layers.
+         * New orders use explicit stage costs; old saves retain proportional
+         * refunds so updating the mod does not reinterpret their accounting.
          */
         public Map<String, Integer> remainingReservedResources() {
             if (reservedResources.isEmpty()) {
@@ -82,12 +124,20 @@ public final class CivitasSavedData extends SavedData {
             int safeTotalLayers = Math.max(1, totalLayers);
             int completedLayers = Math.max(0, Math.min(progress, safeTotalLayers));
             Map<String, Integer> remaining = new TreeMap<>();
-            for (Map.Entry<String, Integer> entry : reservedResources.entrySet()) {
-                int originalAmount = Math.max(0, entry.getValue());
-                long consumed = ((long) originalAmount * completedLayers) / safeTotalLayers;
-                int refundable = originalAmount - (int) consumed;
-                if (refundable > 0) {
-                    remaining.put(entry.getKey(), refundable);
+
+            if (hasValidLayerCosts()) {
+                for (int layerIndex = completedLayers; layerIndex < layerCosts.size(); layerIndex++) {
+                    layerCosts.get(layerIndex).forEach((itemId, amount) ->
+                            remaining.merge(itemId, amount, Integer::sum));
+                }
+            } else {
+                for (Map.Entry<String, Integer> entry : reservedResources.entrySet()) {
+                    int originalAmount = Math.max(0, entry.getValue());
+                    long consumed = ((long) originalAmount * completedLayers) / safeTotalLayers;
+                    int refundable = originalAmount - (int) consumed;
+                    if (refundable > 0) {
+                        remaining.put(entry.getKey(), refundable);
+                    }
                 }
             }
             return Collections.unmodifiableMap(remaining);
@@ -131,10 +181,29 @@ public final class CivitasSavedData extends SavedData {
                     reservedResources.put(itemId, count);
                 }
             }
+            List<Map<String, Integer>> layerCosts = new ArrayList<>();
+            if (order.contains("layer_costs", Tag.TAG_LIST)) {
+                ListTag storedLayers = order.getList("layer_costs", Tag.TAG_COMPOUND);
+                for (int layerIndex = 0; layerIndex < storedLayers.size(); layerIndex++) {
+                    CompoundTag storedLayer = storedLayers.getCompound(layerIndex);
+                    Map<String, Integer> costs = new TreeMap<>();
+                    for (String itemId : storedLayer.getAllKeys()) {
+                        int count = storedLayer.getInt(itemId);
+                        if (count > 0) costs.put(itemId, count);
+                    }
+                    layerCosts.add(costs);
+                }
+            }
             if (!type.isBlank() && progress < total) {
-                data.constructionOrders.add(new ConstructionOrder(
+                ConstructionOrder loaded = new ConstructionOrder(
                         type, order.getInt("x"), order.getInt("y"), order.getInt("z"),
-                        progress, total, reservedResources));
+                        progress, total, reservedResources, layerCosts);
+                // Malformed plans should never cause resources to disappear during a refund.
+                if (!loaded.hasValidLayerCosts()) {
+                    loaded = new ConstructionOrder(type, order.getInt("x"), order.getInt("y"),
+                            order.getInt("z"), progress, total, reservedResources);
+                }
+                data.constructionOrders.add(loaded);
             }
         }
         ListTag storedBuildings = tag.getList("buildings", Tag.TAG_COMPOUND);
@@ -178,6 +247,15 @@ public final class CivitasSavedData extends SavedData {
             CompoundTag reservation = new CompoundTag();
             order.reservedResources().forEach(reservation::putInt);
             stored.put("reserved_resources", reservation);
+            if (order.hasValidLayerCosts()) {
+                ListTag storedLayerCosts = new ListTag();
+                for (Map<String, Integer> layer : order.layerCosts()) {
+                    CompoundTag storedLayer = new CompoundTag();
+                    layer.forEach(storedLayer::putInt);
+                    storedLayerCosts.add(storedLayer);
+                }
+                stored.put("layer_costs", storedLayerCosts);
+            }
             storedOrders.add(stored);
         }
         tag.put("construction_orders", storedOrders);
@@ -279,6 +357,12 @@ public final class CivitasSavedData extends SavedData {
 
     public void addConstructionOrder(
             String type, BlockPos position, int totalLayers, Map<String, Integer> reservedResources) {
+        addConstructionOrder(type, position, totalLayers, reservedResources, List.of());
+    }
+
+    public void addConstructionOrder(
+            String type, BlockPos position, int totalLayers,
+            Map<String, Integer> reservedResources, List<Map<String, Integer>> layerCosts) {
         if (type == null || type.isBlank() || position == null || totalLayers < 1) return;
         Map<String, Integer> reservation = new TreeMap<>();
         if (reservedResources != null) {
@@ -288,8 +372,14 @@ public final class CivitasSavedData extends SavedData {
                 }
             });
         }
-        constructionOrders.add(new ConstructionOrder(
-                type, position.getX(), position.getY(), position.getZ(), 0, totalLayers, reservation));
+        ConstructionOrder order = new ConstructionOrder(
+                type, position.getX(), position.getY(), position.getZ(), 0, totalLayers,
+                reservation, layerCosts);
+        if (!order.hasValidLayerCosts()) {
+            order = new ConstructionOrder(type, position.getX(), position.getY(), position.getZ(),
+                    0, totalLayers, reservation);
+        }
+        constructionOrders.add(order);
         setDirty();
     }
     public List<ConstructionOrder> getConstructionOrders() { return Collections.unmodifiableList(new ArrayList<>(constructionOrders)); }
@@ -307,7 +397,8 @@ public final class CivitasSavedData extends SavedData {
         } else {
             constructionOrders.set(index, new ConstructionOrder(
                     order.type(), order.x(), order.y(), order.z(),
-                    order.progress() + 1, order.totalLayers(), order.reservedResources()));
+                    order.progress() + 1, order.totalLayers(),
+                    order.reservedResources(), order.layerCosts()));
         }
         setDirty();
     }
