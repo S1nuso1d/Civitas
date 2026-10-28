@@ -72,7 +72,10 @@ public final class CivitasCommands {
                                 .then(Commands.argument("name", StringArgumentType.greedyString())
                                         .executes(CivitasCommands::rename)))
                         .then(Commands.literal("workers").executes(CivitasCommands::workers))
-                        .then(Commands.literal("buildings").executes(CivitasCommands::buildings))
+                        .then(Commands.literal("buildings").executes(CivitasCommands::buildings)
+                                .then(Commands.literal("upgrade")
+                                        .then(Commands.argument("index", IntegerArgumentType.integer(1, 128))
+                                                .executes(CivitasCommands::upgradeBuilding)))
                         .then(Commands.literal("construction")
                                 .executes(CivitasCommands::construction)
                                 .then(Commands.literal("cancel")
@@ -817,6 +820,27 @@ public final class CivitasCommands {
         }
         context.getSource().sendFailure(Component.literal(result.message()));
         return 0;
+    }
+
+    private static int upgradeBuilding(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        ServerPlayer player = context.getSource().getPlayerOrException();
+        CivitasSavedData data = CivitasSavedData.get(context.getSource().getServer());
+        if (!ensureOwner(context.getSource(), player, data)) return 0;
+        if (!context.getSource().getLevel().dimension().equals(net.minecraft.world.level.Level.OVERWORLD)) {
+            context.getSource().sendFailure(Component.literal("Улучшать дома можно только в обычном мире."));
+            return 0;
+        }
+        SettlementWarehouseBlockEntity warehouse = findWarehouse(context.getSource(), data);
+        if (warehouse == null) {
+            context.getSource().sendFailure(Component.literal("Центральный склад не загружен или отсутствует."));
+            return 0;
+        }
+        int index = IntegerArgumentType.getInteger(context, "index");
+        var result = SettlementBuildingManager.upgradeHouse(
+                context.getSource().getServer().overworld(), data, warehouse, index);
+        if (result.success()) context.getSource().sendSuccess(() -> Component.literal(result.message()), false);
+        else context.getSource().sendFailure(Component.literal(result.message()));
+        return result.success() ? 1 : 0;
     }
 
     private static int buildings(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
