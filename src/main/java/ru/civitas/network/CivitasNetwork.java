@@ -310,6 +310,23 @@ public final class CivitasNetwork {
             if (storageLines.isEmpty()) {
                 storageLines.add("Склад пока пуст.");
             }
+            Map<String, Integer> reservedResources = data.getWarehouseReservedResources();
+            if (!reservedResources.isEmpty()) {
+                StringBuilder reservedLine = new StringBuilder("Резерв стройки: ");
+                int shown = 0;
+                for (Map.Entry<String, Integer> entry : reservedResources.entrySet()) {
+                    if (shown == 4) break;
+                    if (shown > 0) reservedLine.append(", ");
+                    String shortId = entry.getKey().startsWith("minecraft:")
+                            ? entry.getKey().substring("minecraft:".length())
+                            : entry.getKey();
+                    reservedLine.append(shortId).append(" × ").append(entry.getValue());
+                    shown++;
+                }
+                if (reservedResources.size() > shown) reservedLine.append(", …");
+                if (storageLines.size() >= 27) storageLines.remove(storageLines.size() - 1);
+                storageLines.add(reservedLine.toString());
+            }
         } else {
             storageLines.add("Физический склад сейчас недоступен.");
         }
