@@ -627,7 +627,7 @@ public final class CivitasSavedData extends SavedData {
      */
     /** Maximum number of chunks the settlement may claim at its current development level. */
     public int getTerritoryClaimLimit() {
-        return Math.max(1, Math.min(16, 1 + getTerritoryInfluence().score() / 100));
+        return Math.max(2, Math.min(16, 2 + getTerritoryInfluence().score() / 100));
     }
 
     public int getClaimedChunkCount() {
