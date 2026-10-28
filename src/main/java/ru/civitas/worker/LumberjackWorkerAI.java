@@ -25,6 +25,9 @@ import ru.civitas.block.SettlementWarehouseBlockEntity;
 import ru.civitas.data.CivitasSavedData;
 import ru.civitas.worker.PersonalOrders;
 import ru.civitas.CivitasConfig;
+import ru.civitas.ai.AiLodController;
+import ru.civitas.ai.ChunkGuard;
+import ru.civitas.ai.StuckDetector;
 
 /**
  * First physical worker prototype. A tagged village villager walks to nearby
@@ -92,6 +95,7 @@ public final class LumberjackWorkerAI {
             level.addFreshEntity(chosen);
         }
         chosen.getPersistentData().putString(ROLE_KEY, "lumberjack");
+        VillagerEquipment.apply(chosen, "lumberjack");
         chosen.setCustomName(Component.literal("Лесоруб Civitas"));
         chosen.setCustomNameVisible(true);
         chosen.setPersistenceRequired();
@@ -198,6 +202,7 @@ public final class LumberjackWorkerAI {
         chosen.getPersistentData().putBoolean(PAUSED_KEY, false);
         WorkerNavigationGuard.reset(chosen, "lumberjack");
         chosen.getPersistentData().putString(ROLE_KEY, "lumberjack");
+        VillagerEquipment.apply(chosen, "lumberjack");
         updateWorkerName(chosen, "");
         return true;
     }
@@ -211,6 +216,7 @@ public final class LumberjackWorkerAI {
             return false;
         }
         persistent.putString(ROLE_KEY, "");
+        VillagerEquipment.clear(villager);
         persistent.putBoolean(PAUSED_KEY, false);
         persistent.putString(ISSUE_KEY, "");
         persistent.putInt(CHOP_PROGRESS_KEY, 0);
@@ -351,9 +357,11 @@ public final class LumberjackWorkerAI {
             villager.getNavigation().stop();
             return;
         }
-        if (villager.tickCount % WORK_INTERVAL != 0 || !(villager.level() instanceof ServerLevel level)) {
+        if (!(villager.level() instanceof ServerLevel level)) {
             return;
         }
+        if (StuckDetector.check(level, villager)) return;
+        if (!AiLodController.shouldTick(level, villager)) return;
         WorkerLifeCycle.openNearbyDoor(level, villager);
         tickWorker(level, villager);
     }
@@ -365,6 +373,11 @@ public final class LumberjackWorkerAI {
         }
 
         BlockPos warehousePos = worldData.getStarterVillageCenter();
+        if (!level.hasChunkAt(warehousePos)) {
+            villager.getNavigation().stop();
+            villager.getPersistentData().putString(ISSUE_KEY, "Ждёт загрузки чанка склада");
+            return;
+        }
         if (!(level.getBlockEntity(warehousePos) instanceof SettlementWarehouseBlockEntity warehouse)) {
             villager.getPersistentData().putString(ISSUE_KEY, "Склад не найден");
             villager.getNavigation().stop();
@@ -406,6 +419,9 @@ public final class LumberjackWorkerAI {
         // for the nearest log every second made the target jump between trunk
         // blocks, so the worker could orbit the tree or abandon a half-finished cut.
         BlockPos treeLog = readTreeTarget(persistent);
+        if (treeLog != null && !ChunkGuard.targetAvailable(level, villager, treeLog, ISSUE_KEY)) {
+            return;
+        }
         if (treeLog != null && !isHarvestableTarget(level, treeLog, worldData, warehousePos)) {
             clearTreeTarget(persistent);
             persistent.putInt(CHOP_PROGRESS_KEY, 0);
