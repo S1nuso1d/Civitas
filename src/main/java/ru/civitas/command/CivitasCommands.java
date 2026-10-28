@@ -58,6 +58,7 @@ public final class CivitasCommands {
                                         .executes(CivitasCommands::visitNeighbor)))
                         .then(Commands.literal("return").executes(CivitasCommands::returnFromNeighbor))
                         .then(Commands.literal("status").executes(CivitasCommands::status))
+                        .then(Commands.literal("territory").executes(CivitasCommands::territory))
                         .then(Commands.literal("overview").executes(CivitasCommands::overview))
                         .then(Commands.literal("found")
                                 .then(Commands.argument("name", StringArgumentType.greedyString())
@@ -227,6 +228,24 @@ public final class CivitasCommands {
      * Combined strategic snapshot intended as a single entry point for the next dashboard iteration.
      * All values are derived from the authoritative server world and saved settlement data.
      */
+    private static int territory(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        ServerPlayer player = context.getSource().getPlayerOrException();
+        CivitasSavedData data = CivitasSavedData.get(context.getSource().getServer());
+        if (!ensureOwner(context.getSource(), player, data)) return 0;
+        var influence = data.getTerritoryInfluence();
+        BlockPos center = data.getTerritoryCenter();
+        BlockPos here = player.blockPosition();
+        boolean inside = data.isWithinTerritory(here);
+        context.getSource().sendSuccess(() -> Component.literal(
+                "§6Территория поселения: §f" + influence.tier()
+                        + "\n§7Влияние: §f" + influence.score() + "/1000"
+                        + "\n§7Радиус: §f" + influence.radius() + " блоков"
+                        + "\n§7Центр: §f" + center.getX() + ", " + center.getY() + ", " + center.getZ()
+                        + "\n" + (inside ? "§aВы находитесь в зоне влияния." : "§cВы находитесь за пределами зоны влияния.")
+                        + "\n§8Зона влияет на размещение новых построек; это не защита блоков и не граница чанков."), false);
+        return Command.SINGLE_SUCCESS;
+    }
+
     private static int overview(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
         ServerPlayer player = context.getSource().getPlayerOrException();
         CivitasSavedData data = CivitasSavedData.get(context.getSource().getServer());
@@ -573,6 +592,10 @@ public final class CivitasCommands {
             return 0;
         }
         BlockPos center = data.hasStarterVillage() ? data.getStarterVillageCenter() : data.getCenter();
+        if (!data.isWithinTerritory(site)) {
+            context.getSource().sendFailure(Component.literal("Площадка находится за пределами территории поселения. Используй /civitas territory, чтобы узнать текущий радиус."));
+            return 0;
+        }
         SettlementBuildingManager.BuildResult result = SettlementBuildingManager.buildAt(
                 context.getSource().getServer().overworld(), center, warehouse, type, data, site, rotationDegrees);
         if (result.success()) {
@@ -594,6 +617,10 @@ public final class CivitasCommands {
         }
         BlockPos site = BlockPosArgument.getLoadedBlockPos(context, "position");
         BlockPos center = data.hasStarterVillage() ? data.getStarterVillageCenter() : data.getCenter();
+        if (!data.isWithinTerritory(site)) {
+            context.getSource().sendFailure(Component.literal("Площадка находится за пределами территории поселения. Используй /civitas territory, чтобы узнать текущий радиус."));
+            return 0;
+        }
         SettlementBuildingManager.BuildResult result = SettlementBuildingManager.preview(
                 context.getSource().getServer().overworld(), center, type, data, site, rotationDegrees);
         if (result.success()) {
