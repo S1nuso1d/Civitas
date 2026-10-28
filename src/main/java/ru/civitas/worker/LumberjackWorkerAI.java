@@ -21,8 +21,8 @@ import ru.civitas.data.CivitasSavedData;
 
 /**
  * First physical worker prototype. A tagged village villager walks to nearby
- * tree logs, chops them over several seconds, carries up to eight logs, and
- * physically returns to the starter warehouse to deposit them.
+ * natural tree logs, chops the whole connected tree with visible timed progress,
+ * and physically returns to the starter warehouse to deposit the complete harvest.
  */
 public final class LumberjackWorkerAI {
     private static final String ROLE_KEY = "civitas.worker_role";
@@ -262,7 +262,8 @@ public final class LumberjackWorkerAI {
 
         String targetItemId = treeLog == null ? "" :
                 BuiltInRegistries.ITEM.getKey(level.getBlockState(treeLog).getBlock().asItem()).toString();
-        boolean mustDeliver = carriedCount >= MAX_CARRIED
+        boolean warehouseBlocked = persistent.getString(ISSUE_KEY).contains("Склад заполнен");
+        boolean mustDeliver = warehouseBlocked || carriedCount >= MAX_CARRIED
                 || carriedCount > 0 && (treeLog == null || !carriedItemId.equals(targetItemId));
 
         BlockPos deliveryStand = warehousePos.offset(0, 1, 2);
