@@ -1,9 +1,11 @@
 package ru.civitas.world;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.CropBlock;
 import net.minecraft.world.level.block.state.BlockState;
 
 import java.util.ArrayList;
@@ -12,9 +14,24 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/** Canonical block layout shared by construction and safe cancellation. */
+/**
+ * Canonical, data-only block layout shared by construction and safe cancellation.
+ * The block registry is resolved only when the blueprint is used in a live world,
+ * so layout tests do not need to start the complete Minecraft runtime.
+ */
 public final class BuildingBlueprint {
-    public record Placement(BlockPos relativePosition, BlockState state) {}
+    public record Placement(BlockPos relativePosition, String blockId, int cropAge) {
+        public Placement {
+            if (relativePosition == null || blockId == null || blockId.isBlank()) {
+                throw new IllegalArgumentException("Placement position and block ID are required");
+            }
+            if (cropAge < -1) throw new IllegalArgumentException("cropAge must be -1 or greater");
+        }
+
+        public boolean clearsBlock() {
+            return "minecraft:air".equals(blockId);
+        }
+    }
 
     private BuildingBlueprint() {}
 
@@ -24,26 +41,25 @@ public final class BuildingBlueprint {
         if (layer < 1 || layer > definition.totalLayers())
             throw new IllegalArgumentException("Layer out of range for " + type.id() + ": " + layer);
 
-        Map<BlockPos, BlockState> blocks = new LinkedHashMap<>();
+        Map<BlockPos, Placement> blocks = new LinkedHashMap<>();
         switch (type) {
             case CABIN -> cabin(blocks, layer);
             case FARM -> farm(blocks, layer);
             case WORKSHOP -> workshop(blocks, layer);
         }
-        List<Placement> result = new ArrayList<>(blocks.size());
-        blocks.forEach((pos, state) -> result.add(new Placement(pos, state)));
-        return Collections.unmodifiableList(result);
+        return Collections.unmodifiableList(new ArrayList<>(blocks.values()));
     }
 
-    /** Check an entire layer before resources are charged. */
+    /** Check a whole layer before resources are charged. */
     public static boolean canPlaceLayer(ServerLevel level, BlockPos ground,
                                         BuildingDefinition.Type type, int layer) {
         for (Placement p : layer(type, layer)) {
             BlockPos target = ground.offset(p.relativePosition());
             if (!level.hasChunkAt(target)) return false;
-            if (p.state().isAir()) continue;
-            var current = level.getBlockState(target);
-            if (!current.canBeReplaced() && !current.is(p.state().getBlock())) return false;
+            if (p.clearsBlock()) continue;
+            Block expected = resolveBlock(p.blockId());
+            BlockState current = level.getBlockState(target);
+            if (!current.canBeReplaced() && !current.is(expected)) return false;
         }
         return true;
     }
@@ -51,70 +67,102 @@ public final class BuildingBlueprint {
     public static void placeLayer(ServerLevel level, BlockPos ground, BuildingDefinition.Type type, int layer) {
         for (Placement p : layer(type, layer)) {
             BlockPos target = ground.offset(p.relativePosition());
-            if (level.hasChunkAt(target)) level.setBlock(target, p.state(), 3);
+            if (level.hasChunkAt(target)) level.setBlock(target, resolveState(p), 3);
         }
     }
 
     public static void removeLayer(ServerLevel level, BlockPos ground, BuildingDefinition.Type type, int layer) {
         for (Placement p : layer(type, layer)) {
-            if (p.state().isAir()) continue;
+            if (p.clearsBlock()) continue;
             BlockPos target = ground.offset(p.relativePosition());
-            if (level.hasChunkAt(target) && level.getBlockState(target).is(p.state().getBlock()))
-                level.setBlock(target, Blocks.AIR.defaultBlockState(), 3);
+            if (level.hasChunkAt(target) && level.getBlockState(target).is(resolveBlock(p.blockId()))) {
+                level.setBlock(target, resolveState(new Placement(p.relativePosition(), "minecraft:air", -1)), 3);
+            }
         }
     }
 
-    private static void put(Map<BlockPos, BlockState> b, int x, int y, int z, Block block) {
-        b.put(new BlockPos(x, y, z), block.defaultBlockState());
+    private static Block resolveBlock(String id) {
+        ResourceLocation key = ResourceLocation.parse(id);
+        if (!BuiltInRegistries.BLOCK.containsKey(key)) {
+            throw new IllegalArgumentException("Unknown block in Civitas blueprint: " + id);
+        }
+        return BuiltInRegistries.BLOCK.get(key);
     }
 
-    private static void cabin(Map<BlockPos, BlockState> b, int y) {
+    private static BlockState resolveState(Placement placement) {
+        Block block = resolveBlock(placement.blockId());
+        BlockState state = block.defaultBlockState();
+        if (placement.cropAge() >= 0) {
+            if (!(block instanceof CropBlock crop) || !state.hasProperty(CropBlock.AGE)) {
+                throw new IllegalArgumentException("Crop age set for a non-crop block: " + placement.blockId());
+            }
+            state = state.setValue(CropBlock.AGE, Math.min(placement.cropAge(), crop.getMaxAge()));
+        }
+        return state;
+    }
+
+    private static void put(Map<BlockPos, Placement> b, int x, int y, int z, String blockId) {
+        b.put(new BlockPos(x, y, z), new Placement(new BlockPos(x, y, z), blockId, -1));
+    }
+
+    private static void putCrop(Map<BlockPos, Placement> b, int x, int y, int z, int age) {
+        BlockPos pos = new BlockPos(x, y, z);
+        b.put(pos, new Placement(pos, "minecraft:wheat", age));
+    }
+
+    private static void cabin(Map<BlockPos, Placement> b, int y) {
         if (y == 1) {
-            for (int x=-2;x<=2;x++) for (int z=-2;z<=2;z++) put(b,x,1,z,Blocks.OAK_PLANKS);
-            put(b,0,1,0,Blocks.CRAFTING_TABLE); put(b,1,1,0,Blocks.BARREL); put(b,0,1,2,Blocks.RED_BED);
+            for (int x=-2;x<=2;x++) for (int z=-2;z<=2;z++) put(b,x,1,z,"minecraft:oak_planks");
+            put(b,0,1,0,"minecraft:crafting_table");
+            put(b,1,1,0,"minecraft:barrel");
+            put(b,0,1,2,"minecraft:red_bed");
         } else if (y <= 4) {
             for (int x=-2;x<=2;x++) for (int z=-2;z<=2;z++) {
                 if (Math.abs(x)!=2 && Math.abs(z)!=2) continue;
                 if (y==2 && x==0 && z==-2) continue;
-                put(b,x,y,z,y==3 && Math.abs(x)==2 && z==0 ? Blocks.GLASS : Blocks.OAK_LOG);
+                put(b,x,y,z,y==3 && Math.abs(x)==2 && z==0 ? "minecraft:glass" : "minecraft:oak_log");
             }
         } else {
-            for (int x=-3;x<=3;x++) for (int z=-3;z<=3;z++) put(b,x,5,z,Blocks.OAK_PLANKS);
-            put(b,0,1,-2,Blocks.AIR); put(b,0,2,-2,Blocks.AIR);
+            for (int x=-3;x<=3;x++) for (int z=-3;z<=3;z++) put(b,x,5,z,"minecraft:oak_planks");
+            put(b,0,1,-2,"minecraft:air");
+            put(b,0,2,-2,"minecraft:air");
         }
     }
 
-    private static void farm(Map<BlockPos, BlockState> b, int y) {
+    private static void farm(Map<BlockPos, Placement> b, int y) {
         if (y==1) {
             for (int x=-3;x<=3;x++) for (int z=-3;z<=3;z++) {
-                if (Math.abs(x)==3 || Math.abs(z)==3) put(b,x,1,z,Blocks.OAK_FENCE);
-                else if (x==0 && z==0) put(b,x,1,z,Blocks.WATER);
-                else put(b,x,1,z,Blocks.FARMLAND);
+                if (Math.abs(x)==3 || Math.abs(z)==3) put(b,x,1,z,"minecraft:oak_fence");
+                else if (x==0 && z==0) put(b,x,1,z,"minecraft:water");
+                else put(b,x,1,z,"minecraft:farmland");
             }
-            put(b,0,1,-3,Blocks.AIR); put(b,1,1,0,Blocks.COMPOSTER); put(b,-1,1,0,Blocks.BARREL);
+            put(b,0,1,-3,"minecraft:air");
+            put(b,1,1,0,"minecraft:composter");
+            put(b,-1,1,0,"minecraft:barrel");
         } else {
             for (int x=-3;x<=3;x++) for (int z=-3;z<=3;z++) {
                 if (Math.abs(x)==3 || Math.abs(z)==3 || (x==0 && z==0)) continue;
-                b.put(new BlockPos(x,2,z), Blocks.WHEAT.defaultBlockState()
-                        .setValue(net.minecraft.world.level.block.CropBlock.AGE,0));
+                putCrop(b,x,2,z,0);
             }
         }
     }
 
-    private static void workshop(Map<BlockPos, BlockState> b, int y) {
+    private static void workshop(Map<BlockPos, Placement> b, int y) {
         if (y==1) {
-            for (int x=-2;x<=2;x++) for (int z=-2;z<=2;z++) put(b,x,1,z,Blocks.COBBLESTONE);
-            put(b,0,1,0,Blocks.CRAFTING_TABLE); put(b,1,1,0,Blocks.FURNACE);
-            put(b,-1,1,0,Blocks.BARREL); put(b,0,1,1,Blocks.ANVIL);
+            for (int x=-2;x<=2;x++) for (int z=-2;z<=2;z++) put(b,x,1,z,"minecraft:cobblestone");
+            put(b,0,1,0,"minecraft:crafting_table");
+            put(b,1,1,0,"minecraft:furnace");
+            put(b,-1,1,0,"minecraft:barrel");
+            put(b,0,1,1,"minecraft:anvil");
         } else if (y<=3) {
             for (int x=-2;x<=2;x++) for (int z=-2;z<=2;z++) {
                 if (Math.abs(x)!=2 && Math.abs(z)!=2) continue;
                 if (y==2 && x==0 && z==-2) continue;
-                put(b,x,y,z,Blocks.COBBLESTONE);
+                put(b,x,y,z,"minecraft:cobblestone");
             }
         } else {
-            for (int x=-3;x<=3;x++) for (int z=-3;z<=3;z++) put(b,x,4,z,Blocks.OAK_PLANKS);
-            put(b,0,2,-2,Blocks.AIR);
+            for (int x=-3;x<=3;x++) for (int z=-3;z<=3;z++) put(b,x,4,z,"minecraft:oak_planks");
+            put(b,0,2,-2,"minecraft:air");
         }
     }
 }
