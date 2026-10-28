@@ -39,6 +39,9 @@ public final class DiplomacyScreen extends Screen {
         for (int row = 0; row < pageSize && start + row < data.civilizations().size(); row++) {
             final var civilization = data.civilizations().get(start + row);
             int y = top + 64 + row * 48;
+            addRenderableWidget(Button.builder(Component.literal("Посетить"), button ->
+                    ClientNetworkHandler.sendPacket(new CivitasNetwork.DiplomacyVisitPacket(civilization.id())))
+                    .bounds(left + PANEL_W - 102, y + 1, 88, 18).build());
             for (int j = 0; j < stances.length; j++) {
                 final String stance = stances[j];
                 addRenderableWidget(Button.builder(Component.literal(labels[j]), button ->
