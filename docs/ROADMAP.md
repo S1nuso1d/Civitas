@@ -4,7 +4,7 @@
 
 Civitas — стратегическая модификация Minecraft, в которой игрок начинает с небольшого поселения и постепенно превращает его в цивилизацию. Мир не должен быть только набором меню: вблизи игрока жители физически перемещаются, добывают ресурсы и строят здания. Далёкие поселения работают на облегчённой симуляции, чтобы не перегружать сервер.
 
-## Territory and expansion (Alpha 0.26–0.31)
+## Territory, buildings and progression (Alpha 0.26–0.32)
 
 - [x] Calculate bounded settlement influence from completed registered buildings, population and level.
 - [x] Display influence tier, score and estimated radius in the economy dashboard.
@@ -16,6 +16,13 @@ Civitas — стратегическая модификация Minecraft, в к
 - [x] Revalidate the complete rotated construction footprint before every layer is placed.
 - [x] Add on-demand particle visualization of the currently claimed chunk boundaries.
 - [ ] Add comprehensive handling for fire/fluid spread, mob griefing, natural updates and third-party mod changes.
+- [x] Add a settlement Buildings tab with stable building indices and upgrade levels.
+- [x] Add level 2 and 3 cabin upgrades with visible exterior additions and warehouse material checks.
+- [x] Add an achievement progression tree based on saved settlement milestones.
+- [x] Add a visible construction work animation while the builder's work timer advances.
+- [ ] Add a full resident daily schedule, social behavior, rest and happiness simulation.
+- [ ] Add claimable achievement rewards and persisted achievement notifications.
+- [ ] Expand house upgrade tiers with room additions, bed capacity and functional interior upgrades.
 - [ ] Add expansion projects and conflict resolution with neighboring civilizations.
 
 Claims persist in world SavedData. Player edit events and explosion block damage are protected, and construction pauses if the plot is no longer claimed or within influence. Rival-claim ownership and complete protection from non-player world changes remain out of scope.
