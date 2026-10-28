@@ -9,8 +9,6 @@ public final class MinecraftTestBootstrap {
 
     public static synchronized void initialize() {
         SharedConstants.tryDetectVersion();
-        if (!Bootstrap.isBootstrapped()) {
-            Bootstrap.bootStrap();
-        }
+        Bootstrap.bootStrap();
     }
 }
