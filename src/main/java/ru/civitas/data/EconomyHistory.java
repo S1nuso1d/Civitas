@@ -83,6 +83,22 @@ public final class EconomyHistory {
     public int deltaStone(int daysBack) { return delta(daysBack, 1); }
     public int deltaFood(int daysBack) { return delta(daysBack, 2); }
 
+    /** Estimates days until stock reaches zero from the observed net change over a week.
+     * Returns -1 when the history is insufficient or stock is stable/growing.
+     */
+    public int daysUntilDepletion(String resource, int currentStock) {
+        if (currentStock <= 0) return 0;
+        int weeklyDelta = switch (resource == null ? "" : resource.toLowerCase(java.util.Locale.ROOT)) {
+            case "food" -> deltaFood(7);
+            case "wood" -> deltaWood(7);
+            case "stone" -> deltaStone(7);
+            default -> 0;
+        };
+        if (weeklyDelta >= 0 || days.size() < 2) return -1;
+        long estimate = (long) currentStock * 7L / Math.max(1L, -(long) weeklyDelta);
+        return (int) Math.min(Integer.MAX_VALUE, estimate);
+    }
+
     private int delta(int daysBack, int field) {
         if (days.size() < 2) return 0;
         DailyRecord latest=days.peekLast();
