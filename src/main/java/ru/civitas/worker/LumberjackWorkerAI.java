@@ -539,7 +539,10 @@ public final class LumberjackWorkerAI {
         int requiredSeconds = Math.max(1, currentTree.size());
         persistent.putInt(TARGET_TREE_SIZE_KEY, requiredSeconds);
         WorkerLifeCycle.workFeedback(level, villager, "lumberjack", treeLog);
-        int progress = persistent.getInt(CHOP_PROGRESS_KEY) + 1;
+        int workSteps = persistent.getInt("civitas.lumberjack.work_steps") + 1;
+        persistent.putInt("civitas.lumberjack.work_steps", workSteps);
+        boolean coolWeatherBonus = !level.isRainingAt(villager.blockPosition()) && workSteps % 10 == 0;
+        int progress = persistent.getInt(CHOP_PROGRESS_KEY) + 1 + (coolWeatherBonus ? 1 : 0);
         persistent.putInt(CHOP_PROGRESS_KEY, Math.min(progress, requiredSeconds));
         updateChoppingName(villager, Math.min(progress, requiredSeconds), requiredSeconds);
         villager.getLookControl().setLookAt(
