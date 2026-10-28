@@ -96,7 +96,7 @@ public final class BlueprintCatalogScreen extends Screen {
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        renderBackground(graphics);
+        renderBackground(graphics, mouseX, mouseY, partialTick);
         int panelWidth = Math.min(360, width - 20);
         int left = (width - panelWidth) / 2;
         int top = Math.max(12, (height - 270) / 2);
