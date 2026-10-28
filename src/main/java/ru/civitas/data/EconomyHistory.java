@@ -18,11 +18,23 @@ public final class EconomyHistory {
         public DailyRecord(long day) { this.day = day; }
     }
 
-    private final int capacity;
+    private int capacity;
     private final Deque<DailyRecord> days = new ArrayDeque<>();
     private final Deque<String> events = new ArrayDeque<>();
 
-    public EconomyHistory(int capacity) { this.capacity = Math.max(7, Math.min(90, capacity)); }
+    public EconomyHistory(int capacity) { this.capacity = normalizeCapacity(capacity); }
+
+    public int capacity() { return capacity; }
+
+    public boolean setCapacity(int requestedCapacity) {
+        int normalized = normalizeCapacity(requestedCapacity);
+        if (capacity == normalized) return false;
+        capacity = normalized;
+        trim();
+        return true;
+    }
+
+    private static int normalizeCapacity(int value) { return Math.max(7, Math.min(90, value)); }
 
     public void recordDaily(long day, int wood, int stone, int food, int population) {
         DailyRecord r = getOrCreate(day);

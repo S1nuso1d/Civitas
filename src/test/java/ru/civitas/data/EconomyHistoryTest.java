@@ -18,6 +18,8 @@ class EconomyHistoryTest {
         for (int i=0;i<100;i++) history.recordEvent(100,"event "+i);
         assertEquals(7, history.snapshot().size());
         assertEquals(32, history.recentEvents().size());
+        assertTrue(history.setCapacity(10));
+        assertEquals(10, history.capacity());
         CompoundTag tag=new CompoundTag();
         history.save(tag,"economy");
         EconomyHistory loaded=EconomyHistory.load(tag,"economy",7);

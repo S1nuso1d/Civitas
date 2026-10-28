@@ -39,6 +39,7 @@ public final class SettlementEconomyAI {
                 || level.dimension() != Level.OVERWORLD || level.getGameTime() % 20 != 0) return;
 
         CivitasSavedData data = CivitasSavedData.get(level.getServer());
+        data.setEconomyHistoryCapacity(CivitasConfig.ECONOMY_HISTORY_DAYS.get());
         if (!data.hasStarterVillage()) return;
         BlockPos center = data.getStarterVillageCenter();
         if (!level.hasChunkAt(center)
@@ -103,7 +104,8 @@ public final class SettlementEconomyAI {
         int foodAfterUpkeep = StorageFoodExtension.totalFoodValue(warehouse);
         int beds = countBeds(level, center);
         int interval = CivitasConfig.GROWTH_INTERVAL_DAYS.get();
-        long reserveNeed = (long) dailyNeed * CivitasConfig.GROWTH_FOOD_RESERVE.get();
+        long newPopulationDailyNeed = (long) (residents + 1) * CivitasConfig.FOOD_PER_DAY.get();
+        long reserveNeed = newPopulationDailyNeed * CivitasConfig.GROWTH_FOOD_RESERVE.get();
         foodAfterUpkeep = (int) Math.min(Integer.MAX_VALUE, (long) foodAfterUpkeep + data.getFoodCredit());
         if (residents > 0 && fed && data.getGrowthProgressDays() >= interval
                 && beds > residents && foodAfterUpkeep >= reserveNeed) {

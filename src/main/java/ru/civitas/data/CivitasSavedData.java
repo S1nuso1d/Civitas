@@ -186,7 +186,9 @@ public final class CivitasSavedData extends SavedData {
         data.hungerDays = Math.max(0, Math.min(1_000_000, tag.getInt("hunger_days")));
         data.growthProgressDays = Math.max(0, Math.min(30, tag.getInt("growth_progress_days")));
         data.foodCredit = Math.max(0, Math.min(1_000_000, tag.getInt("food_credit")));
-        data.economyHistory.restoreFrom(EconomyHistory.load(tag, "economy_history", CivitasConfig.ECONOMY_HISTORY_DAYS.get()));
+        int historyCapacity = CivitasConfig.ECONOMY_HISTORY_DAYS.get();
+        data.economyHistory.setCapacity(historyCapacity);
+        data.economyHistory.restoreFrom(EconomyHistory.load(tag, "economy_history", historyCapacity));
         data.farmlandReservations.restoreFrom(SettlementReservations.load(tag, "farmland_reservations"));
         data.level = Math.max(1, tag.getInt("level"));
         data.starterVillageGenerated = tag.getBoolean("starter_village_generated");
@@ -568,6 +570,10 @@ public final class CivitasSavedData extends SavedData {
     }
 
     public EconomyHistory getEconomyHistory() { return economyHistory; }
+
+    public void setEconomyHistoryCapacity(int capacity) {
+        if (economyHistory.setCapacity(capacity)) setDirty();
+    }
 
     public void recordFoodProduction(long day, int foodValue) {
         if (foodValue <= 0) return;
