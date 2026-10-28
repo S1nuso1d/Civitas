@@ -1,16 +1,20 @@
-Civitas Alpha 0.27.0 — Territory Boundaries
+Civitas Alpha 0.28.0 — Persistent Chunk Territory
 Target: Minecraft Java Edition 1.21.1 + Forge 52.1.20 + Java 21
 
 Added:
-- /civitas territory reports current influence tier, score, radius, center and player inclusion.
-- Explicit-position construction and blueprint preview anchors must be inside the influence radius.
-- TerritoryInfluenceTest covers score growth, bounds, and unknown building types.
-- No additional SavedData migration; influence derives from existing world data.
+- Persisted overworld chunk claims in CivitasSavedData; old worlds without claim data load with an empty claim set.
+- Founding automatically claims the founding chunk, which cannot be unclaimed.
+- /civitas territory reports influence and claim capacity.
+- /civitas territory claim and unclaim manage the chunk where the owner stands.
+- /civitas territory show emits temporary particle markers along claimed chunk edges.
+- Explicit-position construction and blueprint previews require the anchor chunk to be claimed and inside the influence radius.
+- Claim capacity scales with influence (minimum 2, maximum 16 chunks).
 
 Limitations:
-- Influence radius is not chunk ownership or block protection.
-- The check validates the building anchor, not every block of the footprint.
-- Natural blocks and other mods' building actions are not restricted.
+- Claims are for the single player settlement in the overworld; no rival ownership or contested borders yet.
+- Claims are not general block protection and do not stop natural changes, explosions, mobs, or other mods.
+- Building validation still checks the anchor position, not the complete structure footprint.
+- Boundary particles are temporary and shown at the player's current height.
 
 Validation:
 - GitHub Actions build/test/JAR packaging for the exact release commit is not yet confirmed.
