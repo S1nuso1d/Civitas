@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.33.0] - Persistent achievements
+
+### Added
+- Added stable IDs for all 21 achievement milestones.
+- Persisted first-unlock world day in `CivitasSavedData`; unlocks survive reloads and later loss of a condition.
+- Achievement conditions are evaluated server-side when the dashboard snapshot is generated; the client renders the saved unlock list.
+- Bumped the Civitas network protocol to version 8 for the expanded snapshot.
+
+### Validation
+- Source changes committed; local build, tests and in-game save/reload behavior still require verification.
+
+
 ## [0.32.1] - Achievement accuracy pass
 
 ### Fixed
