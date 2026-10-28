@@ -149,6 +149,7 @@ public final class CivitasMod {
     private void onBuildCreativeTab(BuildCreativeModeTabContentsEvent event) {
         if (event.getTabKey() == CreativeModeTabs.FUNCTIONAL_BLOCKS) {
             event.accept(ModItems.WAREHOUSE_ITEM.get());
+            event.accept(ModItems.BLUEPRINT_PLANNER.get());
         }
     }
 
