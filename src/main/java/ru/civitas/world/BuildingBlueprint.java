@@ -6,7 +6,9 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.CropBlock;
+import net.minecraft.world.level.block.DoorBlock;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -98,6 +100,12 @@ public final class BuildingBlueprint {
             }
             state = state.setValue(CropBlock.AGE, Math.min(placement.cropAge(), crop.getMaxAge()));
         }
+        // Blueprint doors are placed as a complete two-block pair in one layer,
+        // preventing the lower half from being removed before the upper half is built.
+        if (block instanceof DoorBlock && state.hasProperty(DoorBlock.HALF)) {
+            state = state.setValue(DoorBlock.HALF,
+                    placement.relativePosition().getY() == 3 ? DoubleBlockHalf.UPPER : DoubleBlockHalf.LOWER);
+        }
         return state;
     }
 
@@ -119,13 +127,15 @@ public final class BuildingBlueprint {
         } else if (y <= 4) {
             for (int x=-2;x<=2;x++) for (int z=-2;z<=2;z++) {
                 if (Math.abs(x)!=2 && Math.abs(z)!=2) continue;
-                if (y==2 && x==0 && z==-2) continue;
+                if (x==0 && z==-2) continue;
                 put(b,x,y,z,y==3 && Math.abs(x)==2 && z==0 ? "minecraft:glass" : "minecraft:oak_log");
+            }
+            if (y == 2) {
+                put(b,0,2,-2,"minecraft:oak_door");
+                put(b,0,3,-2,"minecraft:oak_door");
             }
         } else {
             for (int x=-3;x<=3;x++) for (int z=-3;z<=3;z++) put(b,x,5,z,"minecraft:oak_planks");
-            put(b,0,1,-2,"minecraft:air");
-            put(b,0,2,-2,"minecraft:air");
         }
     }
 
@@ -157,12 +167,15 @@ public final class BuildingBlueprint {
         } else if (y<=3) {
             for (int x=-2;x<=2;x++) for (int z=-2;z<=2;z++) {
                 if (Math.abs(x)!=2 && Math.abs(z)!=2) continue;
-                if (y==2 && x==0 && z==-2) continue;
+                if (x==0 && z==-2) continue;
                 put(b,x,y,z,"minecraft:cobblestone");
+            }
+            if (y == 2) {
+                put(b,0,2,-2,"minecraft:oak_door");
+                put(b,0,3,-2,"minecraft:oak_door");
             }
         } else {
             for (int x=-3;x<=3;x++) for (int z=-3;z<=3;z++) put(b,x,4,z,"minecraft:oak_planks");
-            put(b,0,2,-2,"minecraft:air");
         }
     }
 }
