@@ -11,6 +11,8 @@ import net.minecraft.commands.arguments.ResourceLocationArgument;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.commands.arguments.coordinates.BlockPosArgument;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.ChunkPos;
+import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -58,7 +60,10 @@ public final class CivitasCommands {
                                         .executes(CivitasCommands::visitNeighbor)))
                         .then(Commands.literal("return").executes(CivitasCommands::returnFromNeighbor))
                         .then(Commands.literal("status").executes(CivitasCommands::status))
-                        .then(Commands.literal("territory").executes(CivitasCommands::territory))
+                        .then(Commands.literal("territory").executes(CivitasCommands::territory)
+                                .then(Commands.literal("claim").executes(CivitasCommands::claimTerritoryChunk))
+                                .then(Commands.literal("unclaim").executes(CivitasCommands::unclaimTerritoryChunk))
+                                .then(Commands.literal("show").executes(CivitasCommands::showTerritoryChunks)))
                         .then(Commands.literal("overview").executes(CivitasCommands::overview))
                         .then(Commands.literal("found")
                                 .then(Commands.argument("name", StringArgumentType.greedyString())
@@ -183,6 +188,8 @@ public final class CivitasCommands {
         source.sendSuccess(() -> Component.literal("§e/civitas diplomacy §7— список соседних цивилизаций"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas visit <номер> §7— физически посетить соседнее поселение"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas return §7— вернуться из соседнего поселения"), false);
+        source.sendSuccess(() -> Component.literal("§e/civitas territory §7— влияние и закреплённые чанки"), false);
+        source.sendSuccess(() -> Component.literal("§e/civitas territory claim|unclaim|show §7— захват, освобождение и подсветка текущих чанков"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas status §7— состояние поселения"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas overview §7— сводка поселения: жители, здания, стройка и склад"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas rename <название> §7— переименовать поселение"), false);
@@ -242,7 +249,87 @@ public final class CivitasCommands {
                         + "\n§7Радиус: §f" + influence.radius() + " блоков"
                         + "\n§7Центр: §f" + center.getX() + ", " + center.getY() + ", " + center.getZ()
                         + "\n" + (inside ? "§aВы находитесь в зоне влияния." : "§cВы находитесь за пределами зоны влияния.")
-                        + "\n§8Зона влияет на размещение новых построек; это не защита блоков и не граница чанков."), false);
+                        + "\n§7Занято чанков: §f" + data.getClaimedChunkCount() + "/" + data.getTerritoryClaimLimit()
+                        + "\n§8Зона влияния ограничивает захват; закреплённые чанки определяют территорию строительства."), false);
+        return Command.SINGLE_SUCCESS;
+    }
+
+    private static int claimTerritoryChunk(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        ServerPlayer player = context.getSource().getPlayerOrException();
+        CivitasSavedData data = CivitasSavedData.get(context.getSource().getServer());
+        if (!ensureOwner(context.getSource(), player, data)) return 0;
+        if (!context.getSource().getLevel().dimension().equals(net.minecraft.world.level.Level.OVERWORLD)) {
+            context.getSource().sendFailure(Component.literal("Территорию можно расширять только в обычном мире."));
+            return 0;
+        }
+        ChunkPos chunk = new ChunkPos(player.blockPosition());
+        if (data.isChunkClaimed(chunk.x, chunk.z)) {
+            context.getSource().sendFailure(Component.literal("Этот чанк уже принадлежит вашему поселению."));
+            return 0;
+        }
+        if (data.getClaimedChunkCount() >= data.getTerritoryClaimLimit()) {
+            context.getSource().sendFailure(Component.literal("Достигнут лимит территории: "
+                    + data.getTerritoryClaimLimit() + " чанков. Развивайте поселение, чтобы расширить лимит."));
+            return 0;
+        }
+        if (!data.claimChunk(chunk.x, chunk.z)) {
+            context.getSource().sendFailure(Component.literal("Этот чанк вне доступной зоны влияния. Подойдите ближе к поселению или увеличьте его влияние."));
+            return 0;
+        }
+        context.getSource().sendSuccess(() -> Component.literal("§aЧанк [" + chunk.x + ", " + chunk.z
+                + "] закреплён за поселением. Территория: " + data.getClaimedChunkCount()
+                + "/" + data.getTerritoryClaimLimit() + "."), false);
+        return Command.SINGLE_SUCCESS;
+    }
+
+    private static int unclaimTerritoryChunk(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        ServerPlayer player = context.getSource().getPlayerOrException();
+        CivitasSavedData data = CivitasSavedData.get(context.getSource().getServer());
+        if (!ensureOwner(context.getSource(), player, data)) return 0;
+        if (!context.getSource().getLevel().dimension().equals(net.minecraft.world.level.Level.OVERWORLD)) {
+            context.getSource().sendFailure(Component.literal("Территорией можно управлять только в обычном мире."));
+            return 0;
+        }
+        ChunkPos chunk = new ChunkPos(player.blockPosition());
+        if (!data.unclaimChunk(chunk.x, chunk.z)) {
+            context.getSource().sendFailure(Component.literal("Этот чанк не закреплён за поселением или является основным чанком основания."));
+            return 0;
+        }
+        context.getSource().sendSuccess(() -> Component.literal("§eЧанк [" + chunk.x + ", " + chunk.z
+                + "] освобождён. Территория: " + data.getClaimedChunkCount()
+                + "/" + data.getTerritoryClaimLimit() + "."), false);
+        return Command.SINGLE_SUCCESS;
+    }
+
+    private static int showTerritoryChunks(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        ServerPlayer player = context.getSource().getPlayerOrException();
+        CivitasSavedData data = CivitasSavedData.get(context.getSource().getServer());
+        if (!ensureOwner(context.getSource(), player, data)) return 0;
+        if (!context.getSource().getLevel().dimension().equals(net.minecraft.world.level.Level.OVERWORLD)) {
+            context.getSource().sendFailure(Component.literal("Границы показываются только в обычном мире."));
+            return 0;
+        }
+        ServerLevel level = context.getSource().getLevel();
+        int y = Math.min(level.getMaxBuildHeight() - 1, player.blockPosition().getY() + 1);
+        int shown = 0;
+        for (ChunkPos chunk : data.getClaimedChunks()) {
+            int minX = chunk.getMinBlockX();
+            int minZ = chunk.getMinBlockZ();
+            int maxX = minX + 15;
+            int maxZ = minZ + 15;
+            for (int offset = 0; offset <= 16; offset += 4) {
+                int x = minX + Math.min(15, offset);
+                int z = minZ + Math.min(15, offset);
+                level.sendParticles(player, ParticleTypes.HAPPY_VILLAGER, true, x + 0.5, y, minZ + 0.5, 1, 0, 0, 0, 0);
+                level.sendParticles(player, ParticleTypes.HAPPY_VILLAGER, true, x + 0.5, y, maxZ + 0.5, 1, 0, 0, 0, 0);
+                level.sendParticles(player, ParticleTypes.HAPPY_VILLAGER, true, minX + 0.5, y, z + 0.5, 1, 0, 0, 0, 0);
+                level.sendParticles(player, ParticleTypes.HAPPY_VILLAGER, true, maxX + 0.5, y, z + 0.5, 1, 0, 0, 0, 0);
+                shown += 4;
+            }
+        }
+        final int particleCount = shown;
+        context.getSource().sendSuccess(() -> Component.literal("§aГраницы " + data.getClaimedChunkCount()
+                + " закреплённых чанков подсвечены частицами (" + particleCount + " точек)."), false);
         return Command.SINGLE_SUCCESS;
     }
 
@@ -596,6 +683,10 @@ public final class CivitasCommands {
             context.getSource().sendFailure(Component.literal("Площадка находится за пределами территории поселения. Используй /civitas territory, чтобы узнать текущий радиус."));
             return 0;
         }
+        if (!data.isChunkClaimed(site)) {
+            context.getSource().sendFailure(Component.literal("Чанк не закреплён за поселением. Встань в нужный чанк и выполни /civitas territory claim."));
+            return 0;
+        }
         SettlementBuildingManager.BuildResult result = SettlementBuildingManager.buildAt(
                 context.getSource().getServer().overworld(), center, warehouse, type, data, site, rotationDegrees);
         if (result.success()) {
@@ -619,6 +710,10 @@ public final class CivitasCommands {
         BlockPos center = data.hasStarterVillage() ? data.getStarterVillageCenter() : data.getCenter();
         if (!data.isWithinTerritory(site)) {
             context.getSource().sendFailure(Component.literal("Площадка находится за пределами территории поселения. Используй /civitas territory, чтобы узнать текущий радиус."));
+            return 0;
+        }
+        if (!data.isChunkClaimed(site)) {
+            context.getSource().sendFailure(Component.literal("Чанк не закреплён за поселением. Встань в нужный чанк и выполни /civitas territory claim."));
             return 0;
         }
         SettlementBuildingManager.BuildResult result = SettlementBuildingManager.preview(
