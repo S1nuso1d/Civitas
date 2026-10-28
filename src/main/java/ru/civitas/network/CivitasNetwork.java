@@ -35,6 +35,7 @@ import ru.civitas.data.StorageFoodExtension;
 import ru.civitas.trade.TradeCaravan;
 import ru.civitas.trade.TradeOffer;
 import ru.civitas.trade.TradePartner;
+import ru.civitas.trade.NeighborCivilization;
 import net.minecraft.world.Container;
 import net.minecraft.world.item.Items;
 
@@ -130,6 +131,27 @@ public final class CivitasNetwork {
                     context.setPacketHandled(true);
                 })
                 .add();
+        CHANNEL.messageBuilder(DiplomacyRequestPacket.class, id++)
+                .direction(PacketFlow.SERVERBOUND)
+                .encoder((packet, buffer) -> { })
+                .decoder(buffer -> new DiplomacyRequestPacket())
+                .consumerMainThread(CivitasNetwork::handleDiplomacyRequest)
+                .add();
+        CHANNEL.messageBuilder(DiplomacyActionPacket.class, id++)
+                .direction(PacketFlow.SERVERBOUND)
+                .encoder(DiplomacyActionPacket::encode)
+                .decoder(DiplomacyActionPacket::decode)
+                .consumerMainThread(CivitasNetwork::handleDiplomacyAction)
+                .add();
+        CHANNEL.messageBuilder(DiplomacyScreenPacket.class, id++)
+                .direction(PacketFlow.CLIENTBOUND)
+                .encoder(DiplomacyScreenPacket::encode)
+                .decoder(DiplomacyScreenPacket::decode)
+                .consumerMainThread((packet, context) -> {
+                    DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> ru.civitas.client.DiplomacyScreen.open(packet));
+                    context.setPacketHandled(true);
+                })
+                .add();
         CHANNEL.build();
     }
 
@@ -142,6 +164,74 @@ public final class CivitasNetwork {
         DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
                 () -> () -> ClientNetworkHandler.sendPacket(
                         new ActionPacket(action, value == null ? "" : value, amount)));
+    }
+
+    public static void requestDiplomacy() {
+        DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
+                () -> () -> ClientNetworkHandler.sendPacket(new DiplomacyRequestPacket()));
+    }
+
+    private static boolean canManageDiplomacy(ServerPlayer player, CivitasSavedData data) {
+        return data.isFounded() && (data.isOwner(player) || player.createCommandSourceStack().hasPermission(2));
+    }
+
+    private static void handleDiplomacyRequest(DiplomacyRequestPacket packet, CustomPayloadEvent.Context context) {
+        ServerPlayer player = context.getSender();
+        if (player != null && player.getServer() != null) {
+            CivitasSavedData data = CivitasSavedData.get(player.getServer());
+            if (canManageDiplomacy(player, data)) sendDiplomacyScreen(player, data);
+            else player.sendSystemMessage(Component.literal("Civitas: управлять дипломатией может только управляющий поселения."));
+        }
+        context.setPacketHandled(true);
+    }
+
+    private static void handleDiplomacyAction(DiplomacyActionPacket packet, CustomPayloadEvent.Context context) {
+        ServerPlayer player = context.getSender();
+        if (player == null || player.getServer() == null) {
+            context.setPacketHandled(true);
+            return;
+        }
+        CivitasSavedData data = CivitasSavedData.get(player.getServer());
+        if (!canManageDiplomacy(player, data)) {
+            player.sendSystemMessage(Component.literal("Civitas: управлять дипломатией может только управляющий поселения."));
+            context.setPacketHandled(true);
+            return;
+        }
+        if (!player.level().dimension().equals(Level.OVERWORLD)) {
+            player.sendSystemMessage(Component.literal("Civitas: дипломатия доступна только в обычном мире."));
+            context.setPacketHandled(true);
+            return;
+        }
+        String raw = packet.stance().toLowerCase(Locale.ROOT);
+        if (!java.util.Set.of("neutral", "allied", "rival", "war").contains(raw)) {
+            context.setPacketHandled(true);
+            return;
+        }
+        NeighborCivilization civilization = data.getNeighborCivilization(packet.civilizationId());
+        if (civilization == null) {
+            player.sendSystemMessage(Component.literal("Civitas: эта цивилизация больше не найдена. Обнови список."));
+            sendDiplomacyScreen(player, data);
+            context.setPacketHandled(true);
+            return;
+        }
+        NeighborCivilization.Stance stance = NeighborCivilization.Stance.parse(raw);
+        if (data.setNeighborStance(civilization.id(), stance)) {
+            data.recordTrade("Дипломатия: с «" + civilization.name() + "» установлено отношение «" + stance.displayName() + "»");
+            player.sendSystemMessage(Component.literal("Civitas: отношения с «" + civilization.name() + "» изменены: " + stance.displayName() + "."));
+            sendDiplomacyScreen(player, data);
+        }
+        context.setPacketHandled(true);
+    }
+
+    private static void sendDiplomacyScreen(ServerPlayer player, CivitasSavedData data) {
+        List<DiplomacyScreenPacket.CivilizationLine> lines = new ArrayList<>();
+        var civilizations = new ArrayList<>(data.getNeighborCivilizations().values());
+        civilizations.sort(java.util.Comparator.comparing(NeighborCivilization::name, String.CASE_INSENSITIVE_ORDER));
+        for (NeighborCivilization c : civilizations) {
+            lines.add(new DiplomacyScreenPacket.CivilizationLine(c.id(), c.name(), c.stance().name(),
+                    c.population(), c.territory(), c.food(), c.stability(), data.getTradeReputation(c.id())));
+        }
+        CHANNEL.send(new DiplomacyScreenPacket(lines), PacketDistributor.PLAYER.with(player));
     }
 
     private static void handleSnapshotRequest(RequestSnapshotPacket packet, CustomPayloadEvent.Context context) {
@@ -744,6 +834,58 @@ public final class CivitasNetwork {
             }
         }
         return stack.isEmpty();
+    }
+
+    public record DiplomacyRequestPacket() { }
+
+    public record DiplomacyActionPacket(UUID civilizationId, String stance) {
+        public DiplomacyActionPacket {
+            if (civilizationId == null) throw new IllegalArgumentException("Civilization UUID is required");
+            stance = stance == null ? "" : stance;
+            if (stance.length() > 16) throw new IllegalArgumentException("Invalid diplomatic stance");
+        }
+        public void encode(FriendlyByteBuf b) { b.writeUUID(civilizationId); b.writeUtf(stance, 16); }
+        public static DiplomacyActionPacket decode(FriendlyByteBuf b) {
+            return new DiplomacyActionPacket(b.readUUID(), b.readUtf(16));
+        }
+    }
+
+    public record DiplomacyScreenPacket(List<CivilizationLine> civilizations) {
+        public record CivilizationLine(UUID id, String name, String stance, int population,
+                int territory, int food, int stability, int reputation) {
+            public CivilizationLine {
+                if (id == null) id = UUID.randomUUID();
+                name = name == null ? "Неизвестная цивилизация" : name.substring(0, Math.min(64, name.length()));
+                stance = stance == null ? "NEUTRAL" : stance;
+                population = Math.max(1, Math.min(100_000, population));
+                territory = Math.max(1, Math.min(100_000, territory));
+                food = Math.max(0, Math.min(1_000_000, food));
+                stability = Math.max(0, Math.min(100, stability));
+                reputation = Math.max(0, Math.min(100, reputation));
+            }
+        }
+        public DiplomacyScreenPacket {
+            civilizations = List.copyOf(civilizations == null ? List.of()
+                    : civilizations.subList(0, Math.min(100, civilizations.size())));
+        }
+        public void encode(FriendlyByteBuf b) {
+            b.writeVarInt(civilizations.size());
+            for (CivilizationLine c : civilizations) {
+                b.writeUUID(c.id()); b.writeUtf(c.name(), 64); b.writeUtf(c.stance(), 16);
+                b.writeVarInt(c.population()); b.writeVarInt(c.territory()); b.writeVarInt(c.food());
+                b.writeVarInt(c.stability()); b.writeVarInt(c.reputation());
+            }
+        }
+        public static DiplomacyScreenPacket decode(FriendlyByteBuf b) {
+            int count = b.readVarInt();
+            if (count < 0 || count > 100) throw new IllegalArgumentException("Invalid civilization count");
+            List<CivilizationLine> lines = new ArrayList<>();
+            for (int i = 0; i < count; i++) {
+                lines.add(new CivilizationLine(b.readUUID(), b.readUtf(64), b.readUtf(16),
+                        b.readVarInt(), b.readVarInt(), b.readVarInt(), b.readVarInt(), b.readVarInt()));
+            }
+            return new DiplomacyScreenPacket(lines);
+        }
     }
 
     public record TradeActionPacket(UUID traderId, int offerIndex, boolean gift) {
