@@ -1,7 +1,14 @@
-Civitas Alpha 0.10.0 — build status
+Civitas Alpha 0.11.0 — build status
 Target: Minecraft Java Edition 1.21.1 + Forge 52.1.20 + Java 21
 
-New: unified /civitas overview command summarizing residents and roles, registered building types, construction queue, warehouse capacity, and actionable warnings.
-Project version, Windows build output, and CI artifact name aligned to 0.10.0.
+Implemented in this revision:
+- A central BuildingDefinition registry provides building ids, Russian display names, costs, dimensions, and construction layer counts.
+- Construction validation, queue insertion, cancellation refunds, build previews and UI labels use the registry instead of duplicate cost tables.
+- Added Forge SimpleChannel messages for requesting server state, receiving a bounded settlement snapshot, and sending typed settlement actions.
+- The management screen now has Overview, Residents, Construction and Storage tabs, adjusts to viewport size, and refreshes the server snapshot every two seconds while open.
+- Removed unused instant-placement methods left over from the pre-queue implementation.
+- Fixed the overview command's effectively-final lambda compilation error.
 
-GitHub Actions compilation is pending. Manual in-game verification has not been performed.
+Validation:
+- GitHub Actions build must complete for this branch before the JAR is considered release-ready.
+- Manual in-game testing has not been performed in this environment.
