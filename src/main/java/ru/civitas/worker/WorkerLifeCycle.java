@@ -74,6 +74,7 @@ public final class WorkerLifeCycle {
 
     /** Returns true while a worker should rest; existing target and cargo data are untouched. */
     public static boolean shouldRest(ServerLevel level, Villager villager, String role) {
+        closeTrackedDoor(level, villager);
         boolean night = isNight(level);
         var tag = villager.getPersistentData();
         boolean wasNight = tag.getBoolean(NIGHT_KEY);
