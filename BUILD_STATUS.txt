@@ -2,12 +2,13 @@ Civitas Alpha 0.42.0 — Living Systems Pass (first implementation slice)
 Target: Minecraft Java Edition 1.21.1 + Forge 52.1.20 + Java 21
 
 Implemented in source:
+- Server-authoritative hunger decision for assigned lumberjacks, farmers and builders: one hunger point per 1,000 game ticks; below/equal 40 the worker seeks food at the warehouse, consumes food if available and resumes work. Explicit personal orders have priority.
 - F4 client-only realtime HUD backed by the existing server snapshot: population and roles, food reserve estimate, seven-day resource deltas, construction queue, building count, warehouse occupancy and settlement status.
 - Targeted villager inspection panel with current display/custom status, movement state, health and Minecraft profession.
-- No network packet fields or persistent save fields were added in this slice.
+- No network packet fields or SettlementData save-schema fields were added. Hunger is stored in per-villager persistent data with safe defaults.
 
 Not yet implemented from the larger 0.42 plan:
-- Needs-based autonomous decisions (hunger/tool replacement/shelter) and authoritative need simulation.
+- Further needs-based decisions: tool replacement, shelter seeking, sleep/social/family behavior. Hunger is implemented in this slice.
 - Persistent traditions, festivals, generations and culture.
 - Advancement triggers, trend charts, ambient soundscapes and dynamic music.
 - Third-party profession/blueprint API, accessibility configuration, export/profiler/save validator.
