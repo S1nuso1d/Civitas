@@ -588,6 +588,29 @@ public final class CivitasSavedData extends SavedData {
     public List<BuildingRecord> getBuildings() {
         return Collections.unmodifiableList(new ArrayList<>(buildings));
     }
+
+    /** Current territory influence is derived from saved settlement state. */
+    public TerritoryInfluence.Result getTerritoryInfluence() {
+        return TerritoryInfluence.calculate(population, level, buildings);
+    }
+
+    /** Use the physical starter-village center when it exists; otherwise use the founding center. */
+    public BlockPos getTerritoryCenter() {
+        return hasStarterVillage() ? getStarterVillageCenter() : getCenter();
+    }
+
+    /**
+     * Whether a planned building site falls inside the settlement's current
+     * influence radius. This is a horizontal radius check, not chunk ownership.
+     */
+    public boolean isWithinTerritory(BlockPos position) {
+        if (!founded || position == null) return false;
+        BlockPos center = getTerritoryCenter();
+        int radius = getTerritoryInfluence().radius();
+        long dx = (long) position.getX() - center.getX();
+        long dz = (long) position.getZ() - center.getZ();
+        return dx * dx + dz * dz <= (long) radius * radius;
+    }
     public boolean hasBuildingNear(BlockPos position, int radius) {
         for (BuildingRecord building : buildings) {
             if (Math.abs(building.x() - position.getX()) <= radius && Math.abs(building.z() - position.getZ()) <= radius) return true;
