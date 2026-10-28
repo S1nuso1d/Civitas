@@ -66,7 +66,17 @@ public final class CivitasSavedData extends SavedData {
     /** Persisted overworld chunk claims owned by this settlement. */
     private final Set<Long> claimedChunks = new HashSet<>();
 
-    public record BuildingRecord(String type, int x, int y, int z) { }
+    public record BuildingRecord(String type, int x, int y, int z, int upgradeLevel, int rotationDegrees) {
+        public BuildingRecord(String type, int x, int y, int z) {
+            this(type, x, y, z, 1, 0);
+        }
+
+        public BuildingRecord {
+            upgradeLevel = Math.max(1, Math.min(3, upgradeLevel));
+            rotationDegrees = Math.floorMod(rotationDegrees, 360);
+            if (rotationDegrees % 90 != 0) rotationDegrees = 0;
+        }
+    }
 
     /**
      * Immutable reservation ledger captured when a construction order is queued.
@@ -254,7 +264,10 @@ public final class CivitasSavedData extends SavedData {
         for (int i = 0; i < storedBuildings.size(); i++) {
             CompoundTag building = storedBuildings.getCompound(i);
             String type = building.getString("type");
-            if (!type.isBlank()) data.buildings.add(new BuildingRecord(type, building.getInt("x"), building.getInt("y"), building.getInt("z")));
+            if (!type.isBlank()) data.buildings.add(new BuildingRecord(type, building.getInt("x"),
+                    building.getInt("y"), building.getInt("z"),
+                    building.contains("upgrade_level") ? building.getInt("upgrade_level") : 1,
+                    building.contains("rotation_degrees") ? building.getInt("rotation_degrees") : 0));
         }
         CompoundTag storedResources = tag.getCompound("resources");
         for (String itemId : storedResources.getAllKeys()) {
@@ -366,6 +379,8 @@ public final class CivitasSavedData extends SavedData {
             building.putInt("x", record.x());
             building.putInt("y", record.y());
             building.putInt("z", record.z());
+            building.putInt("upgrade_level", record.upgradeLevel());
+            building.putInt("rotation_degrees", record.rotationDegrees());
             storedBuildings.add(building);
         }
         tag.put("buildings", storedBuildings);
@@ -608,9 +623,28 @@ public final class CivitasSavedData extends SavedData {
         setDirty();
     }
     public void registerBuilding(String type, BlockPos position) {
+        registerBuilding(type, position, 0);
+    }
+
+    public void registerBuilding(String type, BlockPos position, int rotationDegrees) {
         if (type == null || type.isBlank() || position == null) return;
-        buildings.add(new BuildingRecord(type, position.getX(), position.getY(), position.getZ()));
+        boolean exists = buildings.stream().anyMatch(building ->
+                building.type().equals(type) && building.x() == position.getX()
+                        && building.y() == position.getY() && building.z() == position.getZ());
+        if (exists) return;
+        buildings.add(new BuildingRecord(type, position.getX(), position.getY(), position.getZ(),
+                1, rotationDegrees));
         setDirty();
+    }
+
+    public boolean upgradeBuilding(int index, int expectedLevel) {
+        if (index < 0 || index >= buildings.size()) return false;
+        BuildingRecord current = buildings.get(index);
+        if (current.upgradeLevel() != expectedLevel || current.upgradeLevel() >= 3) return false;
+        buildings.set(index, new BuildingRecord(current.type(), current.x(), current.y(), current.z(),
+                current.upgradeLevel() + 1, current.rotationDegrees()));
+        setDirty();
+        return true;
     }
     public List<BuildingRecord> getBuildings() {
         return Collections.unmodifiableList(new ArrayList<>(buildings));
