@@ -512,6 +512,21 @@ public final class CivitasCommands {
         }
         int total = countAllItems(warehouse);
         context.getSource().sendSuccess(() -> Component.literal("Всего предметов: " + total + " / " + (warehouse.getContainerSize() * 64)), false);
+        Map<String, Integer> reserved = data.getWarehouseReservedResources();
+        if (reserved.isEmpty()) {
+            context.getSource().sendSuccess(() -> Component.literal("Резерв строительства: нет."), false);
+        } else {
+            Map<String, Integer> stock = SettlementBuildingManager.inventoryCounts(warehouse);
+            context.getSource().sendSuccess(() -> Component.literal("Резервы активных строительных заказов:"), false);
+            for (Map.Entry<String, Integer> entry : reserved.entrySet()) {
+                int stored = stock.getOrDefault(entry.getKey(), 0);
+                int amountReserved = entry.getValue();
+                int free = Math.max(0, stored - amountReserved);
+                String line = "• " + entry.getKey() + ": всего " + stored
+                        + ", зарезервировано " + amountReserved + ", свободно " + free;
+                context.getSource().sendSuccess(() -> Component.literal(line), false);
+            }
+        }
         return Command.SINGLE_SUCCESS;
     }
 
