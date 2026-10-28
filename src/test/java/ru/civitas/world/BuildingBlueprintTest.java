@@ -218,7 +218,7 @@ class BuildingBlueprintTest {
                 }
             }
         }
-        assertEquals(9, BuildingBlueprint.houseUpgrade(2, 0).size());
+        assertEquals(11, BuildingBlueprint.houseUpgrade(2, 0).size());
         assertEquals(6, BuildingBlueprint.houseUpgrade(3, 0).size());
     }
 
