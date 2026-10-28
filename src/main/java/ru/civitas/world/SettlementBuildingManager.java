@@ -200,7 +200,7 @@ public final class SettlementBuildingManager {
         } else {
             for (int x = -3; x <= 3; x++) {
                 for (int z = -3; z <= 3; z++) {
-                    removeIfOneOf(level, ground.offset(x, 5, z), Blocks.SPRUCE_PLANKS);
+                    removeIfOneOf(level, ground.offset(x, 5, z), Blocks.OAK_PLANKS);
                 }
             }
         }
