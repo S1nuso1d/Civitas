@@ -458,6 +458,13 @@ public final class SettlementBuildingManager {
         }
 
         BlockPos ground = new BlockPos(building.x(), building.y(), building.z());
+        for (BuildingBlueprint.Placement placement : BuildingBlueprint.houseUpgrade(nextLevel, building.rotationDegrees())) {
+            BlockPos target = ground.offset(placement.relativePosition());
+            if (!data.isWithinTerritory(target) || !data.isChunkClaimed(target)) {
+                return new BuildResult(false,
+                        "Улучшение выходит за границы зоны влияния или занятых чанков поселения.");
+            }
+        }
         if (!BuildingBlueprint.canPlaceHouseUpgrade(level, ground, nextLevel, building.rotationDegrees())) {
             return new BuildResult(false,
                     "Нельзя улучшить дом: внешние блоки улучшения заняты, затоплены или чанки не загружены.");
