@@ -1,209 +1,35 @@
 # Changelog
 
-## [0.32.0] - Achievement Branches & Dashboard Improvements
-
-### Added
-- Reworked the Achievements tab into a scrollable progression tree with named branches and previous/next navigation.
-- Expanded the tree to 21 milestone conditions spanning founding, population, crafts, construction, economy, trade, territory, workforce and development.
-- Added contextual progress totals and visual distinction between completed and pending milestones.
-- Added milestones based on food reserves, housing, worker assignment, idle residents and recent resource trends.
-
-### Important scope note
-- This first UI pass calculates milestone states from the current authoritative settlement snapshot. Unlocks are not yet individually persisted, there are no reward grants, and prerequisites do not yet gate later milestones.
-- Building appearance, resident task coordination and persistent achievement rewards remain follow-up implementation areas.
-- Build, automated tests and in-game layout have not been verified for this commit.
-
-
 ## [0.32.0] - Living Settlement
 
-### Added
-- Added a Buildings tab with registered building indices and cabin upgrade levels.
-- Added owner-only `/civitas buildings upgrade <index>`: level 2 adds a porch, fence railings and lantern; level 3 adds a brick chimney that rises through the roof.
-- House upgrades use free warehouse stock only; resources reserved by construction orders are excluded. The upgrade blueprint is validated before material deduction and has a block/resource rollback path.
-- Building records now persist upgrade level and orientation while old saves default to level 1 and rotation 0.
-- Added an achievement-tree tab derived from persistent settlement progress: founding, population, houses, farm, workshop, worker specializations and settlement development.
-- Builders face the worksite and swing while visibly progressing through a building layer; lumberjacks visibly chop and farmers spend three seconds harvesting before consuming a seed.
-- Added blueprint regression tests for upgrade footprint bounds, duplicate coordinates and invalid inputs.
+### Interface and progression
+- Added a Buildings tab with page navigation, registered building indices, cabin levels and upgrade material guidance.
+- Added a scrollable achievement tree with 21 milestones across founding, population, crafts, construction, economy, trade, territory, workforce and settlement development.
+- Achievement states are derived from the authoritative settlement snapshot; individual unlock persistence, gated prerequisites and reward grants are not included yet.
 
-### Validation
-- Source changes are committed but the Alpha 0.32.0 build, automated tests and in-game behavior have not yet been verified locally.
+### Houses and construction
+- Building records now persist upgrade level and rotation; old world data defaults to level 1 and rotation 0.
+- Added owner-only `/civitas buildings upgrade <index>` for registered Civitas cabins.
+- Level 2 adds a porch, supported fence railings, stairs and lantern. Level 3 adds a brick chimney through the roof.
+- Upgrade placement is checked against loaded blocks, fluids, settlement influence and claimed chunks before resources are withdrawn.
+- Upgrade costs use free warehouse stock only; construction reservations are protected. The upgrade has rollback handling for placed blocks and materials.
+- Construction workers face the worksite and swing during the work cycle; lumberjacks visibly chop, and farmers perform a timed harvest before consuming a seed.
+- Added blueprint tests for house-upgrade footprint bounds, unique positions and invalid parameters.
 
+### Validation and limitations
+- Alpha 0.32.0 has not been confirmed by a local Gradle build, automated test run or in-game test.
+- Achievement unlocks are derived rather than individually persisted. The starter-village houses are not yet registered as upgradeable Civitas building records.
+- Resident schedules, social behavior, rest and happiness simulation remain future work.
+- Fire/fluid spread, mob griefing and third-party world changes are not comprehensively protected.
 
 ## [0.31.0] - Construction Integrity Checks
 
-### Improved
-- Expanded blueprint tests across all building types and all four supported rotations.
-- Added footprint-bound assertions for every generated layer, guarding against rotated blocks escaping the declared building dimensions.
-- Added regression tests for normalized rotation values (360° equals 0°, 450° equals 90°).
-- Added regression tests for legacy construction cancellation refunds, completed orders, invalid progress bounds, and immutable refund results.
-
-### Validation
-- Tests have been added to source control but have not yet been executed locally; run the full Gradle build and test tasks before treating this release as verified.
+- Expanded blueprint tests across all building types and supported rotations.
+- Added regression tests for legacy construction cancellation refunds and rotation normalization.
+- Build and tests must be run locally before treating the release as verified.
 
 ## [0.30.0] - Territory Protection Hardening
 
-### Added
-- Claimed overworld chunks block non-owner player block breaking, placement, and block interaction; warning messages are rate-limited.
-- Explosions no longer remove blocks inside claimed overworld chunks.
-- Building placement validates the full rotated footprint against influence and claimed chunks before resources are reserved or replaceable vegetation is cleared.
-- Every construction layer revalidates the complete plot. If claims or influence change after an order is queued, construction pauses before materials are consumed or blocks are placed.
-
-### Scope and validation
-- Protection covers player edits and explosion block damage. Fire/fluid spread, mob griefing, natural updates and third-party mod changes are not comprehensively prevented.
-- The exact release still requires a Gradle build, unit tests, and manual in-game checks.
-
-## [0.28.0] - Persistent Chunk Territory
-
-### Added
-- Persisted settlement chunk claims in world SavedData; existing founded settlements are migrated to their founding chunk when loading old saves.
-- Founding automatically claims the settlement's founding chunk; it cannot be released.
-- Added `/civitas territory claim`, `unclaim`, and `show` for current-chunk management and particle boundary visualization.
-- Claim capacity scales from 2 to 16 chunks with settlement influence; claims require the chunk center to be inside the influence radius and an edge-adjacent existing claim.
-- Explicit-position building and blueprint preview commands now require both influence eligibility and a claimed chunk.
-
-### Scope and validation
-- Claims currently apply to the settlement in the overworld only; there is no multi-civilization ownership conflict system yet.
-- This does not protect arbitrary blocks from players, explosions, mobs, or other mods.
-- Build, unit tests, JAR packaging, and manual gameplay must be verified for the exact release commit.
-
-# Changelog
-
-## [0.27.0] - Territory Boundaries
-
-### Added
-- Added a live territory-boundary check using the settlement influence radius and physical settlement center.
-- Added `/civitas territory` to report the settlement's influence tier, score, radius, center, and whether the player is inside the zone.
-- Explicit-position building orders and blueprint previews are rejected when their anchor position lies outside the current influence radius.
-- Added deterministic unit tests for influence growth, bounded values, and unknown building types.
-
-### Scope
-- The zone is a horizontal circular influence radius, not chunk ownership or block protection.
-- The current rule checks the requested building anchor, not every block of a large structure footprint.
-- The radius is derived from saved buildings, population, and settlement level; no new world-save fields are required.
-
-### Validation
-- Build, unit tests, and manual gameplay verification must be confirmed for the exact release commit.
-
-# Changelog
-
-## [0.26.0] - Territory Influence & Settlement Development
-
-### Added
-- Added a deterministic territory-influence estimate based on completed registered buildings, population, and settlement level.
-- Added a bounded influence score, development tier, and estimated radius to the Economy tab.
-- The dashboard explicitly labels the radius as an estimate, not a claim of block ownership.
-- The calculation is bounded and runs when the server builds a dashboard snapshot, not every game tick.
-
-### Compatibility
-- No new persistent fields are required; the score is recalculated from existing saved settlement data.
-- Existing worlds retain their current settlement, building, population, and economy data.
-- Client and server should use the same mod version.
-
-### Validation
-- Build, unit tests, and manual gameplay verification must be confirmed for the exact release commit.
-
-## [0.25.0] - Neighbor Resource Intelligence
-
-### Added
-- Diplomacy cards now show neighboring civilization timber, stone and iron reserves alongside population, territory, food, stability and reputation.
-- The server includes the new stockpile fields in the authoritative diplomacy snapshot; the client does not infer or simulate resource values.
-- Bumped the network protocol to version 6 because the diplomacy packet schema changed.
-- The diplomacy row uses compact, width-bounded labels for smaller windows.
-
-### Validation
-- Build, tests and JAR packaging must be verified for this exact commit.
-- Manual GUI layout and client/server compatibility checks remain required.
-
-## [0.24.0] - Diplomacy Has Economic Consequences
-
-### Added
-- Diplomatic stances now affect the neighbor civilization's daily simulation rather than only trade eligibility.
-- Alliances add food reserves, improve stability and lower the threshold for territorial expansion.
-- Rivalry gradually reduces stability and can consume timber in larger territories.
-- War reduces stability and food reserves and consumes timber and, for larger populations, iron.
-- Effects are applied only on bounded daily simulation steps; no per-tick work was added.
-- Added a unit test comparing allied and wartime outcomes from identical starting profiles.
-
-### Validation
-- Build, tests and JAR packaging must be verified for this exact commit.
-- In-game balance and multiplayer behavior still require manual testing.
-
-## [0.23.0] - Visit-able Neighbor Settlements
-
-### Added
-- Added persistent physical sites for neighboring civilizations.
-- Visiting a neighbor creates a small vanilla-block settlement with two cabins, a central bell, work blocks and three persistent villagers.
-- Candidate sites are checked for solid, dry ground and clear building volume before construction; existing solid structures are not cleared.
-- Added a Visit button to diplomacy GUI and commands `/civitas visit <number>` and `/civitas return`.
-- Return coordinates are stored in player persistent data; settlement site coordinates and generation state are stored in world SavedData.
-- Added a save/load unit test for neighboring settlement coordinates.
-- Bumped network protocol to 5.
-
-### Validation
-- Automated build and JAR packaging must be verified for the exact release commit.
-- Manual tests are still required for different biomes, repeated visits, return flow and multiplayer.
-
-## [0.22.0] - Diplomacy GUI
-
-### Added
-- Added a vanilla-style diplomacy screen reachable from the settlement dashboard.
-- Civilization list shows relationship, population, territory, food, stability and trade reputation; list supports pagination.
-- Stance changes are sent as typed packets and validated on the authoritative server by civilization UUID and settlement ownership.
-- Alliances require trade reputation of at least 60; gifts and successful trade improve reputation, while war blocks caravan selection.
-- Bumped network protocol to 4 for clients and servers using the new packet set.
-
-### Validation
-- Automated build and tests must pass for the exact release commit.
-- Manual in-game and multiplayer checks are still required.
-
-## [0.21.0] - Neighbor Civilizations
-
-### Added
-- Existing trade partners now have persistent civilization profiles: population, food, timber, stone, iron, territory and stability.
-- Bounded abstract economy advances on in-game day boundaries without spawning remote villagers or loading distant chunks.
-- Diplomacy commands: `/civitas diplomacy` and `/civitas diplomacy stance <index> <neutral|allied|rival|war>`.
-- War suspends new caravans with the civilization; peaceful stances restore trade eligibility.
-- Old 0.20.x saves migrate existing partners to civilization profiles automatically.
-- Added unit tests for persistence, trade eligibility, bounded simulation and invalid saved values.
-
-### Limitations
-- Diplomacy currently uses commands; a dedicated GUI and physically visitable/generated neighbouring settlements are future work.
-- Manual in-game and multiplayer testing is still required.
-
-## [0.20.1] - Worker safety hotfix
-
-### Fixed
-- Expanded the protected starter-village footprint so the lumberjack does not select logs from houses or roofs as harvest targets.
-- Protect logs close to registered buildings and to nearby construction blocks (planks, stairs, slabs, fences, walls, doors, trapdoors, beds and campfires).
-- Ambiguous logs are now preserved instead of being harvested; this intentionally prioritizes player-built structures over uncertain tree detection.
-
-### Validation
-- Automated build and unit tests run in GitHub Actions.
-- In-game confirmation is still required for starter-house protection and normal tree harvesting.
-
-## [0.20.0] - Trade & Caravans
-
-### Added
-- Persistent partner civilizations, reputation, caravan lifecycle and bounded recent trade history.
-- Deterministic trade offers based on partner identity, game day and settlement economy trends.
-- Server-authoritative trading UI, warehouse exchanges and gifts.
-- Caravan arrival, approach, waiting, departure and attack reaction.
-- Common configuration for arrival interval, visit duration and reputation rewards.
-
-### Compatibility
-- Existing 0.19.0 worlds keep settlement, construction, farmer, food and economy data.
-- Trade fields are stored in separate optional NBT keys; existing warehouse inventory is not rewritten.
-
-## [0.19.0] - Agriculture & Population
-
-### Added
-- Farmer profession with persistent multi-item crop cargo, safe atomic warehouse delivery, saved crop reservations and cargo drops on death.
-- Nutrition registry and common config for daily food consumption, growth interval, reserves, farmer search radius and history length.
-- Daily food upkeep, starvation status, free-bed and food-reserve gated population growth.
-- Persistent rolling economy history with daily wood/stone/food/population values, food production/consumption and a bounded event feed.
-- Overview food/housing indicators and a dedicated Economy tab.
-- Unit tests for nutrition, cargo transactions, reservations, economy history and network snapshots.
-
-### Compatibility
-- Existing world saves can omit the new NBT fields; history starts empty and old farmer cargo keys are migrated when possible.
-- Snapshot wire format now uses protocol version 3.
+- Claimed overworld chunks block non-owner player block edits and block interactions; warning messages are rate-limited.
+- Explosions no longer remove blocks in claimed overworld chunks.
+- Construction validates the complete rotated footprint before starting and rechecks territory before every layer.
