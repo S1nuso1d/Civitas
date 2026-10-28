@@ -55,7 +55,7 @@ import java.util.regex.Pattern;
 public final class CivitasNetwork {
     public static final SimpleChannel CHANNEL = ChannelBuilder
             .named(ResourceLocation.fromNamespaceAndPath(CivitasMod.MOD_ID, "main"))
-            .networkProtocolVersion(7)
+            .networkProtocolVersion(8)
             .simpleChannel();
 
     private static final Pattern ITEM_ID_PATTERN =
@@ -756,8 +756,41 @@ public final class CivitasNetwork {
                 cabins, farms, workshops, orders.size(), totalItems, occupiedSlots, warehouseSlots,
                 data.getEconomyHistory().deltaWood(7), data.getEconomyHistory().deltaStone(7),
                 data.getEconomyHistory().deltaFood(7), statusMessage, eventLines, economyLines,
-                residentNames, residentUuids, residentRoles, residentStatuses, buildingLines, constructionLines, storageLines);
-        send(player, snapshot);
+                residentNames, residentUuids, residentRoles, residentStatuses, buildingLines, constructionLines, storageLines,
+                data.getUnlockedAchievementIds());
+        long worldDay = Math.max(0L, level.getDayTime() / 24000L);
+        for (String achievementId : achievedMilestones(snapshot)) {
+            data.unlockAchievement(achievementId, worldDay);
+        }
+        send(player, snapshot.withUnlockedAchievements(data.getUnlockedAchievementIds()));
+    }
+
+    /** Evaluate the same stable milestone IDs shown in the achievements tab. */
+    private static List<String> achievedMilestones(SettlementSnapshot s) {
+        int buildingCount = s.cabinCount() + s.farmCount() + s.workshopCount();
+        List<String> ids = new ArrayList<>();
+        if (s.founded()) ids.add("settlement_founded");
+        if (s.population() >= 5) ids.add("population_5");
+        if (s.cabinCount() >= 1) ids.add("first_house");
+        if (s.population() >= 10) ids.add("population_10");
+        if (s.bedCount() >= s.population()) ids.add("beds_cover_population");
+        if (s.farmCount() >= 1) ids.add("farm_built");
+        if (s.workshopCount() >= 1) ids.add("workshop_built");
+        if (s.lumberjacks() >= 1 && s.builders() >= 1 && s.farmers() >= 1) ids.add("all_professions");
+        if (s.level() >= 3) ids.add("level_3");
+        if (buildingCount >= 5) ids.add("five_buildings");
+        if (s.foodConsumptionPerDay() > 0 && (long) s.foodStock() >= (long) s.foodConsumptionPerDay() * 3L) ids.add("food_3_days");
+        if (s.warehouseSlots() > 0 && s.warehouseOccupiedSlots() * 2 >= s.warehouseSlots()) ids.add("warehouse_half");
+        if ((long) s.woodDelta7d() + s.stoneDelta7d() + s.foodDelta7d() > 0) ids.add("positive_resource_balance");
+        if (s.level() >= 3) ids.add("level_3_center");
+        if (s.population() >= 10 && buildingCount >= 5) ids.add("city_structure");
+        if (s.lumberjacks() + s.builders() + s.farmers() >= 3) ids.add("three_workers");
+        if (s.residentCount() > 0 && s.idleResidents() == 0) ids.add("no_idle_residents");
+        if (s.hungerDays() == 0 && s.population() >= 5) ids.add("no_hunger");
+        if (s.level() >= 2) ids.add("level_2");
+        if (buildingCount >= 3) ids.add("three_buildings");
+        if (s.population() >= 15) ids.add("population_15");
+        return List.copyOf(ids);
     }
 
     private static void send(ServerPlayer player, SettlementSnapshot snapshot) {
