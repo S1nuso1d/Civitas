@@ -425,6 +425,17 @@ public final class CivitasCommands {
             } else {
                 workerState = "площадка в незагруженном чанке";
             }
+            if (order.materialsReservedInWarehouse()) {
+                SettlementWarehouseBlockEntity warehouse = findWarehouse(context.getSource(), data);
+                if (warehouse == null) {
+                    workerState = "ожидание: центральный склад отсутствует";
+                } else if (!data.warehouseContainsAllReservations(
+                        SettlementBuildingManager.inventoryCounts(warehouse))) {
+                    workerState = "ожидание: часть зарезервированных материалов отсутствует";
+                } else {
+                    workerState += " | материалы зарезервированы, списываются по слоям";
+                }
+            }
             String stateLine = "   Состояние: " + workerState + " | координаты: "
                     + order.x() + ", " + order.y() + ", " + order.z();
             context.getSource().sendSuccess(() -> Component.literal(stateLine), false);
@@ -592,13 +603,17 @@ public final class CivitasCommands {
             context.getSource().sendFailure(Component.literal("Нельзя забрать пустой предмет."));
             return 0;
         }
-        int available = 0;
+        int stored = 0;
         for (int slot = 0; slot < warehouse.getContainerSize(); slot++) {
             ItemStack stack = warehouse.getItem(slot);
-            if (!stack.isEmpty() && stack.getItem() == item) available += stack.getCount();
+            if (!stack.isEmpty() && stack.getItem() == item) stored += stack.getCount();
         }
+        int reserved = data.getWarehouseReservedResources().getOrDefault(id.toString(), 0);
+        int available = Math.max(0, stored - reserved);
         if (available < amount) {
-            context.getSource().sendFailure(Component.literal("На физическом складе только " + available + " предмет(ов) " + id + "."));
+            context.getSource().sendFailure(Component.literal("Можно забрать только свободные ресурсы. На складе: "
+                    + stored + ", зарезервировано под строительство: " + reserved
+                    + ", доступно: " + available + " предмет(ов) " + id + "."));
             return 0;
         }
 
