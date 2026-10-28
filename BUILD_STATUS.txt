@@ -1,13 +1,17 @@
-Civitas Alpha 0.26.0 — Territory Influence & Settlement Development
+Civitas Alpha 0.27.0 — Territory Boundaries
 Target: Minecraft Java Edition 1.21.1 + Forge 52.1.20 + Java 21
 
 Added:
-- Deterministic territory influence score from registered completed buildings, population and settlement level.
-- Development tier and estimated radius shown in the Economy tab.
-- Radius is clearly presented as an estimate, not an ownership boundary.
-- No additional SavedData migration required; calculated from existing world data.
+- /civitas territory reports current influence tier, score, radius, center and player inclusion.
+- Explicit-position construction and blueprint preview anchors must be inside the influence radius.
+- TerritoryInfluenceTest covers score growth, bounds, and unknown building types.
+- No additional SavedData migration; influence derives from existing world data.
+
+Limitations:
+- Influence radius is not chunk ownership or block protection.
+- The check validates the building anchor, not every block of the footprint.
+- Natural blocks and other mods' building actions are not restricted.
 
 Validation:
 - GitHub Actions build/test/JAR packaging for the exact release commit is not yet confirmed.
-- Manual gameplay checks and balance testing have not been performed here.
-- The influence score is informational only and does not yet prevent building or change diplomatic borders.
+- Manual gameplay and multiplayer checks have not been performed here.
