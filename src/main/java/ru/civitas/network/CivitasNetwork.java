@@ -147,8 +147,12 @@ public final class CivitasNetwork {
         // Commands remain the authoritative validation layer for ownership,
         // warehouse stock, placement, worker availability and refunds.
         MinecraftServer server = player.getServer();
-        server.getCommands().performPrefixedCommand(player.createCommandSourceStack(), command);
-        sendSnapshot(player);
+        int commandResult = server.getCommands().performPrefixedCommand(
+                player.createCommandSourceStack(), command);
+        String statusMessage = commandResult > 0
+                ? "Действие выполнено; состояние поселения обновлено."
+                : "Действие не выполнено. Подробности доступны в чате.";
+        sendSnapshot(player, statusMessage);
         context.setPacketHandled(true);
     }
 
@@ -198,6 +202,10 @@ public final class CivitasNetwork {
     }
 
     private static void sendSnapshot(ServerPlayer player) {
+        sendSnapshot(player, "Снимок получен с сервера. Обновление выполняется автоматически.");
+    }
+
+    private static void sendSnapshot(ServerPlayer player, String statusMessage) {
         MinecraftServer server = player.getServer();
         if (server == null) {
             return;
@@ -325,7 +333,7 @@ public final class CivitasNetwork {
                 totalItems,
                 occupiedSlots,
                 warehouseSlots,
-                "Снимок получен с сервера. Обновление выполняется автоматически.",
+                statusMessage,
                 residentLines,
                 buildingLines,
                 constructionLines,
