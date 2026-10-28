@@ -1,4 +1,4 @@
-# Civitas — Alpha 0.31.0 (Forge 1.21.1)
+# Civitas — Alpha 0.32.0 (Forge 1.21.1)
 
 Civitas — модификация Minecraft Java Edition о развитии поселения от деревни к цивилизации. Жители физически работают и строят настоящие здания, а центральный склад и очередь заказов образуют основу локальной экономики.
 
@@ -125,6 +125,7 @@ New-Item -ItemType Directory -Path $env:GRADLE_USER_HOME -Force | Out-Null
 /civitas overview
 /civitas workers
 /civitas buildings
+/civitas buildings upgrade 1
 /civitas construction
 /civitas storage
 /civitas build cabin
@@ -136,6 +137,13 @@ New-Item -ItemType Directory -Path $env:GRADLE_USER_HOME -Force | Out-Null
 /civitas deposit 16
 /civitas withdraw minecraft:oak_log 16
 ```
+
+## Улучшение домов
+
+- Во вкладке «Дома» можно выбрать зарегистрированное здание и улучшить жилой дом до уровня 2 или 3.
+- Уровень 2 добавляет крыльцо с ограждением и фонарём; уровень 3 — кирпичную дымовую трубу и дополнительные фонари.
+- Материалы берутся из центрального склада, но зарезервированные для строительства предметы недоступны. При занятых блоками точках улучшение не выполняется.
+- Команда: `/civitas buildings upgrade 1` — улучшить первый зарегистрированный дом. Номер можно посмотреть через `/civitas buildings` или во вкладке «Дома».
 
 ## Ограничения прототипа
 
