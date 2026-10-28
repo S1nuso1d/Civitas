@@ -33,15 +33,30 @@ public final class SettlementBuildingManager {
 
         if (data.hasBuildingNear(site, 5)) return new BuildResult(false, "Рядом уже зарегистрировано здание. Выбери другой участок.");
         Map<String, Integer> cost = definition.costs();
+        Map<String, Integer> stock = inventoryCounts(warehouse);
+        Map<String, Integer> reserved = data.getWarehouseReservedResources();
         for (Map.Entry<String, Integer> entry : cost.entrySet()) {
-            if (count(warehouse, entry.getKey()) < entry.getValue()) {
-                return new BuildResult(false, "Не хватает ресурсов на складе: нужно " + definition.describeCosts() + ".");
+            int stored = stock.getOrDefault(entry.getKey(), 0);
+            int alreadyReserved = reserved.getOrDefault(entry.getKey(), 0);
+            int free = Math.max(0, stored - alreadyReserved);
+            if (stored < alreadyReserved) {
+                return new BuildResult(false, "На складе не хватает " + entry.getKey()
+                        + " для уже зарезервированных заказов. Пополни склад перед новой стройкой.");
+            }
+            if (free < entry.getValue()) {
+                return new BuildResult(false, "Недостаточно свободных ресурсов: " + entry.getKey()
+                        + " — доступно " + free + ", нужно ещё " + entry.getValue()
+                        + ". Всего требуется: " + definition.describeCosts() + ".");
             }
         }
-        cost.forEach((id, amount) -> remove(warehouse, id, amount));
+        if (!data.canReserveWarehouseResources(stock, cost)) {
+            return new BuildResult(false, "Нельзя зарезервировать материалы: часть складских запасов уже обещана другим заказам.");
+        }
         data.addConstructionOrder(definition.id(), site, definition.totalLayers(),
-                definition.costs(), definition.layerCosts());
-        return new BuildResult(true, "Заказ принят: " + definition.displayName() + ". Материалы списаны со склада; строительство будет идти послойно. Статус: /civitas construction.");
+                definition.costs(), definition.layerCosts(), true);
+        return new BuildResult(true, "Заказ принят: " + definition.displayName()
+                + ". Материалы зарезервированы на складе и будут списываться при завершении каждого слоя. "
+                + "Свободные запасы не включают резерв других заказов. Статус: /civitas construction.");
     }
 
     public static BuildResult cancelFirstOrder(CivitasSavedData data, net.minecraft.server.level.ServerPlayer player) {
@@ -65,10 +80,14 @@ public final class SettlementBuildingManager {
                     "Чтобы безопасно отменить начатое строительство, подойди к площадке и загрузи всю постройку.");
         }
 
-        Map<String, Integer> refund = order.reservedResources().isEmpty()
-                // Backward compatibility for orders saved before 0.13.0.
-                ? refundableResources(definition.costs(), order.progress(), order.totalLayers())
-                : order.remainingReservedResources();
+        // Pre-0.15 orders had already paid the full cost, so refund their
+        // unconsumed portion to the player. New orders keep those items in the
+        // warehouse; cancelling simply releases their reservation.
+        Map<String, Integer> refund = order.materialsReservedInWarehouse()
+                ? Map.of()
+                : order.reservedResources().isEmpty()
+                        ? refundableResources(definition.costs(), order.progress(), order.totalLayers())
+                        : order.remainingReservedResources();
 
         // Remove only the block types that Civitas placed in completed layers.
         // Player replacements using other block types are intentionally preserved.
@@ -91,9 +110,14 @@ public final class SettlementBuildingManager {
                 remaining -= batch;
             }
         }
-        String refundMessage = refund.isEmpty()
-                ? "Возвращать материалы больше не требуется."
-                : "Неиспользованные материалы возвращены игроку; при заполненном инвентаре предметы выпали рядом.";
+        String refundMessage;
+        if (order.materialsReservedInWarehouse()) {
+            refundMessage = "Неиспользованные материалы остались на центральном складе; их резерв освобождён.";
+        } else if (refund.isEmpty()) {
+            refundMessage = "Возвращать материалы больше не требуется.";
+        } else {
+            refundMessage = "Неиспользованные материалы возвращены игроку; при заполненном инвентаре предметы выпали рядом.";
+        }
         return new BuildResult(true, "Заказ №" + orderNumber + " отменён. "
                 + (order.progress() > 0
                 ? "Построенные Civitas слои разобраны; заменённые другими блоками детали сохранены. "
@@ -235,19 +259,69 @@ public final class SettlementBuildingManager {
         }
     }
 
-    public static void placeConstructionLayer(ServerLevel level, CivitasSavedData data, CivitasSavedData.ConstructionOrder order) {
+    /**
+     * Builds exactly one layer. For Alpha 0.15+ orders, every outstanding
+     * warehouse reservation must still exist before any reserved item is spent.
+     * Orders from older versions were paid upfront and therefore skip withdrawal.
+     */
+    public static BuildResult placeConstructionLayer(
+            ServerLevel level, CivitasSavedData data, CivitasSavedData.ConstructionOrder order) {
+        if (order == null || !data.getConstructionOrders().contains(order)) {
+            return new BuildResult(false, "Заказ строительства больше не активен.");
+        }
         BuildingDefinition.Type type = BuildingDefinition.Type.byId(order.type()).orElse(null);
-        if (type == null) return;
+        if (type == null) {
+            return new BuildResult(false, "Неизвестный тип постройки: " + order.type());
+        }
 
         BlockPos ground = new BlockPos(order.x(), order.y(), order.z());
         int layer = order.progress() + 1;
+        if (order.materialsReservedInWarehouse()) {
+            if (!order.hasValidLayerCosts() || order.progress() < 0
+                    || order.progress() >= order.layerCosts().size()) {
+                return new BuildResult(false, "У заказа повреждена послойная смета; строительство остановлено без списания ресурсов.");
+            }
+            BlockPos warehousePos = data.hasStarterVillage()
+                    ? data.getStarterVillageCenter() : data.getCenter();
+            if (!level.hasChunkAt(warehousePos)
+                    || !(level.getBlockEntity(warehousePos) instanceof SettlementWarehouseBlockEntity warehouse)) {
+                return new BuildResult(false, "Центральный склад не загружен или отсутствует; слой не построен.");
+            }
+
+            Map<String, Integer> stock = inventoryCounts(warehouse);
+            if (!data.warehouseContainsAllReservations(stock)) {
+                return new BuildResult(false, "На складе меньше материалов, чем зарезервировано. Пополни склад; строительство приостановлено.");
+            }
+
+            Map<String, Integer> layerCost = order.layerCosts().get(order.progress());
+            for (Map.Entry<String, Integer> entry : layerCost.entrySet()) {
+                if (!BuiltInRegistries.ITEM.containsKey(ResourceLocation.parse(entry.getKey()))
+                        || stock.getOrDefault(entry.getKey(), 0) < entry.getValue()) {
+                    return new BuildResult(false, "Не хватает материалов для слоя " + layer + ": "
+                            + entry.getKey() + " × " + entry.getValue() + ". Слой не построен.");
+                }
+            }
+
+            // Stock and all outstanding reservations were checked before this
+            // loop. Server ticks are single-threaded, so deductions are atomic
+            // with respect to other Civitas build/withdraw commands.
+            for (Map.Entry<String, Integer> entry : layerCost.entrySet()) {
+                if (!remove(warehouse, entry.getKey(), entry.getValue())) {
+                    return new BuildResult(false, "Не удалось списать материалы для слоя " + layer + "; строительство остановлено.");
+                }
+            }
+        }
+
         switch (type) {
             case CABIN -> cabinLayer(level, ground, layer);
             case FARM -> farmLayer(level, ground, layer);
             case WORKSHOP -> workshopLayer(level, ground, layer);
         }
         data.advanceConstructionOrder(order);
-        if (layer >= BuildingDefinition.get(type).totalLayers()) data.registerBuilding(order.type(), ground);
+        if (layer >= BuildingDefinition.get(type).totalLayers()) {
+            data.registerBuilding(order.type(), ground);
+        }
+        return new BuildResult(true, "Слой " + layer + " завершён.");
     }
     private static void cabinLayer(ServerLevel l, BlockPos g, int y) {
         if(y==1){for(int x=-2;x<=2;x++)for(int z=-2;z<=2;z++)set(l,g.offset(x,1,z),Blocks.OAK_PLANKS);set(l,g.offset(0,1,0),Blocks.CRAFTING_TABLE);set(l,g.offset(1,1,0),Blocks.BARREL);set(l,g.offset(0,1,2),Blocks.RED_BED);}
@@ -301,27 +375,35 @@ public final class SettlementBuildingManager {
         level.setBlock(pos, block.defaultBlockState(), 3);
     }
 
-    private static int count(SettlementWarehouseBlockEntity warehouse, String id) {
-        Item item = BuiltInRegistries.ITEM.get(ResourceLocation.parse(id));
-        int total = 0;
-        for (int slot=0; slot<warehouse.getContainerSize(); slot++) {
+    /** Snapshot of normal item counts in the physical warehouse. */
+    public static Map<String, Integer> inventoryCounts(SettlementWarehouseBlockEntity warehouse) {
+        Map<String, Integer> counts = new java.util.TreeMap<>();
+        if (warehouse == null) return java.util.Collections.unmodifiableMap(counts);
+        for (int slot = 0; slot < warehouse.getContainerSize(); slot++) {
             ItemStack stack = warehouse.getItem(slot);
-            if (!stack.isEmpty() && stack.getItem()==item) total += stack.getCount();
+            if (stack.isEmpty()) continue;
+            String id = BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
+            counts.merge(id, stack.getCount(), Integer::sum);
         }
-        return total;
+        return java.util.Collections.unmodifiableMap(counts);
     }
 
-    private static void remove(SettlementWarehouseBlockEntity warehouse, String id, int amount) {
+    private static int count(SettlementWarehouseBlockEntity warehouse, String id) {
+        return inventoryCounts(warehouse).getOrDefault(id, 0);
+    }
+
+    private static boolean remove(SettlementWarehouseBlockEntity warehouse, String id, int amount) {
         Item item = BuiltInRegistries.ITEM.get(ResourceLocation.parse(id));
-        int remaining=amount;
-        for (int slot=0; slot<warehouse.getContainerSize() && remaining>0; slot++) {
-            ItemStack stack=warehouse.getItem(slot);
-            if (stack.isEmpty() || stack.getItem()!=item) continue;
-            int removed=Math.min(remaining, stack.getCount());
+        int remaining = amount;
+        for (int slot = 0; slot < warehouse.getContainerSize() && remaining > 0; slot++) {
+            ItemStack stack = warehouse.getItem(slot);
+            if (stack.isEmpty() || stack.getItem() != item) continue;
+            int removed = Math.min(remaining, stack.getCount());
             stack.shrink(removed);
             if (stack.isEmpty()) warehouse.setItem(slot, ItemStack.EMPTY);
             else warehouse.setChanged();
-            remaining-=removed;
+            remaining -= removed;
         }
+        return remaining == 0;
     }
 }
