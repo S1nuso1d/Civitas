@@ -13,6 +13,8 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraftforge.event.TickEvent;
 import ru.civitas.data.CivitasSavedData;
+import ru.civitas.ai.AiLodController;
+import ru.civitas.ai.StuckDetector;
 import ru.civitas.worker.PersonalOrders;
 import ru.civitas.world.BuildingDefinition;
 import ru.civitas.world.SettlementBuildingManager;
@@ -108,6 +110,9 @@ public final class ConstructionWorkerAI {
             }
 
             assignedThisTick.add(builder.getUUID());
+            if (StuckDetector.check(level, builder) || !AiLodController.shouldTick(level, builder)) {
+                continue;
+            }
             if (WorkerLifeCycle.shouldRest(level, builder, "builder")) {
                 continue;
             }
@@ -371,6 +376,7 @@ public final class ConstructionWorkerAI {
         tag.putInt(WORK_PROGRESS_KEY, 0);
         tag.remove(BLOCKED_REASON_KEY);
         WorkerNavigationGuard.reset(villager, "builder");
+        VillagerEquipment.apply(villager, "builder");
         villager.setCustomName(Component.literal("Строитель Civitas"));
         villager.setCustomNameVisible(true);
         villager.setPersistenceRequired();
@@ -386,6 +392,7 @@ public final class ConstructionWorkerAI {
         tag.putInt(WORK_PROGRESS_KEY, 0);
         tag.remove(BLOCKED_REASON_KEY);
         tag.putString(ROLE_KEY, "");
+        VillagerEquipment.clear(villager);
         villager.getNavigation().stop();
         if (villager.getCustomName() != null
                 && villager.getCustomName().getString().startsWith("Строитель Civitas")) {
