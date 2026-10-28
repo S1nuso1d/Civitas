@@ -350,7 +350,7 @@ public final class LumberjackWorkerAI {
         }
 
         persistent.putString(ISSUE_KEY, "");
-        BlockPos workPos = findWorkPosition(level, treeLog);
+        BlockPos workPos = findWorkPosition(level, treeLog, villager);
         if (workPos == null) {
             persistent.putString(ISSUE_KEY, "Нет безопасного места для рубки");
             persistent.putInt(CHOP_PROGRESS_KEY, 0);
@@ -580,8 +580,10 @@ public final class LumberjackWorkerAI {
         return false;
     }
 
-    private static BlockPos findWorkPosition(ServerLevel level, BlockPos logPos) {
+    private static BlockPos findWorkPosition(ServerLevel level, BlockPos logPos, Villager villager) {
         BlockPos[] adjacent = {logPos.east(), logPos.west(), logPos.north(), logPos.south()};
+        BlockPos bestPosition = null;
+        double bestDistance = Double.MAX_VALUE;
         for (BlockPos side : adjacent) {
             for (int y = logPos.getY(); y >= Math.max(level.getMinBuildHeight() + 1, logPos.getY() - 8); y--) {
                 BlockPos candidate = new BlockPos(side.getX(), y, side.getZ());
@@ -594,11 +596,18 @@ public final class LumberjackWorkerAI {
                         && (head.isAir() || head.canBeReplaced()) && head.getFluidState().isEmpty()
                         && floor.isFaceSturdy(level, below, Direction.UP)
                         && level.getFluidState(below).isEmpty()) {
-                    return candidate;
+                    double distance = villager.distanceToSqr(
+                            candidate.getX() + 0.5D, candidate.getY(), candidate.getZ() + 0.5D);
+                    if (distance < bestDistance) {
+                        bestPosition = candidate;
+                        bestDistance = distance;
+                    }
+                    // The first valid Y is the highest safe standing block on this side.
+                    break;
                 }
             }
         }
-        return null;
+        return bestPosition;
     }
 
     private static void updateWorkerName(Villager villager, String suffix) {
