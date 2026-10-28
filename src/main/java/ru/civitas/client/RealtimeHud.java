@@ -2,6 +2,7 @@ package ru.civitas.client;
 
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.Minecraft;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.npc.Villager;
@@ -81,7 +82,7 @@ public final class RealtimeHud {
             lines.add("Статус: " + (villager.getNavigation().isDone() ? "стоит / ожидает" : "перемещается"));
         }
         lines.add("Здоровье: " + Math.round(villager.getHealth()) + "/" + Math.round(villager.getMaxHealth()));
-        lines.add("Профессия Minecraft: " + Component.translatable(villager.getVillagerData().getProfession().value().name()).getString());
+        lines.add("Профессия Minecraft: " + BuiltInRegistries.VILLAGER_PROFESSION.getKey(villager.getVillagerData().getProfession().value()).toString());
         drawPanel(graphics, 8, 122, lines, 0xCC202016, 0xFFFFE8B0);
     }
 
