@@ -1,15 +1,13 @@
-Civitas Alpha 0.23.0 — Physical Neighbor Settlements
+Civitas Alpha 0.24.0 — Diplomacy Has Economic Consequences
 Target: Minecraft Java Edition 1.21.1 + Forge 52.1.20 + Java 21
 
 Added:
-- Persistent physical locations for neighboring civilization profiles.
-- Safe-site search checks a 15x15 footprint for solid, dry ground and clear build volume before changing blocks.
-- A compact vanilla settlement: two cabins, bell, gravel paths, crafting tables, barrels, torches and three persistent villagers.
-- Diplomacy screen "Посетить" button and commands /civitas visit <number> and /civitas return.
-- Return position saved in player persistent data; settlement site and generated state saved in world data.
-- Server validates owner and civilization UUID before teleporting.
-- Network protocol version 5; unit test covers location save/load.
+- Alliance improves daily food reserves and stability and supports faster territorial expansion.
+- Rivalry reduces stability and may consume timber in larger territories.
+- War reduces stability and food reserves and consumes timber and iron under defined conditions.
+- Diplomatic consequences are applied only in bounded daily simulation steps.
+- Added unit coverage comparing the same neighbor profile under alliance and war.
 
 Validation:
-- Exact release commit must pass GitHub Actions compile, tests and JAR packaging.
-- Manual in-game checks have not been performed in this environment. Test different biomes, repeat visits, return, multiplayer, and ensure generated sites do not overlap player structures.
+- GitHub Actions build/test/JAR packaging must be confirmed for the exact release commit.
+- Manual in-game balance and multiplayer checks have not been performed here.
