@@ -46,7 +46,7 @@ public final class LumberjackWorkerAI {
     private static final int MAX_CARRIED = 8;
     private static final int WORK_INTERVAL = 20;
     private static final int TREE_SEARCH_RADIUS = 18;
-    private static final int STARTER_VILLAGE_PROTECTION_RADIUS = 14;
+    private static final int STARTER_VILLAGE_PROTECTION_RADIUS = 18;
     private static final int MAX_TREE_LOGS = 512;
 
     private LumberjackWorkerAI() {
@@ -576,7 +576,7 @@ public final class LumberjackWorkerAI {
                     BlockPos pos = origin.offset(dx, dy, dz);
                     if (!level.hasChunkAt(pos)) continue;
                     BlockState state = level.getBlockState(pos);
-                    if (state.is(BlockTags.LOGS) && !isProtectedLog(pos, worldData, villageCenter)) {
+                    if (state.is(BlockTags.LOGS) && !isProtectedLog(level, pos, worldData, villageCenter)) {
                         candidates.add(pos.immutable());
                     }
                 }
@@ -610,7 +610,7 @@ public final class LumberjackWorkerAI {
                                                 CivitasSavedData worldData, BlockPos villageCenter) {
         return level.hasChunkAt(target)
                 && level.getBlockState(target).is(BlockTags.LOGS)
-                && !isProtectedLog(target, worldData, villageCenter);
+                && !isProtectedLog(level, target, worldData, villageCenter);
     }
 
     private static BlockPos readTreeTarget(net.minecraft.nbt.CompoundTag persistent) {
@@ -697,7 +697,7 @@ public final class LumberjackWorkerAI {
 
         while (!queue.isEmpty() && result.size() < MAX_TREE_LOGS) {
             BlockPos current = queue.removeFirst();
-            if (!level.hasChunkAt(current) || isProtectedLog(current, worldData, villageCenter)) continue;
+            if (!level.hasChunkAt(current) || isProtectedLog(level, current, worldData, villageCenter)) continue;
             BlockState currentState = level.getBlockState(current);
             if (!currentState.is(BlockTags.LOGS) || currentState.getBlock().asItem() != targetItem) continue;
             result.add(current.immutable());
@@ -716,7 +716,7 @@ public final class LumberjackWorkerAI {
                 visited.add(candidate);
                 if (level.hasChunkAt(candidate) && level.getBlockState(candidate).is(BlockTags.LOGS)
                         && level.getBlockState(candidate).getBlock().asItem() == targetItem
-                        && !isProtectedLog(candidate, worldData, villageCenter)) {
+                        && !isProtectedLog(level, candidate, worldData, villageCenter)) {
                     queue.addLast(candidate);
                 }
             }
@@ -724,12 +724,52 @@ public final class LumberjackWorkerAI {
         return result;
     }
 
-    private static boolean isProtectedLog(BlockPos pos, CivitasSavedData worldData, BlockPos villageCenter) {
-        // The generated village footprint is 29x29 (from -14 to +14), which
-        // includes all four starter houses, their roofs, paths and the core.
-        return (Math.abs(pos.getX() - villageCenter.getX()) <= STARTER_VILLAGE_PROTECTION_RADIUS
-                && Math.abs(pos.getZ() - villageCenter.getZ()) <= STARTER_VILLAGE_PROTECTION_RADIUS)
-                || worldData.hasBuildingNear(pos, 5);
+    private static boolean isProtectedLog(ServerLevel level, BlockPos pos, CivitasSavedData worldData, BlockPos villageCenter) {
+        // Protect the complete starter-village footprint with a margin. The worker
+        // must never interpret a house beam as a tree trunk just because leaves
+        // from a nearby tree happen to be within the foliage scan radius.
+        if (Math.abs(pos.getX() - villageCenter.getX()) <= STARTER_VILLAGE_PROTECTION_RADIUS
+                && Math.abs(pos.getZ() - villageCenter.getZ()) <= STARTER_VILLAGE_PROTECTION_RADIUS) {
+            return true;
+        }
+
+        // Building records are a second source of protection for player-placed
+        // Civitas structures outside the starter footprint.
+        if (worldData.hasBuildingNear(pos, 8)) {
+            return true;
+        }
+
+        // Structural blocks near a log are a strong signal that it belongs to a
+        // house, roof, fence or other construction rather than a natural tree.
+        // This check deliberately favours preserving player builds over harvesting
+        // an ambiguous log. It is bounded to a tiny loaded area around the target.
+        for (int dx = -2; dx <= 2; dx++) {
+            for (int dy = -2; dy <= 2; dy++) {
+                for (int dz = -2; dz <= 2; dz++) {
+                    if (dx == 0 && dy == 0 && dz == 0) continue;
+                    BlockPos nearby = pos.offset(dx, dy, dz);
+                    if (!level.hasChunkAt(nearby)) continue;
+                    BlockState nearbyState = level.getBlockState(nearby);
+                    if (isConstructionBlock(nearbyState)) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+
+    private static boolean isConstructionBlock(BlockState state) {
+        return state.is(BlockTags.PLANKS)
+                || state.is(BlockTags.STAIRS)
+                || state.is(BlockTags.SLABS)
+                || state.is(BlockTags.FENCES)
+                || state.is(BlockTags.WALLS)
+                || state.is(BlockTags.DOORS)
+                || state.is(BlockTags.TRAPDOORS)
+                || state.is(BlockTags.BEDS)
+                || state.is(BlockTags.CAMPFIRES);
     }
 
     private static boolean hasNearbyLeaves(ServerLevel level, BlockPos logPos) {

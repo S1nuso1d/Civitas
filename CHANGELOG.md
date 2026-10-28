@@ -1,3 +1,14 @@
+## [0.20.1] - Worker safety hotfix
+
+### Fixed
+- Expanded the protected starter-village footprint so the lumberjack does not select logs from houses or roofs as harvest targets.
+- Protect logs close to registered buildings and to nearby construction blocks (planks, stairs, slabs, fences, walls, doors, trapdoors, beds and campfires).
+- Ambiguous logs are now preserved instead of being harvested; this intentionally prioritizes player-built structures over uncertain tree detection.
+
+### Validation
+- Automated build and unit tests run in GitHub Actions.
+- In-game confirmation is still required for starter-house protection and normal tree harvesting.
+
 ## [0.20.0] - Trade & Caravans
 
 ### Added
