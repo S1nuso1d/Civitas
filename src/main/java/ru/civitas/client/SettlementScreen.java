@@ -799,7 +799,7 @@ public final class SettlementScreen extends Screen {
                 new Achievement("СТРОИТЕЛЬСТВО", "X. Большое поселение", "Построить 5 зданий", snapshot.cabinCount() + snapshot.farmCount() + snapshot.workshopCount() >= 5, 3),
                 new Achievement("ЭКОНОМИКА", "XI. Запас на чёрный день", "Еды хватит минимум на 3 дня", snapshot.foodConsumptionPerDay() > 0 && snapshot.foodStock() >= snapshot.foodConsumptionPerDay() * 3, 2),
                 new Achievement("ЭКОНОМИКА", "XII. Изобилие", "Склад занят хотя бы наполовину", snapshot.warehouseSlots() > 0 && snapshot.warehouseOccupiedSlots() * 2 >= snapshot.warehouseSlots(), 2),
-                new Achievement("ТОРГОВЛЯ", "XIII. Торговый след", "Открыть вкладку экономики и развивать запасы", snapshot.woodDelta7d() + snapshot.stoneDelta7d() + snapshot.foodDelta7d() > 0, 2),
+                new Achievement("ТОРГОВЛЯ", "XIII. Торговый след", "Положительная динамика запасов за 7 дней", snapshot.woodDelta7d() + snapshot.stoneDelta7d() + snapshot.foodDelta7d() > 0, 2),
                 new Achievement("ТЕРРИТОРИЯ", "XIV. Своя земля", "Достичь 3-го уровня поселения", snapshot.level() >= 3, 2),
                 new Achievement("ТЕРРИТОРИЯ", "XV. Цивилизация", "Население не менее 10 и 5 зданий", snapshot.population() >= 10 && snapshot.cabinCount() + snapshot.farmCount() + snapshot.workshopCount() >= 5, 3),
                 new Achievement("МАСТЕРСТВО", "XVI. Слаженная работа", "Не менее 3 назначенных рабочих", snapshot.lumberjacks() + snapshot.builders() + snapshot.farmers() >= 3, 2),
