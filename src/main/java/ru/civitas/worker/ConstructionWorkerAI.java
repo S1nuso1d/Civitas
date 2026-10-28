@@ -6,6 +6,7 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.level.Level;
@@ -151,6 +152,9 @@ public final class ConstructionWorkerAI {
             int progressTicks = Math.min(WORK_PROGRESS_TICKS,
                     Math.max(0, persistent.getInt(WORK_PROGRESS_KEY)) + WORK_UPDATE_TICKS);
             persistent.putInt(WORK_PROGRESS_KEY, progressTicks);
+            // Make work visibly physical: residents turn to the plot and swing
+            // their hand while the progress bar advances, rather than appearing idle.
+            builder.swing(InteractionHand.MAIN_HAND);
             prepareBuilder(builder);
             if (progressTicks < WORK_PROGRESS_TICKS) {
                 continue;
