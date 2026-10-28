@@ -1,3 +1,18 @@
+## [0.23.0] - Visit-able Neighbor Settlements
+
+### Added
+- Added persistent physical sites for neighboring civilizations.
+- Visiting a neighbor creates a small vanilla-block settlement with two cabins, a central bell, work blocks and three persistent villagers.
+- Candidate sites are checked for solid, dry ground and clear building volume before construction; existing solid structures are not cleared.
+- Added a Visit button to diplomacy GUI and commands `/civitas visit <number>` and `/civitas return`.
+- Return coordinates are stored in player persistent data; settlement site coordinates and generation state are stored in world SavedData.
+- Added a save/load unit test for neighboring settlement coordinates.
+- Bumped network protocol to 5.
+
+### Validation
+- Automated build and JAR packaging must be verified for the exact release commit.
+- Manual tests are still required for different biomes, repeated visits, return flow and multiplayer.
+
 ## [0.22.0] - Diplomacy GUI
 
 ### Added
