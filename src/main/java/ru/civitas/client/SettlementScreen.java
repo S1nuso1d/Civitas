@@ -133,7 +133,7 @@ public final class SettlementScreen extends Screen {
         settlementName.setHint(Component.literal("Название поселения"));
         addRenderableWidget(settlementName);
 
-        String label = snapshot != null && snapshot.founded() ? "Переименовать" : "Основать";
+        String label = snapshot != null && snapshot.founded() ? "Сохранить" : "Основать";
         addButton(label, contentX + inputWidth + 4, inputY, renameWidth, 20, () -> {
             rememberInputs();
             CivitasNetwork.sendAction(
@@ -349,7 +349,8 @@ public final class SettlementScreen extends Screen {
     public void acceptSnapshot(SettlementSnapshot nextSnapshot) {
         snapshot = nextSnapshot;
         if (settlementName == null || !settlementName.isFocused()) {
-            settlementNameValue = nextSnapshot.settlementName();
+            settlementNameValue = nextSnapshot.founded()
+                    ? nextSnapshot.settlementName() : "Новая деревня";
             if (settlementName != null) settlementName.setValue(settlementNameValue);
         }
     }
