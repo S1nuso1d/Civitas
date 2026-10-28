@@ -23,7 +23,10 @@ import ru.civitas.world.BuildingDefinition;
 import ru.civitas.worker.LumberjackWorkerAI;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.Locale;
 import java.util.regex.Pattern;
 
@@ -39,6 +42,8 @@ public final class CivitasNetwork {
 
     private static final Pattern ITEM_ID_PATTERN =
             Pattern.compile("[a-z0-9_.-]+:[a-z0-9_./-]+");
+    private static final int SNAPSHOT_REQUEST_COOLDOWN_TICKS = 10;
+    private static final Map<UUID, Long> LAST_SNAPSHOT_REQUEST_TICK = new HashMap<>();
 
     private CivitasNetwork() {
     }
@@ -101,9 +106,26 @@ public final class CivitasNetwork {
 
     private static void handleSnapshotRequest(RequestSnapshotPacket packet, CustomPayloadEvent.Context context) {
         ServerPlayer player = context.getSender();
-        if (player != null) {
-            sendSnapshot(player);
+        if (player == null || player.getServer() == null) {
+            context.setPacketHandled(true);
+            return;
         }
+
+        // The GUI polls every 40 ticks. Throttle forged or accidental packet spam.
+        long now = player.getServer().overworld().getGameTime();
+        UUID playerId = player.getUUID();
+        Long last = LAST_SNAPSHOT_REQUEST_TICK.get(playerId);
+        if (last != null && now >= last && now - last < SNAPSHOT_REQUEST_COOLDOWN_TICKS) {
+            context.setPacketHandled(true);
+            return;
+        }
+
+        LAST_SNAPSHOT_REQUEST_TICK.put(playerId, now);
+        if (LAST_SNAPSHOT_REQUEST_TICK.size() > 256) {
+            LAST_SNAPSHOT_REQUEST_TICK.entrySet().removeIf(entry ->
+                    now < entry.getValue() || now - entry.getValue() > 1200);
+        }
+        sendSnapshot(player);
         context.setPacketHandled(true);
     }
 
