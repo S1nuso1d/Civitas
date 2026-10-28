@@ -2,6 +2,10 @@ Civitas Alpha 0.38.0 — Senses & Schedules
 Target: Minecraft Java Edition 1.21.1 + Forge 52.1.20 + Java 21
 
 Implemented in source:
+- Alpha 0.38.0: assigned workers rest during the night window while retaining task/cargo data; road movement uses a single +35% base-speed modifier that is removed when leaving roads or losing the role.
+- Alpha 0.38.0: role-specific work sounds and particles are throttled to work intervals; occasional chatter is only sent to nearby players.
+- Alpha 0.38.0: workers can open adjacent unpowered doors while moving and close their tracked door after passage when the doorway is clear.
+- Alpha 0.38.0: rain reduces farmer harvest progress by 25%; lumberjacks receive a small cumulative chopping bonus in dry weather.
 - Lumberjack tree-search misses are cached for 100 game ticks (5 seconds), reducing repeated full-volume scans when no harvestable trees are available. A successful search clears the backoff immediately.
 - Lumberjacks replant supported tree species after successful harvest when the base position is empty and suitable soil is present. Replanting is configurable and enabled by default.
 - Lumberjack cargo delivery is triggered at its existing capacity limit or after 200 ticks since the last harvest; it no longer needs to wait for another full load.
