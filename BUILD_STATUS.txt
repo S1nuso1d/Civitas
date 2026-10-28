@@ -1,9 +1,10 @@
-Civitas Alpha 0.36.0 — Achievement Progress
+Civitas Alpha 0.37.0 — Achievement Progression
 Target: Minecraft Java Edition 1.21.1 + Forge 52.1.20 + Java 21
 
 Implemented in source:
 - Settlement UI includes Buildings and Achievements tabs. Buildings supports paging, displays registered indices and cabin levels, and shows upgrade costs.
-- Achievement tree presents 21 milestone conditions across eight development areas. Stable IDs and first-unlock world days are persisted and sent through protocol version 8. Unlocked milestones show their first-unlock day; locked milestones show a percentage calculated from current settlement stats. Rewards and prerequisite-gated unlocks are not implemented.
+- Achievement tree presents 21 milestone conditions across eight development areas. Stable IDs and first-unlock world days are persisted and sent through protocol version 8. Unlocked milestones show their first-unlock day; locked milestones show a percentage calculated from current settlement stats. Server-side prerequisite gates enforce progression order. Achievement reward effects are not implemented.
+- Background achievement checks run every 200 overworld ticks while the owner is online without sending a status message or a full snapshot; normal dashboard refreshes still synchronize the UI.
 - Registered Civitas cabins can be upgraded to level 2 or 3 through the owner-only /civitas buildings upgrade <index> command or the Buildings tab.
 - Level 2 adds a porch with slabs, supported fence railings, stairs and lantern. Level 3 adds a brick chimney through the roof.
 - Building records persist upgrade level and rotation; old saves default to level 1 and rotation 0.
