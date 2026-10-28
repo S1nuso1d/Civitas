@@ -1,4 +1,4 @@
-Civitas Alpha 0.34.0 — Achievement History
+Civitas Alpha 0.35.0 — Background Achievement Progress
 Target: Minecraft Java Edition 1.21.1 + Forge 52.1.20 + Java 21
 
 Implemented in source:
@@ -13,7 +13,7 @@ Implemented in source:
 
 Known limitations:
 - The starter-village houses are not yet registered as upgradeable Civitas buildings; the upgrade system currently targets registered cabins built through Civitas construction.
-- Achievements are evaluated when the owner requests/synchronizes the settlement dashboard; they are not yet evaluated continuously while the dashboard is closed. No rewards or prerequisite-gated unlocks yet.
+- Achievement conditions are checked every 200 overworld ticks (10 seconds) while the settlement owner is online, even with the dashboard closed. The scan currently reuses the authoritative snapshot builder and therefore refreshes the client snapshot periodically. No rewards or prerequisite-gated unlocks yet.
 - Full daily resident schedules, social behavior, rest and happiness are not implemented.
 - Fire/fluid spread, mob griefing and third-party world changes are not comprehensively protected.
 
