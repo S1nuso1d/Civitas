@@ -37,6 +37,10 @@ public final class LumberjackWorkerAI {
     private static final String TARGET_TREE_Y_KEY = "civitas.worker_tree_target_y";
     private static final String TARGET_TREE_Z_KEY = "civitas.worker_tree_target_z";
     private static final String TARGET_TREE_SIZE_KEY = "civitas.worker_tree_target_size";
+    private static final String WORK_POS_ASSIGNED_KEY = "civitas.worker_chop_position_assigned";
+    private static final String WORK_POS_X_KEY = "civitas.worker_chop_position_x";
+    private static final String WORK_POS_Y_KEY = "civitas.worker_chop_position_y";
+    private static final String WORK_POS_Z_KEY = "civitas.worker_chop_position_z";
     private static final int MAX_CARRIED = 8;
     private static final int WORK_INTERVAL = 20;
     private static final int TREE_SEARCH_RADIUS = 18;
@@ -350,7 +354,13 @@ public final class LumberjackWorkerAI {
         }
 
         persistent.putString(ISSUE_KEY, "");
-        BlockPos workPos = findWorkPosition(level, treeLog, villager);
+        // Store the work point for the lifetime of a tree target. Re-picking
+        // the nearest side every second can make the villager circle the trunk.
+        BlockPos workPos = readWorkPosition(persistent);
+        if (workPos == null || !isWorkPositionSafe(level, treeLog, workPos)) {
+            workPos = findWorkPosition(level, treeLog, villager);
+            if (workPos != null) writeWorkPosition(persistent, workPos);
+        }
         if (workPos == null) {
             persistent.putString(ISSUE_KEY, "Нет безопасного места для рубки");
             persistent.putInt(CHOP_PROGRESS_KEY, 0);
@@ -502,6 +512,7 @@ public final class LumberjackWorkerAI {
         persistent.putInt(TARGET_TREE_Z_KEY, target.getZ());
         persistent.putInt(TARGET_TREE_SIZE_KEY, 0);
         persistent.putInt(CHOP_PROGRESS_KEY, 0);
+        clearWorkPosition(persistent);
     }
 
     private static void clearTreeTarget(net.minecraft.nbt.CompoundTag persistent) {
@@ -510,6 +521,46 @@ public final class LumberjackWorkerAI {
         persistent.remove(TARGET_TREE_Y_KEY);
         persistent.remove(TARGET_TREE_Z_KEY);
         persistent.putInt(TARGET_TREE_SIZE_KEY, 0);
+        clearWorkPosition(persistent);
+    }
+
+    private static BlockPos readWorkPosition(net.minecraft.nbt.CompoundTag persistent) {
+        if (!persistent.getBoolean(WORK_POS_ASSIGNED_KEY)) return null;
+        return new BlockPos(persistent.getInt(WORK_POS_X_KEY),
+                persistent.getInt(WORK_POS_Y_KEY), persistent.getInt(WORK_POS_Z_KEY));
+    }
+
+    private static void writeWorkPosition(net.minecraft.nbt.CompoundTag persistent, BlockPos pos) {
+        persistent.putBoolean(WORK_POS_ASSIGNED_KEY, true);
+        persistent.putInt(WORK_POS_X_KEY, pos.getX());
+        persistent.putInt(WORK_POS_Y_KEY, pos.getY());
+        persistent.putInt(WORK_POS_Z_KEY, pos.getZ());
+    }
+
+    private static void clearWorkPosition(net.minecraft.nbt.CompoundTag persistent) {
+        persistent.remove(WORK_POS_ASSIGNED_KEY);
+        persistent.remove(WORK_POS_X_KEY);
+        persistent.remove(WORK_POS_Y_KEY);
+        persistent.remove(WORK_POS_Z_KEY);
+    }
+
+    private static boolean isWorkPositionSafe(ServerLevel level, BlockPos logPos, BlockPos candidate) {
+        if (Math.abs(candidate.getX() - logPos.getX())
+                        + Math.abs(candidate.getZ() - logPos.getZ()) != 1
+                || candidate.getY() > logPos.getY()
+                || candidate.getY() < logPos.getY() - 8) {
+            return false;
+        }
+        BlockPos below = candidate.below();
+        BlockPos head = candidate.above();
+        if (!level.hasChunkAt(candidate) || !level.hasChunkAt(below) || !level.hasChunkAt(head)) return false;
+        BlockState feet = level.getBlockState(candidate);
+        BlockState headState = level.getBlockState(head);
+        BlockState floor = level.getBlockState(below);
+        return (feet.isAir() || feet.canBeReplaced()) && feet.getFluidState().isEmpty()
+                && (headState.isAir() || headState.canBeReplaced()) && headState.getFluidState().isEmpty()
+                && floor.isFaceSturdy(level, below, Direction.UP)
+                && level.getFluidState(below).isEmpty();
     }
 
     /** Collect only face-connected logs of the same tree species. */
