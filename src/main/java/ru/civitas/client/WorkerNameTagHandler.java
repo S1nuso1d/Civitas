@@ -31,6 +31,9 @@ public final class WorkerNameTagHandler {
         if (minecraft.hitResult instanceof EntityHitResult hit && hit.getEntity() == villager) {
             return;
         }
-        event.setCanceled(true);
+
+        // RenderNameTagEvent is not cancelable in this Forge version.
+        // Use its supported visibility flag instead of Event#setCanceled().
+        event.setCanRender(false);
     }
 }
