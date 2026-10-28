@@ -3,11 +3,17 @@ package ru.civitas.data;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import ru.civitas.worker.FoodCargo;
 import static org.junit.jupiter.api.Assertions.*;
 
 class StorageFoodExtensionTest {
+    @BeforeAll
+    static void initializeMinecraftRegistries() {
+        ru.civitas.MinecraftTestBootstrap.initialize();
+    }
+
     @Test void consumptionReportsFullNutritionOfWholeItems() {
         SimpleContainer inventory = new SimpleContainer(2);
         inventory.setItem(0, new ItemStack(Items.BREAD, 2));

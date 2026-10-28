@@ -1,6 +1,7 @@
 package ru.civitas.world;
 
 import net.minecraft.core.BlockPos;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import ru.civitas.data.CivitasSavedData;
 
@@ -13,6 +14,11 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ConstructionReservationTest {
+    @BeforeAll
+    static void initializeMinecraftRegistries() {
+        ru.civitas.MinecraftTestBootstrap.initialize();
+    }
+
 
     private static Map<String, Integer> reservation() {
         Map<String, Integer> costs = new LinkedHashMap<>();

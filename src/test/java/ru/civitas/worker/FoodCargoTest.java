@@ -2,10 +2,16 @@ package ru.civitas.worker;
 
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.item.Items;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 class FoodCargoTest {
+    @BeforeAll
+    static void initializeMinecraftRegistries() {
+        ru.civitas.MinecraftTestBootstrap.initialize();
+    }
+
     @Test void cargoSumsNutritionAndItemCount() {
         FoodCargo cargo = new FoodCargo();
         cargo.add(Items.BREAD, 1);

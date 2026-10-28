@@ -2,10 +2,16 @@ package ru.civitas.worker;
 
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 class FoodRegistryTest {
+    @BeforeAll
+    static void initializeMinecraftRegistries() {
+        ru.civitas.MinecraftTestBootstrap.initialize();
+    }
+
     @Test void breadHasThreeNutritionUnits() {
         assertTrue(FoodRegistry.isFood(new ItemStack(Items.BREAD)));
         assertEquals(3, FoodRegistry.foodValue(new ItemStack(Items.BREAD)));

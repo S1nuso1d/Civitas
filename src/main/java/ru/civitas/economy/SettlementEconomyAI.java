@@ -77,7 +77,7 @@ public final class SettlementEconomyAI {
         boolean fed = false;
         int consumed = 0;
         if (residents > 0 && dailyNeed > 0) {
-            consumed = StorageFoodExtension.consumeFood(warehouse, dailyNeed);
+            consumed = consumeDailyNeed(data, warehouse, dailyNeed);
             fed = consumed >= dailyNeed;
             data.getEconomyHistory().recordFoodConsumption(day, consumed);
             if (fed) {
@@ -104,6 +104,7 @@ public final class SettlementEconomyAI {
         int beds = countBeds(level, center);
         int interval = CivitasConfig.GROWTH_INTERVAL_DAYS.get();
         long reserveNeed = (long) dailyNeed * CivitasConfig.GROWTH_FOOD_RESERVE.get();
+        foodAfterUpkeep = (int) Math.min(Integer.MAX_VALUE, (long) foodAfterUpkeep + data.getFoodCredit());
         if (residents > 0 && fed && data.getGrowthProgressDays() >= interval
                 && beds > residents && foodAfterUpkeep >= reserveNeed) {
             BlockPos spawn = findSpawnPosition(level, center);
@@ -129,6 +130,24 @@ public final class SettlementEconomyAI {
         data.setDirty();
     }
 
+    /** Uses any saved nutrition credit first and retains over-consumed value for following days. */
+    private static int consumeDailyNeed(CivitasSavedData data, SettlementWarehouseBlockEntity warehouse, int need) {
+        int credit = data.getFoodCredit();
+        int usedCredit = Math.min(credit, need);
+        int remainingNeed = need - usedCredit;
+        if (remainingNeed <= 0) {
+            data.setFoodCredit(credit - usedCredit);
+            return need;
+        }
+        int removed = StorageFoodExtension.consumeFood(warehouse, remainingNeed);
+        if (removed >= remainingNeed) {
+            data.setFoodCredit(removed - remainingNeed);
+            return need;
+        }
+        data.setFoodCredit(0);
+        return usedCredit + removed;
+    }
+
     private static void recordDailySnapshot(ServerLevel level, CivitasSavedData data,
                                             SettlementWarehouseBlockEntity warehouse, long day) {
         int residents = countResidents(level, data.getStarterVillageCenter());
@@ -136,7 +155,8 @@ public final class SettlementEconomyAI {
         data.getEconomyHistory().recordDaily(day,
                 countItems(warehouse, WOOD_ITEMS),
                 countItems(warehouse, STONE_ITEMS),
-                StorageFoodExtension.totalFoodValue(warehouse),
+                (int) Math.min(Integer.MAX_VALUE,
+                        (long) StorageFoodExtension.totalFoodValue(warehouse) + data.getFoodCredit()),
                 residents);
         data.setDirty();
     }

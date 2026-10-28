@@ -38,7 +38,8 @@ public final class CivitasSavedData extends SavedData {
     private long lastEconomyDay = -1L;
     private int hungerDays;
     private int growthProgressDays;
-    private final EconomyHistory economyHistory = new EconomyHistory(CivitasConfig.ECONOMY_HISTORY_DAYS.get());
+    private int foodCredit;
+    private final EconomyHistory economyHistory = new EconomyHistory(30);
     private final SettlementReservations farmlandReservations = new SettlementReservations();
     private int level = 1;
     private boolean starterVillageGenerated;
@@ -184,6 +185,7 @@ public final class CivitasSavedData extends SavedData {
         data.lastEconomyDay = tag.contains("last_economy_day") ? tag.getLong("last_economy_day") : -1L;
         data.hungerDays = Math.max(0, Math.min(1_000_000, tag.getInt("hunger_days")));
         data.growthProgressDays = Math.max(0, Math.min(30, tag.getInt("growth_progress_days")));
+        data.foodCredit = Math.max(0, Math.min(1_000_000, tag.getInt("food_credit")));
         data.economyHistory.restoreFrom(EconomyHistory.load(tag, "economy_history", CivitasConfig.ECONOMY_HISTORY_DAYS.get()));
         data.farmlandReservations.restoreFrom(SettlementReservations.load(tag, "farmland_reservations"));
         data.level = Math.max(1, tag.getInt("level"));
@@ -259,6 +261,7 @@ public final class CivitasSavedData extends SavedData {
         tag.putLong("last_economy_day", lastEconomyDay);
         tag.putInt("hunger_days", hungerDays);
         tag.putInt("growth_progress_days", growthProgressDays);
+        tag.putInt("food_credit", foodCredit);
         economyHistory.save(tag, "economy_history");
         farmlandReservations.save(tag, "farmland_reservations");
         tag.putInt("level", level);
@@ -547,6 +550,11 @@ public final class CivitasSavedData extends SavedData {
     public long getLastEconomyDay() { return lastEconomyDay; }
     public void setLastEconomyDay(long day) {
         if (lastEconomyDay != day) { lastEconomyDay = day; setDirty(); }
+    }
+    public int getFoodCredit() { return foodCredit; }
+    public void setFoodCredit(int value) {
+        int safe = Math.max(0, Math.min(1_000_000, value));
+        if (foodCredit != safe) { foodCredit = safe; setDirty(); }
     }
     public int getHungerDays() { return hungerDays; }
     public void setHungerDays(int days) {

@@ -441,7 +441,8 @@ public final class CivitasNetwork {
         SettlementWarehouseBlockEntity foodWarehouse = level.hasChunkAt(center)
                 && level.getBlockEntity(center) instanceof SettlementWarehouseBlockEntity foundWarehouse
                 ? foundWarehouse : null;
-        int foodStock = StorageFoodExtension.totalFoodValue(foodWarehouse);
+        int foodStock = (int) Math.min(Integer.MAX_VALUE,
+                (long) StorageFoodExtension.totalFoodValue(foodWarehouse) + data.getFoodCredit());
         int beds = SettlementEconomyAI.countBeds(level, center);
         int lumberjacks = 0;
         int builders = 0;
