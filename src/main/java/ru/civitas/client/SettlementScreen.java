@@ -797,6 +797,40 @@ public final class SettlementScreen extends Screen {
                 return snapshot.unlockedAchievements().stream().filter(record -> record.startsWith(prefix)).findFirst().orElse(null);
             }
             boolean unlocked(SettlementSnapshot snapshot) { return unlockRecord(snapshot) != null; }
+            int progress(SettlementSnapshot s) {
+                int buildings = s.cabinCount() + s.farmCount() + s.workshopCount();
+                return switch (id) {
+                    case "settlement_founded" -> s.founded() ? 100 : 0;
+                    case "population_5" -> percent(s.population(), 5);
+                    case "first_house" -> percent(s.cabinCount(), 1);
+                    case "population_10" -> percent(s.population(), 10);
+                    case "beds_cover_population" -> s.population() <= 0 ? 0 : percent(s.bedCount(), s.population());
+                    case "farm_built" -> percent(s.farmCount(), 1);
+                    case "workshop_built" -> percent(s.workshopCount(), 1);
+                    case "all_professions" -> percent((s.lumberjacks() > 0 ? 1 : 0)
+                            + (s.builders() > 0 ? 1 : 0) + (s.farmers() > 0 ? 1 : 0), 3);
+                    case "level_3", "level_3_center" -> percent(s.level(), 3);
+                    case "five_buildings" -> percent(buildings, 5);
+                    case "food_3_days" -> s.foodConsumptionPerDay() <= 0 ? 0
+                            : percent(s.foodStock(), (long) s.foodConsumptionPerDay() * 3L);
+                    case "warehouse_half" -> s.warehouseSlots() <= 0 ? 0
+                            : Math.min(100, s.warehouseOccupiedSlots() * 100 / Math.max(1, s.warehouseSlots() / 2));
+                    case "positive_resource_balance" -> Math.max(0, Math.min(100,
+                            (int) (((long) s.woodDelta7d() + s.stoneDelta7d() + s.foodDelta7d()) > 0 ? 100 : 0)));
+                    case "city_structure" -> Math.min(percent(s.population(), 10), percent(buildings, 5));
+                    case "three_workers" -> percent(s.lumberjacks() + s.builders() + s.farmers(), 3);
+                    case "no_idle_residents" -> s.residentCount() > 0 && s.idleResidents() == 0 ? 100 : 0;
+                    case "no_hunger" -> s.population() >= 5 && s.hungerDays() == 0 ? 100 : 0;
+                    case "level_2" -> percent(s.level(), 2);
+                    case "three_buildings" -> percent(buildings, 3);
+                    case "population_15" -> percent(s.population(), 15);
+                    default -> 0;
+                };
+            }
+            private int percent(long current, long target) {
+                if (target <= 0) return 0;
+                return (int) Math.max(0, Math.min(100, current * 100L / target));
+            }
             long unlockedDay(SettlementSnapshot snapshot) {
                 String record = unlockRecord(snapshot);
                 if (record == null) return -1L;
@@ -842,7 +876,8 @@ public final class SettlementScreen extends Screen {
                     + "[" + achievement.branch() + "] " + achievement.name()
                     + " — " + achievement.condition()
                     + (unlocked && achievement.unlockedDay(snapshot) >= 0
-                        ? " · день " + achievement.unlockedDay(snapshot) : "");
+                        ? " · день " + achievement.unlockedDay(snapshot)
+                        : !unlocked ? " · прогресс " + achievement.progress(snapshot) + "%" : "");
             drawLine(startY + row * 14, line,
                     unlocked ? 0xFF236B36 : 0xFF777777, contentWidth);
         }
