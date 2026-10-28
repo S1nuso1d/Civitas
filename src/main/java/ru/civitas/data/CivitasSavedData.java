@@ -44,7 +44,55 @@ public final class CivitasSavedData extends SavedData {
     private final List<ConstructionOrder> constructionOrders = new ArrayList<>();
 
     public record BuildingRecord(String type, int x, int y, int z) { }
-    public record ConstructionOrder(String type, int x, int y, int z, int progress, int totalLayers) { }
+
+    /**
+     * Immutable reservation ledger captured when a construction order is queued.
+     * Progress allocates the reserved materials to completed layers; the rest
+     * remains refundable if the player cancels the order.
+     */
+    public record ConstructionOrder(
+            String type,
+            int x,
+            int y,
+            int z,
+            int progress,
+            int totalLayers,
+            Map<String, Integer> reservedResources
+    ) {
+        public ConstructionOrder(String type, int x, int y, int z, int progress, int totalLayers) {
+            this(type, x, y, z, progress, totalLayers, Map.of());
+        }
+
+        public ConstructionOrder {
+            reservedResources = reservedResources == null
+                    ? Map.of()
+                    : Collections.unmodifiableMap(new TreeMap<>(reservedResources));
+        }
+
+        /**
+         * Returns only the reserved amount allocated to layers that have not
+         * been completed. Integer division means indivisible resources (such
+         * as one water bucket) are allocated to the final layer.
+         */
+        public Map<String, Integer> remainingReservedResources() {
+            if (reservedResources.isEmpty()) {
+                return Map.of();
+            }
+
+            int safeTotalLayers = Math.max(1, totalLayers);
+            int completedLayers = Math.max(0, Math.min(progress, safeTotalLayers));
+            Map<String, Integer> remaining = new TreeMap<>();
+            for (Map.Entry<String, Integer> entry : reservedResources.entrySet()) {
+                int originalAmount = Math.max(0, entry.getValue());
+                long consumed = ((long) originalAmount * completedLayers) / safeTotalLayers;
+                int refundable = originalAmount - (int) consumed;
+                if (refundable > 0) {
+                    remaining.put(entry.getKey(), refundable);
+                }
+            }
+            return Collections.unmodifiableMap(remaining);
+        }
+    }
 
     public CivitasSavedData() {
     }
@@ -75,7 +123,19 @@ public final class CivitasSavedData extends SavedData {
             String type = order.getString("type");
             int total = Math.max(1, order.getInt("total_layers"));
             int progress = Math.max(0, Math.min(total, order.getInt("progress")));
-            if (!type.isBlank() && progress < total) data.constructionOrders.add(new ConstructionOrder(type, order.getInt("x"), order.getInt("y"), order.getInt("z"), progress, total));
+            Map<String, Integer> reservedResources = new TreeMap<>();
+            CompoundTag storedReservation = order.getCompound("reserved_resources");
+            for (String itemId : storedReservation.getAllKeys()) {
+                int count = storedReservation.getInt(itemId);
+                if (count > 0) {
+                    reservedResources.put(itemId, count);
+                }
+            }
+            if (!type.isBlank() && progress < total) {
+                data.constructionOrders.add(new ConstructionOrder(
+                        type, order.getInt("x"), order.getInt("y"), order.getInt("z"),
+                        progress, total, reservedResources));
+            }
         }
         ListTag storedBuildings = tag.getList("buildings", Tag.TAG_COMPOUND);
         for (int i = 0; i < storedBuildings.size(); i++) {
@@ -115,6 +175,9 @@ public final class CivitasSavedData extends SavedData {
             stored.putString("type", order.type());
             stored.putInt("x", order.x()); stored.putInt("y", order.y()); stored.putInt("z", order.z());
             stored.putInt("progress", order.progress()); stored.putInt("total_layers", order.totalLayers());
+            CompoundTag reservation = new CompoundTag();
+            order.reservedResources().forEach(reservation::putInt);
+            stored.put("reserved_resources", reservation);
             storedOrders.add(stored);
         }
         tag.put("construction_orders", storedOrders);
@@ -211,8 +274,22 @@ public final class CivitasSavedData extends SavedData {
     }
 
     public void addConstructionOrder(String type, BlockPos position, int totalLayers) {
+        addConstructionOrder(type, position, totalLayers, Map.of());
+    }
+
+    public void addConstructionOrder(
+            String type, BlockPos position, int totalLayers, Map<String, Integer> reservedResources) {
         if (type == null || type.isBlank() || position == null || totalLayers < 1) return;
-        constructionOrders.add(new ConstructionOrder(type, position.getX(), position.getY(), position.getZ(), 0, totalLayers));
+        Map<String, Integer> reservation = new TreeMap<>();
+        if (reservedResources != null) {
+            reservedResources.forEach((itemId, amount) -> {
+                if (itemId != null && !itemId.isBlank() && amount != null && amount > 0) {
+                    reservation.put(itemId, amount);
+                }
+            });
+        }
+        constructionOrders.add(new ConstructionOrder(
+                type, position.getX(), position.getY(), position.getZ(), 0, totalLayers, reservation));
         setDirty();
     }
     public List<ConstructionOrder> getConstructionOrders() { return Collections.unmodifiableList(new ArrayList<>(constructionOrders)); }
@@ -225,8 +302,13 @@ public final class CivitasSavedData extends SavedData {
     public void advanceConstructionOrder(ConstructionOrder order) {
         int index = constructionOrders.indexOf(order);
         if (index < 0) return;
-        if (order.progress() + 1 >= order.totalLayers()) constructionOrders.remove(index);
-        else constructionOrders.set(index, new ConstructionOrder(order.type(), order.x(), order.y(), order.z(), order.progress() + 1, order.totalLayers()));
+        if (order.progress() + 1 >= order.totalLayers()) {
+            constructionOrders.remove(index);
+        } else {
+            constructionOrders.set(index, new ConstructionOrder(
+                    order.type(), order.x(), order.y(), order.z(),
+                    order.progress() + 1, order.totalLayers(), order.reservedResources()));
+        }
         setDirty();
     }
     public void registerBuilding(String type, BlockPos position) {
