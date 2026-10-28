@@ -69,7 +69,8 @@ class BuildingBlueprintTest {
         assertTrue(base.stream().anyMatch(p -> p.blockId().equals("minecraft:furnace")));
         assertTrue(base.stream().anyMatch(p -> p.blockId().equals("minecraft:anvil")));
         var walls = BuildingBlueprint.layer(BuildingDefinition.Type.WORKSHOP, 3);
-        assertEquals(16, walls.stream().filter(p -> p.blockId().equals("minecraft:cobblestone")).count());
+        assertEquals(15, walls.stream().filter(p -> p.blockId().equals("minecraft:cobblestone")).count(),
+                "The workshop wall leaves a two-block doorway");
         var doorway = BuildingBlueprint.layer(BuildingDefinition.Type.WORKSHOP, 2);
         assertTrue(doorway.stream().anyMatch(p -> p.relativePosition().equals(new BlockPos(0, 2, -2))
                 && p.blockId().equals("minecraft:oak_door")));
