@@ -166,10 +166,12 @@ public final class CivitasCommands {
         context.getSource().sendSuccess(() -> Component.literal("Развитие: уровень " + data.getLevel()
                 + " | зарегистрировано зданий: " + data.getBuildings().size()
                 + " | в очереди: " + orders.size()), false);
-        context.getSource().sendSuccess(() -> Component.literal("Жители в радиусе 24 блоков: " + residents.size()
-                + " | лесорубы: " + lumberjacks + " | строители: " + builders + " | без профессии: " + idle), false);
-        context.getSource().sendSuccess(() -> Component.literal("Здания: дома " + cabins + " | фермы " + farms
-                + " | мастерские " + workshops), false);
+        final String residentSummary = "Жители в радиусе 24 блоков: " + residents.size()
+                + " | лесорубы: " + lumberjacks + " | строители: " + builders + " | без профессии: " + idle;
+        final String buildingSummary = "Здания: дома " + cabins + " | фермы " + farms
+                + " | мастерские " + workshops;
+        context.getSource().sendSuccess(() -> Component.literal(residentSummary), false);
+        context.getSource().sendSuccess(() -> Component.literal(buildingSummary), false);
         if (warehouse == null) {
             context.getSource().sendSuccess(() -> Component.literal("§cСклад недоступен: проверь центральный блок склада."), false);
         } else {
