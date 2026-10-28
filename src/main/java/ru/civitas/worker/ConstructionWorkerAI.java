@@ -27,12 +27,14 @@ public final class ConstructionWorkerAI {
     private static final String TARGET_Y_KEY = "civitas.builder_target_y";
     private static final String TARGET_Z_KEY = "civitas.builder_target_z";
     private static final String BLOCKED_REASON_KEY = "civitas.builder_blocked_reason";
+    private static final String WORK_PROGRESS_KEY = "civitas.builder_work_progress_ticks";
 
     private static final int WORKER_SCAN_XZ = 96;
     private static final int WORKER_SCAN_Y = 32;
     private static final double MOVE_SPEED = 0.85D;
-    private static final double WORK_DISTANCE_SQUARED = 25.0D;
-    private static final long TICKS_BETWEEN_LAYERS = 60L;
+    private static final double WORK_DISTANCE_SQUARED = 9.0D;
+    private static final int WORK_PROGRESS_TICKS = 60;
+    private static final int WORK_UPDATE_TICKS = 20;
 
     private ConstructionWorkerAI() {
     }
@@ -41,7 +43,7 @@ public final class ConstructionWorkerAI {
         if (event.phase != TickEvent.Phase.END
                 || !(event.level instanceof ServerLevel level)
                 || !event.level.dimension().equals(Level.OVERWORLD)
-                || level.getGameTime() % 20 != 0) {
+                || level.getGameTime() % WORK_UPDATE_TICKS != 0) {
             return;
         }
 
@@ -56,16 +58,13 @@ public final class ConstructionWorkerAI {
                 workerArea,
                 villager -> "builder".equals(villager.getPersistentData().getString(ROLE_KEY))
         ));
-        if (builders.isEmpty()) {
-            return;
-        }
 
         Set<BlockPos> activeSites = new HashSet<>();
         for (CivitasSavedData.ConstructionOrder order : orders) {
             activeSites.add(new BlockPos(order.x(), order.y(), order.z()));
         }
 
-        // A finished or removed order must not leave a worker permanently reserved.
+        // Clear obsolete assignments before returning when the queue becomes empty.
         for (Villager builder : builders) {
             BlockPos target = readTarget(builder);
             if (target != null && !activeSites.contains(target)) {
@@ -75,9 +74,7 @@ public final class ConstructionWorkerAI {
                 prepareBuilder(builder);
             }
         }
-
-        // Also run stale-target cleanup when the final order was completed or cancelled.
-        if (orders.isEmpty()) {
+        if (orders.isEmpty() || builders.isEmpty()) {
             return;
         }
 
@@ -90,8 +87,6 @@ public final class ConstructionWorkerAI {
 
             Villager builder = findBuilderForSite(builders, assignedThisTick, site);
             if (builder == null) {
-                // Keep each builder on an existing assignment; only unassigned builders
-                // may be allocated to a new site.
                 builder = findUnassignedBuilder(builders, assignedThisTick, site);
                 if (builder != null) {
                     writeTarget(builder, site);
@@ -107,24 +102,36 @@ public final class ConstructionWorkerAI {
             double distance = builder.distanceToSqr(
                     site.getX() + 0.5D, site.getY() + 1.0D, site.getZ() + 0.5D);
             if (distance > WORK_DISTANCE_SQUARED) {
+                builder.getPersistentData().putInt(WORK_PROGRESS_KEY, 0);
                 if (builder.getNavigation().isDone()) {
                     builder.getNavigation().moveTo(
                             site.getX() + 0.5D, site.getY() + 1.0D, site.getZ() + 0.5D, MOVE_SPEED);
                 }
+                prepareBuilder(builder);
                 continue;
             }
 
             builder.getNavigation().stop();
-            if (level.getGameTime() % TICKS_BETWEEN_LAYERS == 0) {
-                SettlementBuildingManager.BuildResult result =
-                        SettlementBuildingManager.placeConstructionLayer(level, data, order);
-                if (result.success()) {
-                    builder.getPersistentData().remove(BLOCKED_REASON_KEY);
-                } else {
-                    builder.getPersistentData().putString(BLOCKED_REASON_KEY, result.message());
-                }
-                prepareBuilder(builder);
+            var persistent = builder.getPersistentData();
+            int progressTicks = Math.min(WORK_PROGRESS_TICKS,
+                    Math.max(0, persistent.getInt(WORK_PROGRESS_KEY)) + WORK_UPDATE_TICKS);
+            persistent.putInt(WORK_PROGRESS_KEY, progressTicks);
+            prepareBuilder(builder);
+            if (progressTicks < WORK_PROGRESS_TICKS) {
+                continue;
             }
+
+            SettlementBuildingManager.BuildResult result =
+                    SettlementBuildingManager.placeConstructionLayer(level, data, order);
+            if (result.success()) {
+                persistent.putInt(WORK_PROGRESS_KEY, 0);
+                persistent.remove(BLOCKED_REASON_KEY);
+            } else {
+                // Keep the bar full while blocked, and retry safely once per second.
+                persistent.putInt(WORK_PROGRESS_KEY, WORK_PROGRESS_TICKS);
+                persistent.putString(BLOCKED_REASON_KEY, result.message());
+            }
+            prepareBuilder(builder);
         }
     }
 
@@ -168,10 +175,22 @@ public final class ConstructionWorkerAI {
     }
 
     private static void prepareBuilder(Villager builder) {
-        boolean blocked = !builder.getPersistentData().getString(BLOCKED_REASON_KEY).isBlank();
-        String displayName = blocked
-                ? "Строитель Civitas — ждёт снабжение"
-                : "Строитель Civitas";
+        var persistent = builder.getPersistentData();
+        boolean blocked = !persistent.getString(BLOCKED_REASON_KEY).isBlank();
+        int progressTicks = Math.max(0, Math.min(WORK_PROGRESS_TICKS, persistent.getInt(WORK_PROGRESS_KEY)));
+        String displayName;
+        if (blocked) {
+            displayName = "Строитель Civitas — ожидание";
+        } else if (progressTicks > 0) {
+            int filled = Math.max(0, Math.min(10,
+                    (int) Math.ceil(progressTicks * 10.0D / WORK_PROGRESS_TICKS)));
+            displayName = "Строитель Civitas §e[" + "■".repeat(filled) + "§7"
+                    + "□".repeat(10 - filled) + "§e] " + (progressTicks / WORK_UPDATE_TICKS) + "/3 сек";
+        } else if (!builder.getNavigation().isDone()) {
+            displayName = "Строитель Civitas — идёт на площадку";
+        } else {
+            displayName = "Строитель Civitas";
+        }
         if (builder.getCustomName() == null
                 || !builder.getCustomName().getString().equals(displayName)) {
             builder.setCustomName(Component.literal(displayName));
@@ -194,6 +213,10 @@ public final class ConstructionWorkerAI {
 
     private static void writeTarget(Villager villager, BlockPos site) {
         var tag = villager.getPersistentData();
+        if (!site.equals(readTarget(villager))) {
+            tag.putInt(WORK_PROGRESS_KEY, 0);
+            tag.remove(BLOCKED_REASON_KEY);
+        }
         tag.putBoolean(TARGET_ASSIGNED_KEY, true);
         tag.putInt(TARGET_X_KEY, site.getX());
         tag.putInt(TARGET_Y_KEY, site.getY());
@@ -206,5 +229,6 @@ public final class ConstructionWorkerAI {
         tag.remove(TARGET_X_KEY);
         tag.remove(TARGET_Y_KEY);
         tag.remove(TARGET_Z_KEY);
+        tag.putInt(WORK_PROGRESS_KEY, 0);
     }
 }
