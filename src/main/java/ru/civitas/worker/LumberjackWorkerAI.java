@@ -217,7 +217,7 @@ public final class LumberjackWorkerAI {
             persistent.putString(CARRIED_ITEM_KEY, "");
         }
 
-        BlockPos treeLog = findNearestTreeLog(level, villager.blockPosition());
+        BlockPos treeLog = findNearestTreeLog(level, villager.blockPosition(), worldData, warehousePos);
         String targetItemId = treeLog == null ? "" : BuiltInRegistries.ITEM.getKey(level.getBlockState(treeLog).getBlock().asItem()).toString();
         boolean mustDeliver = carriedCount >= MAX_CARRIED
                 || carriedCount > 0 && (treeLog == null || !carriedItemId.equals(targetItemId));
@@ -296,7 +296,7 @@ public final class LumberjackWorkerAI {
         persistent.putInt(CHOP_PROGRESS_KEY, 0);
     }
 
-    private static BlockPos findNearestTreeLog(ServerLevel level, BlockPos origin) {
+    private static BlockPos findNearestTreeLog(ServerLevel level, BlockPos origin, CivitasSavedData worldData, BlockPos villageCenter) {
         BlockPos best = null;
         double bestDistance = Double.MAX_VALUE;
         for (int dx = -12; dx <= 12; dx++) {
@@ -305,6 +305,19 @@ public final class LumberjackWorkerAI {
                     BlockPos pos = origin.offset(dx, dy, dz);
                     BlockState state = level.getBlockState(pos);
                     if (!state.is(BlockTags.LOGS) || !hasNearbyLeaves(level, pos)) {
+                        continue;
+                    }
+
+                    // Never treat timber close to the starter village as a harvestable tree:
+                    // the starter houses and warehouse contain log blocks too.
+                    // Keep this conservative until every generated structure has a registered footprint.
+                    if (Math.abs(pos.getX() - villageCenter.getX()) <= 10
+                            && Math.abs(pos.getZ() - villageCenter.getZ()) <= 10) {
+                        continue;
+                    }
+
+                    // Protect registered buildings and the immediate area around their footprint.
+                    if (worldData.hasBuildingNear(pos, 5)) {
                         continue;
                     }
                     double distance = origin.distSqr(pos);
