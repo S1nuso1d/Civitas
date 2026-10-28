@@ -79,6 +79,25 @@ class BuildingBlueprintTest {
     }
 
     @Test
+    void blueprintGeometryRotatesClockwiseInNinetyDegreeSteps() {
+        var northDoor = BuildingBlueprint.layer(BuildingDefinition.Type.CABIN, 2, 0);
+        var eastDoor = BuildingBlueprint.layer(BuildingDefinition.Type.CABIN, 2, 90);
+        var southDoor = BuildingBlueprint.layer(BuildingDefinition.Type.CABIN, 2, 180);
+        var westDoor = BuildingBlueprint.layer(BuildingDefinition.Type.CABIN, 2, 270);
+
+        assertTrue(northDoor.stream().anyMatch(p -> p.relativePosition().equals(new BlockPos(0, 2, -2))
+                && p.blockId().equals("minecraft:oak_door")));
+        assertTrue(eastDoor.stream().anyMatch(p -> p.relativePosition().equals(new BlockPos(2, 2, 0))
+                && p.blockId().equals("minecraft:oak_door")));
+        assertTrue(southDoor.stream().anyMatch(p -> p.relativePosition().equals(new BlockPos(0, 2, 2))
+                && p.blockId().equals("minecraft:oak_door")));
+        assertTrue(westDoor.stream().anyMatch(p -> p.relativePosition().equals(new BlockPos(-2, 2, 0))
+                && p.blockId().equals("minecraft:oak_door")));
+        assertThrows(IllegalArgumentException.class,
+                () -> BuildingBlueprint.layer(BuildingDefinition.Type.CABIN, 1, 45));
+    }
+
+    @Test
     void invalidLayerIsRejected() {
         assertThrows(IllegalArgumentException.class,
                 () -> BuildingBlueprint.layer(BuildingDefinition.Type.CABIN, 0));
