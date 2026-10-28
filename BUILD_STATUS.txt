@@ -1,7 +1,11 @@
-Civitas Alpha 0.15.0 — build status
+Civitas Alpha 0.16.0 — build status
 Target: Minecraft Java Edition 1.21.1 + Forge 52.1.20 + Java 21
 
-New in 0.15.0:
+New in 0.16.0:
+- Each layer deduction snapshots all physical warehouse slots before removing items.
+- If a deduction fails, the inventory snapshot is restored and the layer is not placed.
+
+Retained from 0.15.0:
 - New build orders reserve resources without removing them immediately from the physical warehouse.
 - Successful construction of a layer consumes only that layer's persisted material cost.
 - A new order is accepted only if warehouse stock can cover existing reservations plus its cost.
