@@ -699,7 +699,7 @@ public final class SettlementScreen extends Screen {
         } else if (snapshot.foodDelta7d() >= 0) {
             lines.add("Прогноз еды: запас не сокращается по данным за 7 дней");
         }
-        if (snapshot.foodStock() < Math.max(1, snapshot.foodNeedPerDay()) * 3L) {
+        if (snapshot.foodStock() < Math.max(1, snapshot.foodConsumptionPerDay()) * 3L) {
             lines.add("ВНИМАНИЕ: запас еды меньше трёх дней потребления");
         }
         lines.add("Последние события:");
