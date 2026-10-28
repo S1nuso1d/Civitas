@@ -110,6 +110,7 @@ public final class ConstructionWorkerAI {
             }
 
             assignedThisTick.add(builder.getUUID());
+            VillagerEquipment.ensure(builder, "builder");
             if (StuckDetector.check(level, builder) || !AiLodController.shouldTick(level, builder)) {
                 continue;
             }
