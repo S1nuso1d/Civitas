@@ -127,11 +127,14 @@ public final class SettlementScreen extends Screen {
         }
 
         int footerButtonY = panelY + panelHeight - 30;
-        int leftButtonWidth = (contentWidth - 4) / 2;
-        addButton("Обновить", contentX, footerButtonY, leftButtonWidth, 20,
-                CivitasNetwork::requestSnapshot, Items.COMPASS);
-        addButton("Закрыть", contentX + leftButtonWidth + 4, footerButtonY,
-                contentWidth - leftButtonWidth - 4, 20, this::onClose, Items.BARRIER);
+        int footerGap = 4;
+        int footerButtonWidth = (contentWidth - footerGap * 2) / 3;
+        addButton("Дипломатия", contentX, footerButtonY, footerButtonWidth, 20,
+                CivitasNetwork::requestDiplomacy, Items.COMPASS);
+        addButton("Обновить", contentX + footerButtonWidth + footerGap, footerButtonY,
+                footerButtonWidth, 20, CivitasNetwork::requestSnapshot, Items.COMPASS);
+        addButton("Закрыть", contentX + (footerButtonWidth + footerGap) * 2, footerButtonY,
+                contentWidth - (footerButtonWidth + footerGap) * 2, 20, this::onClose, Items.BARRIER);
 
         CivitasNetwork.requestSnapshot();
     }
