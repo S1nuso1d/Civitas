@@ -63,10 +63,10 @@ public final class SettlementBuildingManager {
                     "Чтобы безопасно отменить начатое строительство, сначала подойди к его площадке и загрузи чанк.");
         }
 
-        Map<String, Integer> originalReservation = order.reservedResources().isEmpty()
-                ? definition.costs() : order.reservedResources();
-        Map<String, Integer> refund = refundableResources(
-                originalReservation, order.progress(), order.totalLayers());
+        Map<String, Integer> refund = order.reservedResources().isEmpty()
+                // Backward compatibility for orders saved before 0.13.0.
+                ? refundableResources(definition.costs(), order.progress(), order.totalLayers())
+                : order.remainingReservedResources();
 
         // Remove only the block types that Civitas placed in completed layers.
         // Player replacements using other block types are intentionally preserved.
