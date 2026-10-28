@@ -6,7 +6,9 @@
 - Added a client-only real-time settlement HUD toggled with F4, backed by the existing authoritative settlement snapshot.
 - HUD shows population, worker roles, food reserve estimate, seven-day resource trends, construction queue, building count, warehouse occupancy and the current settlement status.
 - Added a villager inspection panel while looking at a nearby villager: name, current custom status, movement/idle state, health and Minecraft profession.
-- This slice deliberately does not claim needs-based worker autonomy, persistent traditions, new networking fields, or a complete AI reason stack. Those require dedicated follow-up changes and tests.
+- Added a server-authoritative hunger clock for assigned lumberjacks, farmers and builders. Hunger decreases by one point per 1,000 game ticks; at 40 or lower, a worker walks to the settlement warehouse and consumes stored food if available, then resumes its profession. Existing explicit personal orders retain priority.
+- Hunger state uses persistent-data defaults and adds no saved-data schema or network protocol changes.
+- This slice does not yet implement tool durability/replacement, shelter seeking, sleep/social/family decisions, persistent traditions, new advancement triggers or a complete AI reason stack.
 
 ### Validation
 - Source committed; GitHub Actions build/tests and in-game rendering must be checked before calling this release verified.
