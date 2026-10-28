@@ -206,6 +206,30 @@ class BuildingBlueprintTest {
     }
 
     @Test
+    void houseUpgradeBlueprintsStayInsideTheDeclaredFootprint() {
+        for (int level : new int[]{2, 3}) {
+            for (int rotation : new int[]{0, 90, 180, 270}) {
+                var placements = BuildingBlueprint.houseUpgrade(level, rotation);
+                Set<BlockPos> positions = new HashSet<>();
+                for (BuildingBlueprint.Placement placement : placements) {
+                    assertTrue(positions.add(placement.relativePosition()));
+                    assertTrue(Math.abs(placement.relativePosition().getX()) <= 3);
+                    assertTrue(Math.abs(placement.relativePosition().getZ()) <= 3);
+                }
+            }
+        }
+        assertEquals(9, BuildingBlueprint.houseUpgrade(2, 0).size());
+        assertEquals(6, BuildingBlueprint.houseUpgrade(3, 0).size());
+    }
+
+    @Test
+    void houseUpgradeBlueprintRejectsInvalidParameters() {
+        assertThrows(IllegalArgumentException.class, () -> BuildingBlueprint.houseUpgrade(1, 0));
+        assertThrows(IllegalArgumentException.class, () -> BuildingBlueprint.houseUpgrade(4, 0));
+        assertThrows(IllegalArgumentException.class, () -> BuildingBlueprint.houseUpgrade(2, 45));
+    }
+
+    @Test
     void invalidLayerIsRejected() {
         assertThrows(IllegalArgumentException.class,
                 () -> BuildingBlueprint.layer(BuildingDefinition.Type.CABIN, 0));
