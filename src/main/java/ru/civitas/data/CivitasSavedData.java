@@ -1,6 +1,7 @@
 package ru.civitas.data;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -19,6 +20,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.UUID;
 
@@ -60,6 +63,8 @@ public final class CivitasSavedData extends SavedData {
     private final List<String> tradeHistory = new ArrayList<>();
     private long nextCaravanTick;
     private BlockPos tradePoint;
+    /** Persisted overworld chunk claims owned by this settlement. */
+    private final Set<Long> claimedChunks = new HashSet<>();
 
     public record BuildingRecord(String type, int x, int y, int z) { }
 
@@ -296,6 +301,11 @@ public final class CivitasSavedData extends SavedData {
         }
         data.nextCaravanTick = Math.max(0L, tag.getLong("next_caravan_tick"));
         data.tradePoint = tag.contains("trade_point") ? BlockPos.of(tag.getLong("trade_point")) : null;
+        ListTag storedClaims = tag.getList("territory_claims", Tag.TAG_COMPOUND);
+        for (int i = 0; i < storedClaims.size(); i++) {
+            CompoundTag claim = storedClaims.getCompound(i);
+            data.claimedChunks.add(new ChunkPos(claim.getInt("x"), claim.getInt("z")).toLong());
+        }
         return data;
     }
 
@@ -378,6 +388,15 @@ public final class CivitasSavedData extends SavedData {
         tag.put("trade_history", historyTags);
         tag.putLong("next_caravan_tick", nextCaravanTick);
         if (tradePoint != null) tag.putLong("trade_point", tradePoint.asLong());
+        ListTag storedClaims = new ListTag();
+        for (long packed : claimedChunks) {
+            ChunkPos chunk = new ChunkPos(packed);
+            CompoundTag claim = new CompoundTag();
+            claim.putInt("x", chunk.x);
+            claim.putInt("z", chunk.z);
+            storedClaims.add(claim);
+        }
+        tag.put("territory_claims", storedClaims);
         return tag;
     }
 
@@ -401,6 +420,9 @@ public final class CivitasSavedData extends SavedData {
         centerZ = center.getZ();
         population = 5;
         level = 1;
+        claimedChunks.clear();
+        ChunkPos initialChunk = new ChunkPos(center);
+        claimedChunks.add(initialChunk.toLong());
         setDirty();
         return true;
     }
@@ -603,6 +625,55 @@ public final class CivitasSavedData extends SavedData {
      * Whether a planned building site falls inside the settlement's current
      * influence radius. This is a horizontal radius check, not chunk ownership.
      */
+    /** Maximum number of chunks the settlement may claim at its current development level. */
+    public int getTerritoryClaimLimit() {
+        return Math.max(1, Math.min(16, 1 + getTerritoryInfluence().score() / 100));
+    }
+
+    public int getClaimedChunkCount() {
+        return claimedChunks.size();
+    }
+
+    public boolean isChunkClaimed(int chunkX, int chunkZ) {
+        return claimedChunks.contains(new ChunkPos(chunkX, chunkZ).toLong());
+    }
+
+    public boolean isChunkClaimed(BlockPos position) {
+        if (position == null) return false;
+        return isChunkClaimed(position.getX() >> 4, position.getZ() >> 4);
+    }
+
+    /** Claims a chunk only if it is inside the settlement's influence and capacity. */
+    public boolean claimChunk(int chunkX, int chunkZ) {
+        if (!founded || isChunkClaimed(chunkX, chunkZ) || claimedChunks.size() >= getTerritoryClaimLimit()) {
+            return false;
+        }
+        BlockPos chunkCenter = new BlockPos(chunkX * 16 + 8, getTerritoryCenter().getY(), chunkZ * 16 + 8);
+        if (!isWithinTerritory(chunkCenter)) return false;
+        claimedChunks.add(new ChunkPos(chunkX, chunkZ).toLong());
+        setDirty();
+        return true;
+    }
+
+    /** The founding chunk is permanent; other chunks can be released by the owner. */
+    public boolean unclaimChunk(int chunkX, int chunkZ) {
+        if (!founded || !isChunkClaimed(chunkX, chunkZ)) return false;
+        ChunkPos foundingChunk = new ChunkPos(getCenter());
+        long packed = new ChunkPos(chunkX, chunkZ).toLong();
+        if (packed == foundingChunk.toLong()) return false;
+        boolean removed = claimedChunks.remove(packed);
+        if (removed) setDirty();
+        return removed;
+    }
+
+    public List<ChunkPos> getClaimedChunks() {
+        List<ChunkPos> result = new ArrayList<>();
+        for (long packed : claimedChunks) result.add(new ChunkPos(packed));
+        result.sort(java.util.Comparator.comparingInt((ChunkPos chunk) -> chunk.x)
+                .thenComparingInt(chunk -> chunk.z));
+        return Collections.unmodifiableList(result);
+    }
+
     public boolean isWithinTerritory(BlockPos position) {
         if (!founded || position == null) return false;
         BlockPos center = getTerritoryCenter();
