@@ -154,6 +154,8 @@ public final class ConstructionWorkerAI {
             persistent.putInt(WORK_PROGRESS_KEY, progressTicks);
             // Make work visibly physical: residents turn to the plot and swing
             // their hand while the progress bar advances, rather than appearing idle.
+            builder.getLookControl().setLookAt(
+                    workPos.getX() + 0.5D, workPos.getY() + 1.0D, workPos.getZ() + 0.5D);
             builder.swing(InteractionHand.MAIN_HAND);
             prepareBuilder(builder);
             if (progressTicks < WORK_PROGRESS_TICKS) {
