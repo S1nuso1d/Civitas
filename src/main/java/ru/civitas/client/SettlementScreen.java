@@ -365,7 +365,7 @@ public final class SettlementScreen extends Screen {
     }
 
     private void initBuildings() {
-        int startY = contentY + 22;
+        int startY = contentY + 30;
         int footerY = contentBottom - 24;
         int rows = Math.max(1, (footerY - startY) / 13);
         List<String> buildings = snapshot == null ? List.of() : snapshot.buildings();
@@ -773,7 +773,7 @@ public final class SettlementScreen extends Screen {
             drawLine(contentY + 28, "Загружаю список зданий…", 0xFF777777, contentWidth);
             return;
         }
-        drawLine(contentY + 3, "Выбери здание в списке; уровень дома указан рядом с названием.",
+        drawLine(contentY + 3, "Ур.2: 5 плит, 4 забора, 1 ступень, 1 фонарь · Ур.3: 6 кирпичей",
                 0xFF303030, contentWidth);
         if (snapshot.buildings().isEmpty()) {
             drawLine(contentY + 28, "Пока нет зарегистрированных построек.", 0xFF777777, contentWidth);
