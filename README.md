@@ -1,4 +1,13 @@
-# Civitas — Alpha 0.37.2 (Forge 1.21.1)
+# Civitas — Alpha 0.38.0 (Forge 1.21.1)
+
+## Alpha 0.38.0 — Senses & Schedules
+- Added a shared worker lifecycle helper for night rest, nearby unpowered-door opening, road movement speed, and work feedback.
+- Assigned workers gain a non-stacking +35% base movement-speed modifier while standing on supported road blocks; it is removed when they leave the road or lose their job.
+- Lumberjacks, builders, and farmers rest during the night window while retaining their saved task and cargo state.
+- Work cycles now emit throttled role-specific sounds and particles; nearby players may hear occasional worker chatter.
+- Rain reduces farmer harvest progress by 25%.
+
+Validation: source changes committed; Gradle build, automated tests, and in-game behavior still require verification.
 
 Civitas — модификация Minecraft Java Edition о развитии поселения от деревни к цивилизации. Жители физически работают и строят настоящие здания, а центральный склад и очередь заказов образуют основу локальной экономики.
 
