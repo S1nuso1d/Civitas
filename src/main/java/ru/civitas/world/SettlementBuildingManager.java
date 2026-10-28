@@ -199,7 +199,7 @@ public final class SettlementBuildingManager {
                     "Нельзя зарезервировать материалы: часть складских запасов уже обещана другим заказам.");
         }
 
-        clearReplaceableVolume(level, site, definition);
+        clearReplaceableVolume(level, site, definition, rotationDegrees);
         data.addConstructionOrder(definition.id(), site, definition.totalLayers(),
                 definition.costs(), definition.layerCosts(), true, rotationDegrees);
         return new BuildResult(true, "Заказ принят: " + definition.displayName()
@@ -208,9 +208,11 @@ public final class SettlementBuildingManager {
                 + "Статус: /civitas construction.");
     }
 
-    private static void clearReplaceableVolume(ServerLevel level, BlockPos site, BuildingDefinition definition) {
-        for (int dx = -definition.radiusX(); dx <= definition.radiusX(); dx++) {
-            for (int dz = -definition.radiusZ(); dz <= definition.radiusZ(); dz++) {
+    private static void clearReplaceableVolume(ServerLevel level, BlockPos site, BuildingDefinition definition, int rotationDegrees) {
+        int radiusX = (rotationDegrees == 90 || rotationDegrees == 270) ? definition.radiusZ() : definition.radiusX();
+        int radiusZ = (rotationDegrees == 90 || rotationDegrees == 270) ? definition.radiusX() : definition.radiusZ();
+        for (int dx = -radiusX; dx <= radiusX; dx++) {
+            for (int dz = -radiusZ; dz <= radiusZ; dz++) {
                 for (int dy = 1; dy <= definition.height(); dy++) {
                     BlockPos target = site.offset(dx, dy, dz);
                     BlockState existing = level.getBlockState(target);
