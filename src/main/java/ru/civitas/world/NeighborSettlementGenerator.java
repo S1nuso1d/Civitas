@@ -69,7 +69,13 @@ public final class NeighborSettlementGenerator {
             int radius = 192 + attempt * 16;
             int x = origin.getX() + (int) Math.round(Math.cos(angle) * radius);
             int z = origin.getZ() + (int) Math.round(Math.sin(angle) * radius);
-            level.getChunk(x >> 4, z >> 4);
+            // Load only chunks intersecting the candidate footprint; otherwise
+            // hasChunkAt would reject every site crossing an unloaded boundary.
+            for (int dx : new int[]{-7, 7}) {
+                for (int dz : new int[]{-7, 7}) {
+                    level.getChunk((x + dx) >> 4, (z + dz) >> 4);
+                }
+            }
             int y = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z) - 1;
             BlockPos candidate = new BlockPos(x, y, z);
             if (canBuildAt(level, candidate)) return candidate;
