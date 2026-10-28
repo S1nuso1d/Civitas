@@ -18,6 +18,7 @@ import net.minecraftforge.event.TickEvent;
 import ru.civitas.CivitasConfig;
 import ru.civitas.block.SettlementWarehouseBlockEntity;
 import ru.civitas.data.CivitasSavedData;
+import ru.civitas.worker.VillagerNames;
 import ru.civitas.data.StorageFoodExtension;
 
 import java.util.List;
@@ -115,8 +116,7 @@ public final class SettlementEconomyAI {
                 if (newcomer != null) {
                     newcomer.moveTo(spawn.getX() + 0.5D, spawn.getY(), spawn.getZ() + 0.5D,
                             level.random.nextFloat() * 360.0F, 0.0F);
-                    String[] names = {"Алексей", "Мирон", "Илья", "Вера", "Анна", "Марта", "Лев", "Ева", "Никита", "София"};
-                    newcomer.setCustomName(Component.literal(names[level.random.nextInt(names.length)]));
+                    VillagerNames.applyName(newcomer, level.random);
                     newcomer.setPersistenceRequired();
                     if (level.addFreshEntity(newcomer)) {
                         residents++;
