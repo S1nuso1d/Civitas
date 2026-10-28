@@ -90,6 +90,14 @@ public final class SettlementBuildingManager {
         if (!level.hasChunkAt(site)) {
             return new BuildResult(false, "Площадка находится в незагруженном чанке. Подойди ближе и повтори.");
         }
+        // Current residents and their pathfinding are local to the settlement.
+        // Reject unreachable far-away orders instead of reserving materials forever.
+        if (Math.abs(site.getX() - villageCenter.getX()) > 64
+                || Math.abs(site.getZ() - villageCenter.getZ()) > 64
+                || Math.abs(site.getY() - villageCenter.getY()) > 24) {
+            return new BuildResult(false,
+                    "Участок слишком далеко от поселения для текущих строителей. Выбери место в пределах 64 блоков по горизонтали и 24 по высоте.");
+        }
 
         BuildingDefinition definition = BuildingDefinition.get(type);
         BlockState groundState = level.getBlockState(site);
