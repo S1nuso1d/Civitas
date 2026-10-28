@@ -35,7 +35,7 @@ public final class DiplomacyScreen extends Screen {
         String[] stances = {"neutral", "allied", "rival", "war"};
         String[] labels = {"Нейтр.", "Союз", "Сопер.", "Война"};
         int buttonGap = 4;
-        int buttonWidth = 88;
+        int buttonWidth = 80;
         for (int row = 0; row < pageSize && start + row < data.civilizations().size(); row++) {
             final var civilization = data.civilizations().get(start + row);
             int y = top + 64 + row * 48;
