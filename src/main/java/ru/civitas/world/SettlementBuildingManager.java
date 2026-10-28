@@ -12,41 +12,35 @@ import net.minecraft.world.level.levelgen.Heightmap;
 import ru.civitas.block.SettlementWarehouseBlockEntity;
 import ru.civitas.data.CivitasSavedData;
 
-import java.util.LinkedHashMap;
 import java.util.Map;
 
 /** Validates a build site, charges the physical warehouse and places a small structure. */
 public final class SettlementBuildingManager {
-    public enum BuildingType { CABIN, FARM, WORKSHOP }
-    public record Cost(String itemId, int count) {}
     public record BuildResult(boolean success, String message) {}
 
     private SettlementBuildingManager() {}
 
-    public static String describeCosts(BuildingType type) {
-        return switch (type) {
-            case CABIN -> "32 oak planks, 8 oak logs, 4 glass";
-            case FARM -> "49 dirt, 24 wheat seeds, 1 water bucket";
-            case WORKSHOP -> "32 oak planks, 25 cobblestone, 1 crafting table";
-        };
+    public static String describeCosts(BuildingDefinition.Type type) {
+        return BuildingDefinition.get(type).describeCosts();
     }
 
     public static BuildResult build(ServerLevel level, BlockPos warehousePos,
-                                    SettlementWarehouseBlockEntity warehouse, BuildingType type, CivitasSavedData data) {
+                                    SettlementWarehouseBlockEntity warehouse, BuildingDefinition.Type type, CivitasSavedData data) {
+        BuildingDefinition definition = BuildingDefinition.get(type);
         BlockPos site = findSite(level, warehousePos, type, data);
         if (site == null) return new BuildResult(false,
                 "Нет свободной площадки рядом с деревней. Освободи участок примерно 7×7 блоков.");
 
         if (data.hasBuildingNear(site, 5)) return new BuildResult(false, "Рядом уже зарегистрировано здание. Выбери другой участок.");
-        Map<String, Integer> cost = cost(type);
+        Map<String, Integer> cost = definition.costs();
         for (Map.Entry<String, Integer> entry : cost.entrySet()) {
             if (count(warehouse, entry.getKey()) < entry.getValue()) {
-                return new BuildResult(false, "Не хватает ресурсов на складе: нужно " + describeCosts(type) + ".");
+                return new BuildResult(false, "Не хватает ресурсов на складе: нужно " + definition.describeCosts() + ".");
             }
         }
         cost.forEach((id, amount) -> remove(warehouse, id, amount));
-        data.addConstructionOrder(type.name().toLowerCase(java.util.Locale.ROOT), site, layerCount(type));
-        return new BuildResult(true, "Заказ принят: " + label(type) + ". Материалы списаны со склада; строительство будет идти послойно. Статус: /civitas construction.");
+        data.addConstructionOrder(definition.id(), site, definition.totalLayers());
+        return new BuildResult(true, "Заказ принят: " + definition.displayName() + ". Материалы списаны со склада; строительство будет идти послойно. Статус: /civitas construction.");
     }
 
     public static BuildResult cancelFirstOrder(CivitasSavedData data, net.minecraft.server.level.ServerPlayer player) {
@@ -62,13 +56,9 @@ public final class SettlementBuildingManager {
         if (order.progress() > 0) {
             return new BuildResult(false, "Заказ №" + orderNumber + " уже начат. Его нельзя отменить, чтобы не оставить недостроенное здание и не потерять материалы.");
         }
-        Map<String, Integer> refund = switch (order.type()) {
-            case "cabin" -> cost(BuildingType.CABIN);
-            case "farm" -> cost(BuildingType.FARM);
-            case "workshop" -> cost(BuildingType.WORKSHOP);
-            default -> Map.of();
-        };
-        if (refund.isEmpty()) return new BuildResult(false, "Неизвестный тип заказа: " + order.type());
+        BuildingDefinition definition = BuildingDefinition.find(order.type()).orElse(null);
+        if (definition == null) return new BuildResult(false, "Неизвестный тип заказа: " + order.type());
+        Map<String, Integer> refund = definition.costs();
         if (!data.removeConstructionOrder(order)) return new BuildResult(false, "Заказ уже изменился. Обнови очередь строительства.");
         for (Map.Entry<String, Integer> entry : refund.entrySet()) {
             ResourceLocation id = ResourceLocation.parse(entry.getKey());
@@ -85,12 +75,19 @@ public final class SettlementBuildingManager {
         return new BuildResult(true, "Заказ №" + orderNumber + " отменён. Полный комплект материалов возвращён игроку; при заполненном инвентаре предметы выпали рядом.");
     }
 
-    private static int layerCount(BuildingType type) { return switch (type) { case CABIN -> 5; case FARM -> 2; case WORKSHOP -> 4; }; }
     public static void placeConstructionLayer(ServerLevel level, CivitasSavedData data, CivitasSavedData.ConstructionOrder order) {
-        BlockPos g = new BlockPos(order.x(), order.y(), order.z()); int y = order.progress() + 1;
-        switch (order.type()) { case "cabin" -> cabinLayer(level,g,y); case "farm" -> farmLayer(level,g,y); case "workshop" -> workshopLayer(level,g,y); default -> { return; } }
+        BuildingDefinition.Type type = BuildingDefinition.Type.byId(order.type()).orElse(null);
+        if (type == null) return;
+
+        BlockPos ground = new BlockPos(order.x(), order.y(), order.z());
+        int layer = order.progress() + 1;
+        switch (type) {
+            case CABIN -> cabinLayer(level, ground, layer);
+            case FARM -> farmLayer(level, ground, layer);
+            case WORKSHOP -> workshopLayer(level, ground, layer);
+        }
         data.advanceConstructionOrder(order);
-        if (y >= order.totalLayers()) data.registerBuilding(order.type(),g);
+        if (layer >= BuildingDefinition.get(type).totalLayers()) data.registerBuilding(order.type(), ground);
     }
     private static void cabinLayer(ServerLevel l, BlockPos g, int y) {
         if(y==1){for(int x=-2;x<=2;x++)for(int z=-2;z<=2;z++)set(l,g.offset(x,1,z),Blocks.OAK_PLANKS);set(l,g.offset(0,1,0),Blocks.CRAFTING_TABLE);set(l,g.offset(1,1,0),Blocks.BARREL);set(l,g.offset(0,1,2),Blocks.RED_BED);}
@@ -107,21 +104,8 @@ public final class SettlementBuildingManager {
         else{for(int x=-3;x<=3;x++)for(int z=-3;z<=3;z++)set(l,g.offset(x,4,z),Blocks.OAK_PLANKS);set(l,g.offset(0,2,-2),Blocks.AIR);}
     }
 
-    private static Map<String, Integer> cost(BuildingType type) {
-        Map<String, Integer> cost = new LinkedHashMap<>();
-        switch (type) {
-            case CABIN -> { cost.put("minecraft:oak_planks", 32); cost.put("minecraft:oak_log", 8); cost.put("minecraft:glass", 4); }
-            case FARM -> { cost.put("minecraft:dirt", 49); cost.put("minecraft:wheat_seeds", 24); cost.put("minecraft:water_bucket", 1); }
-            case WORKSHOP -> { cost.put("minecraft:oak_planks", 32); cost.put("minecraft:cobblestone", 25); cost.put("minecraft:crafting_table", 1); }
-        }
-        return cost;
-    }
-
-    private static String label(BuildingType type) {
-        return switch (type) { case CABIN -> "жилой дом"; case FARM -> "ферма"; case WORKSHOP -> "мастерская"; };
-    }
-
-    private static BlockPos findSite(ServerLevel level, BlockPos center, BuildingType type, CivitasSavedData data) {
+    private static BlockPos findSite(ServerLevel level, BlockPos center, BuildingDefinition.Type type, CivitasSavedData data) {
+        BuildingDefinition definition = BuildingDefinition.get(type);
         BlockPos[] candidates = switch (type) {
             case CABIN -> new BlockPos[]{center.offset(9, 0, 0), center.offset(-9, 0, 0), center.offset(0, 0, 9), center.offset(0, 0, -9)};
             case FARM -> new BlockPos[]{center.offset(0, 0, 11), center.offset(11, 0, 0), center.offset(-11, 0, 0), center.offset(0, 0, -11)};
@@ -137,10 +121,11 @@ public final class SettlementBuildingManager {
             BlockPos ground = new BlockPos(x, groundY, z);
             if (!level.getBlockState(ground).isSolid()) continue;
             boolean clear = true;
-            int radius = 3;
-            int height = type == BuildingType.FARM ? 3 : 5;
-            for (int dx = -radius; dx <= radius && clear; dx++) {
-                for (int dz = -radius; dz <= radius && clear; dz++) {
+            int radiusX = definition.radiusX();
+            int radiusZ = definition.radiusZ();
+            int height = definition.height();
+            for (int dx = -radiusX; dx <= radiusX && clear; dx++) {
+                for (int dz = -radiusZ; dz <= radiusZ && clear; dz++) {
                     for (int dy = 1; dy <= height; dy++) {
                         BlockPos p = ground.offset(dx, dy, dz);
                         if (!level.hasChunkAt(p) || !level.getBlockState(p).canBeReplaced()) { clear = false; break; }
