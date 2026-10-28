@@ -15,7 +15,8 @@ public record SettlementSnapshot(
         int woodDelta7d, int stoneDelta7d, int foodDelta7d,
         String statusMessage, List<String> recentEvents, List<String> economy,
         List<String> residents, List<String> residentUuids, List<String> residentRoles,
-        List<String> residentStatuses, List<String> buildings, List<String> construction, List<String> storage
+        List<String> residentStatuses, List<String> buildings, List<String> construction, List<String> storage,
+        List<String> unlockedAchievements
 ) {
     private static final int MAX_RESIDENT_LINES=64, MAX_BUILDING_LINES=128, MAX_CONSTRUCTION_LINES=32,
             MAX_STORAGE_LINES=27, MAX_EVENT_LINES=32, MAX_ECONOMY_LINES=30, MAX_LINE_LENGTH=512;
@@ -30,6 +31,7 @@ public record SettlementSnapshot(
         residentRoles=List.copyOf(residentRoles.subList(0,aligned)); residentStatuses=List.copyOf(residentStatuses.subList(0,aligned));
         buildings=boundedLines(buildings,MAX_BUILDING_LINES); construction=boundedLines(construction,MAX_CONSTRUCTION_LINES);
         storage=boundedLines(storage,MAX_STORAGE_LINES);
+        unlockedAchievements=boundedLines(unlockedAchievements,256);
     }
 
     public static SettlementSnapshot empty(String message) {
@@ -39,7 +41,7 @@ public record SettlementSnapshot(
                 0,0,0,0,
                 0,0,0,
                 0,0,0,message,
-                List.of(),List.of(),List.of(),List.of(),List.of(),List.of(),List.of(),List.of(),List.of());
+                List.of(),List.of(),List.of(),List.of(),List.of(),List.of(),List.of(),List.of(),List.of(),List.of());
     }
 
     public void encode(FriendlyByteBuf b) {
@@ -55,6 +57,7 @@ public record SettlementSnapshot(
         writeLines(b,residents,MAX_RESIDENT_LINES); writeLines(b,residentUuids,MAX_RESIDENT_LINES);
         writeLines(b,residentRoles,MAX_RESIDENT_LINES); writeLines(b,residentStatuses,MAX_RESIDENT_LINES);
         writeLines(b,buildings,MAX_BUILDING_LINES); writeLines(b,construction,MAX_CONSTRUCTION_LINES); writeLines(b,storage,MAX_STORAGE_LINES);
+        writeLines(b,unlockedAchievements,256);
     }
 
     public static SettlementSnapshot decode(FriendlyByteBuf b) {
@@ -70,7 +73,17 @@ public record SettlementSnapshot(
                 readLines(b,MAX_EVENT_LINES),readLines(b,MAX_ECONOMY_LINES),
                 readLines(b,MAX_RESIDENT_LINES),readLines(b,MAX_RESIDENT_LINES),
                 readLines(b,MAX_RESIDENT_LINES),readLines(b,MAX_RESIDENT_LINES),
-                readLines(b,MAX_BUILDING_LINES),readLines(b,MAX_CONSTRUCTION_LINES),readLines(b,MAX_STORAGE_LINES));
+                readLines(b,MAX_BUILDING_LINES),readLines(b,MAX_CONSTRUCTION_LINES),readLines(b,MAX_STORAGE_LINES),
+                readLines(b,256));
+    }
+
+    public SettlementSnapshot withUnlockedAchievements(List<String> ids) {
+        return new SettlementSnapshot(founded, settlementName, ownerName, level, population,
+                foodStock, foodConsumptionPerDay, foodDaysLeft, hungerDays, growthProgressDays,
+                growthIntervalDays, bedCount, residentCount, lumberjacks, builders, farmers, idleResidents,
+                cabinCount, farmCount, workshopCount, orderCount, warehouseItemCount, warehouseOccupiedSlots,
+                warehouseSlots, woodDelta7d, stoneDelta7d, foodDelta7d, statusMessage, recentEvents, economy,
+                residents, residentUuids, residentRoles, residentStatuses, buildings, construction, storage, ids);
     }
 
     private static int readBoundedInt(FriendlyByteBuf b,int max) {
