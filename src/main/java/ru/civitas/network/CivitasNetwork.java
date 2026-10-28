@@ -313,7 +313,7 @@ public final class CivitasNetwork {
     }
 
     private static void send(ServerPlayer player, SettlementSnapshot snapshot) {
-        CHANNEL.send(new SnapshotPacket(snapshot), PacketDistributor.PLAYER.with(() -> player));
+        CHANNEL.send(new SnapshotPacket(snapshot), PacketDistributor.PLAYER.with(player));
     }
 
     public record RequestSnapshotPacket() {
