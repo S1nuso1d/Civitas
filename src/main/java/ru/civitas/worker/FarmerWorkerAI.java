@@ -7,6 +7,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.item.Item;
@@ -38,6 +39,8 @@ public final class FarmerWorkerAI {
     private static final String LEGACY_CARRIED_COUNT = "civitas.farmer_carried_count";
     private static final String STATUS = "civitas.farmer_status";
     private static final String NEXT_SCAN_TICK = "civitas.farmer_next_scan_tick";
+    private static final String HARVEST_PROGRESS = "civitas.farmer_harvest_progress_ticks";
+    private static final int HARVEST_WORK_TICKS = 60;
     private static final int UPDATE_TICKS = 20;
     private static final double MOVE_SPEED = 0.8D;
     private static final double WORK_DISTANCE_SQUARED = 4.0D;
@@ -177,6 +180,17 @@ public final class FarmerWorkerAI {
             clearTarget(villager);
             return;
         }
+        int harvestProgress = Math.min(HARVEST_WORK_TICKS,
+                Math.max(0, tag.getInt(HARVEST_PROGRESS)) + UPDATE_TICKS);
+        tag.putInt(HARVEST_PROGRESS, harvestProgress);
+        villager.getLookControl().setLookAt(
+                target.getX() + 0.5D, target.getY() + 0.5D, target.getZ() + 0.5D);
+        villager.swing(InteractionHand.MAIN_HAND);
+        if (harvestProgress < HARVEST_WORK_TICKS) {
+            setStatus(villager, "Собирает урожай (" + harvestProgress / UPDATE_TICKS + "/3 сек)");
+            return;
+        }
+        tag.putInt(HARVEST_PROGRESS, 0);
         if (!StorageFoodExtension.removeOne(warehouse, seed)) {
             setStatus(villager, "Нет семян на складе: " + seed.getDescription().getString());
             return;
