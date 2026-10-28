@@ -273,8 +273,10 @@ public final class CivitasNetwork {
                         ? villager.getName().getString()
                         : villager.getCustomName().getString();
                 String residentStatus = LumberjackWorkerAI.getWorkerStatus(villager);
-                if (!villager.getPersistentData().getString("civitas.builder_blocked_reason").isBlank()) {
-                    residentStatus += " | ждёт снабжение";
+                String blockedReason = villager.getPersistentData().getString("civitas.builder_blocked_reason");
+                if (!blockedReason.isBlank() && "builder".equals(role)) {
+                    // Show the real blocking cause: not every pause is a supply problem.
+                    residentStatus += " | " + blockedReason;
                 }
                 residentLines.add(name + " — " + roleLabel + " | " + residentStatus);
             }
