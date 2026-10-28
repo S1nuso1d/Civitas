@@ -25,6 +25,9 @@ import ru.civitas.block.SettlementWarehouseBlockEntity;
 import ru.civitas.data.CivitasSavedData;
 import ru.civitas.worker.PersonalOrders;
 import ru.civitas.data.StorageFoodExtension;
+import ru.civitas.ai.AiLodController;
+import ru.civitas.ai.ChunkGuard;
+import ru.civitas.ai.StuckDetector;
 
 import java.util.Comparator;
 
@@ -58,7 +61,8 @@ public final class FarmerWorkerAI {
             PersonalOrders.tickOverride(level, villager);
             return;
         }
-        if (villager.tickCount % UPDATE_TICKS != 0) return;
+        if (StuckDetector.check(level, villager)) return;
+        if (!AiLodController.shouldTick(level, villager)) return;
         if (WorkerLifeCycle.shouldRest(level, villager, "farmer")) return;
         WorkerLifeCycle.openNearbyDoor(level, villager);
         tickWorker(level, villager);
@@ -140,6 +144,7 @@ public final class FarmerWorkerAI {
         }
 
         BlockPos target = readTarget(villager);
+        if (target != null && !ChunkGuard.targetAvailable(level, villager, target, STATUS)) return;
         if (target != null && (!isValidCrop(level, target, center) || !isMature(level.getBlockState(target))) ) {
             clearTarget(villager);
             target = null;
@@ -235,6 +240,7 @@ public final class FarmerWorkerAI {
         tag.putString(LEGACY_CARRIED_ITEM, "");
         tag.putInt(LEGACY_CARRIED_COUNT, 0);
         tag.putString(ROLE_KEY, "farmer");
+        VillagerEquipment.apply(villager, "farmer");
         tag.putLong(NEXT_SCAN_TICK, 0L);
         tag.putString(STATUS, "Ищет зрелые культуры");
         setName(villager, "");
@@ -249,6 +255,7 @@ public final class FarmerWorkerAI {
         if (hasCargo(villager)) return false;
         clearTarget(villager);
         tag.putString(ROLE_KEY, "");
+        VillagerEquipment.clear(villager);
         tag.remove(STATUS);
         villager.getNavigation().stop();
         if (villager.getCustomName() != null
