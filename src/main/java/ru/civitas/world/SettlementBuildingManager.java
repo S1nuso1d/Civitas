@@ -392,10 +392,16 @@ public final class SettlementBuildingManager {
     }
     private static BlockPos findSite(ServerLevel level, BlockPos center, BuildingDefinition.Type type, CivitasSavedData data) {
         BuildingDefinition definition = BuildingDefinition.get(type);
+        // Automatic sites stay outside the 29x29 starter village, its four
+        // houses and the paths connecting them. Manual coordinates are available
+        // in the construction screen when the player wants a different location.
         BlockPos[] candidates = switch (type) {
-            case CABIN -> new BlockPos[]{center.offset(9, 0, 0), center.offset(-9, 0, 0), center.offset(0, 0, 9), center.offset(0, 0, -9)};
-            case FARM -> new BlockPos[]{center.offset(0, 0, 11), center.offset(11, 0, 0), center.offset(-11, 0, 0), center.offset(0, 0, -11)};
-            case WORKSHOP -> new BlockPos[]{center.offset(-9, 0, 0), center.offset(0, 0, -9), center.offset(9, 0, 0), center.offset(0, 0, 9)};
+            case CABIN -> new BlockPos[]{center.offset(18, 0, 0), center.offset(-18, 0, 0),
+                    center.offset(0, 0, 18), center.offset(0, 0, -18)};
+            case FARM -> new BlockPos[]{center.offset(0, 0, 20), center.offset(20, 0, 0),
+                    center.offset(-20, 0, 0), center.offset(0, 0, -20)};
+            case WORKSHOP -> new BlockPos[]{center.offset(-18, 0, 0), center.offset(0, 0, -18),
+                    center.offset(18, 0, 0), center.offset(0, 0, 18)};
         };
         for (BlockPos candidate : candidates) {
             boolean reserved = data.getConstructionOrders().stream().anyMatch(order ->
@@ -412,9 +418,25 @@ public final class SettlementBuildingManager {
             int height = definition.height();
             for (int dx = -radiusX; dx <= radiusX && clear; dx++) {
                 for (int dz = -radiusZ; dz <= radiusZ && clear; dz++) {
+                    BlockPos floorPos = ground.offset(dx, 0, dz);
+                    if (!level.hasChunkAt(floorPos)
+                            || !level.getBlockState(floorPos).isSolid()
+                            || !level.getFluidState(floorPos).isEmpty()) {
+                        clear = false;
+                        break;
+                    }
                     for (int dy = 1; dy <= height; dy++) {
                         BlockPos p = ground.offset(dx, dy, dz);
-                        if (!level.hasChunkAt(p) || !level.getBlockState(p).canBeReplaced()) { clear = false; break; }
+                        if (!level.hasChunkAt(p)) {
+                            clear = false;
+                            break;
+                        }
+                        BlockState existing = level.getBlockState(p);
+                        if ((!existing.isAir() && !existing.canBeReplaced() && !existing.is(BlockTags.LEAVES))
+                                || !level.getFluidState(p).isEmpty()) {
+                            clear = false;
+                            break;
+                        }
                     }
                 }
             }
