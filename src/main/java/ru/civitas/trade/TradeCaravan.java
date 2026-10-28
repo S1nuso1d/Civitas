@@ -39,6 +39,7 @@ public final class TradeCaravan {
     public int tradeLimit() { return tradeLimit; }
     public int waitTicksLeft() { return waitTicksLeft; }
     public void setWaitTicksLeft(int ticks) { waitTicksLeft = Math.max(0, Math.min(72000, ticks)); }
+    public void setWaitTicksLeft(int ticks) { waitTicksLeft = Math.max(0, Math.min(72000, ticks)); }
     public void tickWait() { if (waitTicksLeft > 0) waitTicksLeft--; }
     public int missingTicks() { return missingTicks; }
     public void tickMissing() { missingTicks = Math.min(1200, missingTicks + 20); }
