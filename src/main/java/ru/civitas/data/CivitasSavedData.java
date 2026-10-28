@@ -58,15 +58,22 @@ public final class CivitasSavedData extends SavedData {
             int progress,
             int totalLayers,
             Map<String, Integer> reservedResources,
-            List<Map<String, Integer>> layerCosts
+            List<Map<String, Integer>> layerCosts,
+            boolean materialsReservedInWarehouse
     ) {
         public ConstructionOrder(String type, int x, int y, int z, int progress, int totalLayers) {
-            this(type, x, y, z, progress, totalLayers, Map.of(), List.of());
+            this(type, x, y, z, progress, totalLayers, Map.of(), List.of(), false);
         }
 
         public ConstructionOrder(String type, int x, int y, int z, int progress,
                                  int totalLayers, Map<String, Integer> reservedResources) {
-            this(type, x, y, z, progress, totalLayers, reservedResources, List.of());
+            this(type, x, y, z, progress, totalLayers, reservedResources, List.of(), false);
+        }
+
+        public ConstructionOrder(String type, int x, int y, int z, int progress,
+                                 int totalLayers, Map<String, Integer> reservedResources,
+                                 List<Map<String, Integer>> layerCosts) {
+            this(type, x, y, z, progress, totalLayers, reservedResources, layerCosts, false);
         }
 
         public ConstructionOrder {
@@ -195,14 +202,12 @@ public final class CivitasSavedData extends SavedData {
                 }
             }
             if (!type.isBlank() && progress < total) {
+                // Missing flag means this is a pre-0.15 order whose materials
+                // were already removed from storage when the order was placed.
+                boolean materialsReservedInWarehouse = order.getBoolean("materials_in_warehouse");
                 ConstructionOrder loaded = new ConstructionOrder(
                         type, order.getInt("x"), order.getInt("y"), order.getInt("z"),
-                        progress, total, reservedResources, layerCosts);
-                // Malformed plans should never cause resources to disappear during a refund.
-                if (!loaded.hasValidLayerCosts()) {
-                    loaded = new ConstructionOrder(type, order.getInt("x"), order.getInt("y"),
-                            order.getInt("z"), progress, total, reservedResources);
-                }
+                        progress, total, reservedResources, layerCosts, materialsReservedInWarehouse);
                 data.constructionOrders.add(loaded);
             }
         }
@@ -247,7 +252,7 @@ public final class CivitasSavedData extends SavedData {
             CompoundTag reservation = new CompoundTag();
             order.reservedResources().forEach(reservation::putInt);
             stored.put("reserved_resources", reservation);
-            if (order.hasValidLayerCosts()) {
+            if (!order.layerCosts().isEmpty()) {
                 ListTag storedLayerCosts = new ListTag();
                 for (Map<String, Integer> layer : order.layerCosts()) {
                     CompoundTag storedLayer = new CompoundTag();
@@ -256,6 +261,7 @@ public final class CivitasSavedData extends SavedData {
                 }
                 stored.put("layer_costs", storedLayerCosts);
             }
+            stored.putBoolean("materials_in_warehouse", order.materialsReservedInWarehouse());
             storedOrders.add(stored);
         }
         tag.put("construction_orders", storedOrders);
@@ -363,6 +369,13 @@ public final class CivitasSavedData extends SavedData {
     public void addConstructionOrder(
             String type, BlockPos position, int totalLayers,
             Map<String, Integer> reservedResources, List<Map<String, Integer>> layerCosts) {
+        addConstructionOrder(type, position, totalLayers, reservedResources, layerCosts, false);
+    }
+
+    public void addConstructionOrder(
+            String type, BlockPos position, int totalLayers,
+            Map<String, Integer> reservedResources, List<Map<String, Integer>> layerCosts,
+            boolean materialsReservedInWarehouse) {
         if (type == null || type.isBlank() || position == null || totalLayers < 1) return;
         Map<String, Integer> reservation = new TreeMap<>();
         if (reservedResources != null) {
@@ -374,14 +387,71 @@ public final class CivitasSavedData extends SavedData {
         }
         ConstructionOrder order = new ConstructionOrder(
                 type, position.getX(), position.getY(), position.getZ(), 0, totalLayers,
-                reservation, layerCosts);
-        if (!order.hasValidLayerCosts()) {
+                reservation, layerCosts, materialsReservedInWarehouse);
+        if (materialsReservedInWarehouse && !order.hasValidLayerCosts()) {
+            // Do not create an unpaid order without a complete stage cost plan.
+            return;
+        }
+        if (!materialsReservedInWarehouse && !order.hasValidLayerCosts()) {
             order = new ConstructionOrder(type, position.getX(), position.getY(), position.getZ(),
                     0, totalLayers, reservation);
         }
         constructionOrders.add(order);
         setDirty();
     }
+
+    /** Materials still physically reserved in the warehouse by active 0.15+ orders. */
+    public Map<String, Integer> getWarehouseReservedResources() {
+        return aggregateWarehouseReservations(null);
+    }
+
+    public Map<String, Integer> getWarehouseReservedResourcesExcluding(ConstructionOrder excluded) {
+        return aggregateWarehouseReservations(excluded);
+    }
+
+    private Map<String, Integer> aggregateWarehouseReservations(ConstructionOrder excluded) {
+        Map<String, Integer> result = new TreeMap<>();
+        for (ConstructionOrder order : constructionOrders) {
+            if (order.equals(excluded) || !order.materialsReservedInWarehouse()) continue;
+            order.remainingReservedResources().forEach((itemId, amount) -> {
+                if (amount != null && amount > 0) {
+                    long sum = (long) result.getOrDefault(itemId, 0) + amount;
+                    result.put(itemId, (int) Math.min(Integer.MAX_VALUE, sum));
+                }
+            });
+        }
+        return Collections.unmodifiableMap(result);
+    }
+
+    /**
+     * True only when physical inventory contains every outstanding reservation.
+     * This prevents one order from consuming materials promised to another order.
+     */
+    public boolean warehouseContainsAllReservations(Map<String, Integer> physicalStock) {
+        Map<String, Integer> stock = physicalStock == null ? Map.of() : physicalStock;
+        for (Map.Entry<String, Integer> reservation : getWarehouseReservedResources().entrySet()) {
+            if (stock.getOrDefault(reservation.getKey(), 0) < reservation.getValue()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** Checks whether a new order can reserve stock without overbooking current orders. */
+    public boolean canReserveWarehouseResources(
+            Map<String, Integer> physicalStock, Map<String, Integer> requestedCosts) {
+        Map<String, Integer> stock = physicalStock == null ? Map.of() : physicalStock;
+        Map<String, Integer> requested = requestedCosts == null ? Map.of() : requestedCosts;
+        Map<String, Integer> reserved = getWarehouseReservedResources();
+        if (!warehouseContainsAllReservations(stock)) return false;
+        for (Map.Entry<String, Integer> cost : requested.entrySet()) {
+            if (cost.getKey() == null || cost.getValue() == null || cost.getValue() < 0) return false;
+            long required = (long) reserved.getOrDefault(cost.getKey(), 0) + cost.getValue();
+            if (stock.getOrDefault(cost.getKey(), 0) < required) return false;
+        }
+        return true;
+    }
+
     public List<ConstructionOrder> getConstructionOrders() { return Collections.unmodifiableList(new ArrayList<>(constructionOrders)); }
     public boolean removeConstructionOrder(ConstructionOrder order) {
         if (order == null || !constructionOrders.remove(order)) return false;
@@ -398,7 +468,7 @@ public final class CivitasSavedData extends SavedData {
             constructionOrders.set(index, new ConstructionOrder(
                     order.type(), order.x(), order.y(), order.z(),
                     order.progress() + 1, order.totalLayers(),
-                    order.reservedResources(), order.layerCosts()));
+                    order.reservedResources(), order.layerCosts(), order.materialsReservedInWarehouse()));
         }
         setDirty();
     }
