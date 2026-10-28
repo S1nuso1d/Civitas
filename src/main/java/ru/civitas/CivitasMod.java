@@ -40,6 +40,7 @@ public final class CivitasMod {
         MinecraftForge.EVENT_BUS.addListener(this::onBuildCreativeTab);
         MinecraftForge.EVENT_BUS.addListener(this::onRegisterCommands);
         MinecraftForge.EVENT_BUS.addListener(LumberjackWorkerAI::onLivingTick);
+        MinecraftForge.EVENT_BUS.addListener(LumberjackWorkerAI::onLivingDeath);
         MinecraftForge.EVENT_BUS.addListener(ConstructionWorkerAI::onLevelTick);
     }
 

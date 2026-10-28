@@ -10,6 +10,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -17,6 +18,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.tags.BlockTags;
 import net.minecraftforge.event.entity.living.LivingEvent;
+import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import ru.civitas.block.SettlementWarehouseBlockEntity;
 import ru.civitas.data.CivitasSavedData;
 
@@ -252,6 +254,68 @@ public final class LumberjackWorkerAI {
             }
         }
         return chosen != null && assignLumberjackTo(level, villageCenter, chosen);
+    }
+
+    /**
+     * Recovers a lumberjack's virtual cargo on death: use warehouse capacity first,
+     * then materialize any remainder as ordinary item entities at the death location.
+     */
+    public static void onLivingDeath(LivingDeathEvent event) {
+        if (!(event.getEntity() instanceof Villager villager)
+                || villager.level().isClientSide
+                || !(villager.level() instanceof ServerLevel level)) {
+            return;
+        }
+
+        var persistent = villager.getPersistentData();
+        int carried = Math.max(0, persistent.getInt(CARRIED_COUNT_KEY));
+        String itemId = persistent.getString(CARRIED_ITEM_KEY);
+        if (carried <= 0 || itemId.isBlank()) {
+            return;
+        }
+
+        if (level.dimension() == Level.OVERWORLD) {
+            CivitasSavedData worldData = CivitasSavedData.get(level.getServer());
+            if (worldData.hasStarterVillage()) {
+                BlockPos warehousePos = worldData.getStarterVillageCenter();
+                if (level.getBlockEntity(warehousePos) instanceof SettlementWarehouseBlockEntity warehouse) {
+                    depositCarriedLogs(warehouse, persistent, itemId, carried);
+                    carried = Math.max(0, persistent.getInt(CARRIED_COUNT_KEY));
+                }
+            }
+        }
+
+        if (carried <= 0) {
+            return;
+        }
+
+        ResourceLocation id = ResourceLocation.tryParse(itemId);
+        if (id == null || !BuiltInRegistries.ITEM.containsKey(id)) {
+            // Do not turn corrupt saved item identifiers into an arbitrary item.
+            persistent.putInt(CARRIED_COUNT_KEY, 0);
+            persistent.putString(CARRIED_ITEM_KEY, "");
+            return;
+        }
+
+        Item item = BuiltInRegistries.ITEM.get(id);
+        if (item == net.minecraft.world.item.Items.AIR) {
+            persistent.putInt(CARRIED_COUNT_KEY, 0);
+            persistent.putString(CARRIED_ITEM_KEY, "");
+            return;
+        }
+
+        int remaining = carried;
+        while (remaining > 0) {
+            int stackSize = Math.min(remaining, item.getDefaultMaxStackSize());
+            ItemEntity drop = new ItemEntity(level, villager.getX(), villager.getY() + 0.25D,
+                    villager.getZ(), new ItemStack(item, stackSize));
+            if (!level.addFreshEntity(drop)) {
+                break;
+            }
+            remaining -= stackSize;
+        }
+        persistent.putInt(CARRIED_COUNT_KEY, remaining);
+        persistent.putString(CARRIED_ITEM_KEY, remaining == 0 ? "" : itemId);
     }
 
     public static void onLivingTick(LivingEvent.LivingTickEvent event) {
