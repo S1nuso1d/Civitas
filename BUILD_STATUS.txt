@@ -1,4 +1,4 @@
-Civitas Alpha 0.37.2 — Worker Search Backoff
+Civitas Alpha 0.38.0 — Senses & Schedules
 Target: Minecraft Java Edition 1.21.1 + Forge 52.1.20 + Java 21
 
 Implemented in source:
