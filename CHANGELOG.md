@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.34.0] - Achievement history
+
+### Added
+- Achievement rows now display the saved in-game day of first unlock.
+- Server sends stable achievement IDs and their persisted first-unlock day in the existing snapshot field; no protocol bump is needed.
+- Historical unlock dates are read from world saved data and remain stable across later state changes.
+
+### Validation
+- Source changes committed; build, tests and in-game rendering require local verification.
+
+
 ## [0.33.0] - Persistent achievements
 
 ### Added
