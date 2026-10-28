@@ -19,7 +19,7 @@ Civitas — стратегическая модификация Minecraft, в к
 - [x] Add a settlement Buildings tab with stable building indices and upgrade levels.
 - [x] Add level 2 and 3 cabin upgrades with visible exterior additions and warehouse material checks.
 - [x] Add an achievement progression tree based on saved settlement milestones.
-- [x] Add a visible construction work animation while the builder's work timer advances.
+- [x] Add visible work animations for builders and lumberjacks, and a timed harvesting cycle for farmers.
 - [ ] Add a full resident daily schedule, social behavior, rest and happiness simulation.
 - [ ] Add claimable achievement rewards and persisted achievement notifications.
 - [ ] Expand house upgrade tiers with room additions, bed capacity and functional interior upgrades.
