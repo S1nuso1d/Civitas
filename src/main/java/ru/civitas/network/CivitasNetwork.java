@@ -652,8 +652,9 @@ public final class CivitasNetwork {
         List<CivitasSavedData.BuildingRecord> buildingRecords = data.getBuildings();
         for (int buildingIndex = 0; buildingIndex < buildingRecords.size(); buildingIndex++) {
             CivitasSavedData.BuildingRecord building = buildingRecords.get(buildingIndex);
-            final String prefix = (buildingIndex + 1) + ". ";
-            BuildingDefinition.find(building.type()).ifPresentOrElse(definition -> {
+            String prefix = (buildingIndex + 1) + ". ";
+            BuildingDefinition definition = BuildingDefinition.find(building.type()).orElse(null);
+            if (definition != null) {
                 switch (definition.type()) {
                     case CABIN -> cabins++;
                     case FARM -> farms++;
@@ -665,12 +666,10 @@ public final class CivitasNetwork {
                     buildingLines.add(prefix + definition.displayName() + levelText + " — "
                             + building.x() + ", " + building.y() + ", " + building.z());
                 }
-            }, () -> {
-                if (buildingLines.size() < 128) {
-                    buildingLines.add(prefix + building.type() + " — "
-                            + building.x() + ", " + building.y() + ", " + building.z());
-                }
-            });
+            } else if (buildingLines.size() < 128) {
+                buildingLines.add(prefix + building.type() + " — "
+                        + building.x() + ", " + building.y() + ", " + building.z());
+            }
         }
 
         List<String> constructionLines = new ArrayList<>();
