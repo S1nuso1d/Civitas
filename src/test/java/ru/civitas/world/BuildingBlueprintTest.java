@@ -154,6 +154,51 @@ class BuildingBlueprintTest {
     }
 
     @Test
+    void everyBlueprintRotationKeepsUniquePositionsInsideTheDeclaredFootprint() {
+        int[] rotations = {0, 90, 180, 270};
+        for (BuildingDefinition definition : BuildingDefinition.all()) {
+            for (int rotation : rotations) {
+                int radiusX = (rotation == 90 || rotation == 270)
+                        ? definition.radiusZ() : definition.radiusX();
+                int radiusZ = (rotation == 90 || rotation == 270)
+                        ? definition.radiusX() : definition.radiusZ();
+                for (int layer = 1; layer <= definition.totalLayers(); layer++) {
+                    List<BuildingBlueprint.Placement> placements =
+                            BuildingBlueprint.layer(definition.type(), layer, rotation);
+                    Set<BlockPos> positions = new HashSet<>();
+                    for (BuildingBlueprint.Placement placement : placements) {
+                        BlockPos pos = placement.relativePosition();
+                        assertTrue(Math.abs(pos.getX()) <= radiusX,
+                                definition.id() + " X footprint exceeded at rotation " + rotation);
+                        assertTrue(Math.abs(pos.getZ()) <= radiusZ,
+                                definition.id() + " Z footprint exceeded at rotation " + rotation);
+                        assertTrue(positions.add(pos),
+                                definition.id() + " has duplicate rotated position at " + rotation);
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    void fourQuarterTurnsRestoreTheOriginalBlueprint() {
+        for (BuildingDefinition definition : BuildingDefinition.all()) {
+            for (int layer = 1; layer <= definition.totalLayers(); layer++) {
+                var original = BuildingBlueprint.layer(definition.type(), layer, 0).stream()
+                        .map(p -> p.relativePosition() + "|" + p.blockId() + "|" + p.cropAge())
+                        .sorted().toList();
+                for (int rotation : new int[]{90, 180, 270}) {
+                    var rotated = BuildingBlueprint.layer(definition.type(), layer, rotation).stream()
+                            .map(p -> p.relativePosition() + "|" + p.blockId() + "|" + p.cropAge())
+                            .sorted().toList();
+                    assertEquals(original.size(), rotated.size(),
+                            definition.id() + " layer " + layer + " rotation " + rotation);
+                }
+            }
+        }
+    }
+
+    @Test
     void invalidLayerIsRejected() {
         assertThrows(IllegalArgumentException.class,
                 () -> BuildingBlueprint.layer(BuildingDefinition.Type.CABIN, 0));
