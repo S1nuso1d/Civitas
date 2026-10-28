@@ -336,6 +336,11 @@ public final class LumberjackWorkerAI {
         if (!"lumberjack".equals(villager.getPersistentData().getString(ROLE_KEY))) {
             return;
         }
+        if (villager.level() instanceof ServerLevel scheduleLevel
+                && scheduleLevel.dimension() == Level.OVERWORLD
+                && WorkerLifeCycle.shouldRest(scheduleLevel, villager, "lumberjack")) {
+            return;
+        }
         if (villager.getPersistentData().getBoolean(PAUSED_KEY)) {
             villager.getNavigation().stop();
             return;
@@ -343,6 +348,7 @@ public final class LumberjackWorkerAI {
         if (villager.tickCount % WORK_INTERVAL != 0 || !(villager.level() instanceof ServerLevel level)) {
             return;
         }
+        WorkerLifeCycle.openNearbyDoor(level, villager);
         tickWorker(level, villager);
     }
 
@@ -532,6 +538,7 @@ public final class LumberjackWorkerAI {
         // once after one second per log, so no floating treetop is left behind.
         int requiredSeconds = Math.max(1, currentTree.size());
         persistent.putInt(TARGET_TREE_SIZE_KEY, requiredSeconds);
+        WorkerLifeCycle.workFeedback(level, villager, "lumberjack", treeLog);
         int progress = persistent.getInt(CHOP_PROGRESS_KEY) + 1;
         persistent.putInt(CHOP_PROGRESS_KEY, Math.min(progress, requiredSeconds));
         updateChoppingName(villager, Math.min(progress, requiredSeconds), requiredSeconds);
