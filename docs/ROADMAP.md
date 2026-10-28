@@ -4,6 +4,17 @@
 
 Civitas — стратегическая модификация Minecraft, в которой игрок начинает с небольшого поселения и постепенно превращает его в цивилизацию. Мир не должен быть только набором меню: вблизи игрока жители физически перемещаются, добывают ресурсы и строят здания. Далёкие поселения работают на облегчённой симуляции, чтобы не перегружать сервер.
 
+## Territory and expansion (Alpha 0.26–0.27)
+
+- [x] Calculate bounded settlement influence from completed registered buildings, population and level.
+- [x] Display influence tier, score and estimated radius in the economy dashboard.
+- [x] Add a territory status command and enforce the influence radius for explicit-position construction and blueprint previews.
+- [ ] Upgrade the circular influence zone to persisted, contestable territory cells/chunks.
+- [ ] Validate the complete building footprint against territory boundaries.
+- [ ] Add expansion projects, border visualization and conflict resolution with neighboring civilizations.
+
+Current implementation is an influence-radius rule, not chunk ownership or general block protection.
+
 ## Технические принципы
 
 - Целевая платформа: Minecraft Java Edition 1.21.1, Forge 52.1.20, Java 21.
