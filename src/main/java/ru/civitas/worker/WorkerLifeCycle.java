@@ -58,12 +58,15 @@ public final class WorkerLifeCycle {
     }
 
     public static void onLivingTick(net.minecraftforge.event.entity.living.LivingEvent.LivingTickEvent event) {
-        if (event.getEntity() instanceof Villager villager && !villager.level().isClientSide) {
-            String role = villager.getPersistentData().getString("civitas.worker_role");
-            AttributeInstance speed = villager.getAttribute(Attributes.MOVEMENT_SPEED);
-            if (ROLES.contains(role) || (speed != null && speed.hasModifier(ROAD_SPEED_ID))) {
-                updateRoadSpeed(villager);
-            }
+        if (!(event.getEntity() instanceof Villager villager) || villager.level().isClientSide) return;
+        if (villager.level() instanceof ServerLevel level
+                && PersonalOrders.get(villager) != PersonalOrders.Order.NONE) {
+            PersonalOrders.tickOverride(level, villager);
+        }
+        String role = villager.getPersistentData().getString("civitas.worker_role");
+        AttributeInstance speed = villager.getAttribute(Attributes.MOVEMENT_SPEED);
+        if (ROLES.contains(role) || (speed != null && speed.hasModifier(ROAD_SPEED_ID))) {
+            updateRoadSpeed(villager);
         }
     }
 
