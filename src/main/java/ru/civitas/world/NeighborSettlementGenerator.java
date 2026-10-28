@@ -28,13 +28,11 @@ public final class NeighborSettlementGenerator {
                                            NeighborCivilization civilization, BlockPos origin) {
         if (level == null || data == null || civilization == null || origin == null) return null;
         if (civilization.siteGenerated() && civilization.hasSite()) return civilization.site();
-        if (civilization.hasSite()) {
-            BlockPos saved = civilization.site();
-            if (level.hasChunkAt(saved)) {
-                civilization.markSiteGenerated();
-                data.markTradeDataDirty();
-                return saved;
-            }
+        if (civilization.hasSite() && level.hasChunkAt(civilization.site())
+                && level.getBlockState(civilization.site()).is(Blocks.BELL)) {
+            civilization.markSiteGenerated();
+            data.markTradeDataDirty();
+            return civilization.site();
         }
 
         BlockPos site = findSafeSite(level, civilization, origin);
