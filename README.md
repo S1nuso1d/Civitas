@@ -61,6 +61,21 @@ Civitas — модификация Minecraft Java Edition о развитии п
 
 4. После `BUILD SUCCESSFUL` ожидаемый JAR: `build\libs\civitas-0.17.0.jar`.
 
+## Windows: ошибка GradleWorkerMain
+
+Если `compileJava` проходит, но тесты падают с `Could not find or load main class worker.org.gradle.process.internal.worker.GradleWorkerMain`, это может быть связано с кодировкой пути к временным файлам Gradle на Windows. В `gradle.properties` не задаётся глобальный `-Dfile.encoding=UTF-8`; кодировка исходников Java по-прежнему явно задана как UTF-8 в `build.gradle`.
+
+Если ошибка остаётся, попробуй запуск с отдельным каталогом Gradle cache, состоящим только из ASCII-символов:
+
+```powershell
+& "$env:LOCALAPPDATA\CivitasBuildTools\gradle-8.8\bin\gradle.bat" --stop
+$env:GRADLE_USER_HOME = 'C:\Project\GradleHomeCivitas'
+New-Item -ItemType Directory -Path $env:GRADLE_USER_HOME -Force | Out-Null
+.\tools\gradle-run.ps1 build --no-daemon --max-workers=1
+```
+
+Первый запуск с новым каталогом заново скачает зависимости. Замени `C:\Project\GradleHomeCivitas` на другой доступный каталог с латинским путём, если папки `C:\Project` у тебя нет.
+
 ## Установка в TLauncher
 
 1. Закрой игру и сделай резервную копию мира.
