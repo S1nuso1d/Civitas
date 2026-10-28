@@ -131,7 +131,7 @@ public final class SettlementScreen extends Screen {
             case STORAGE -> initStorage();
             case ECONOMY -> { }
             case BUILDINGS -> initBuildings();
-            case ACHIEVEMENTS -> { }
+            case ACHIEVEMENTS -> initAchievements();
         }
 
         int footerButtonY = panelY + panelHeight - 30;
@@ -390,6 +390,25 @@ public final class SettlementScreen extends Screen {
                     sendAction(CivitasNetwork.Action.UPGRADE_HOUSE, "",
                             safeInteger(buildingIndexValue, 1, 128, 1));
                 }, Items.OAK_PLANKS);
+    }
+
+    private void initAchievements() {
+        int footerY = contentBottom - 24;
+        int half = (contentWidth - 4) / 2;
+        addButton("← Предыдущие", contentX, footerY, half, 20,
+                () -> { listOffset = Math.max(0, listOffset - achievementVisibleRows()); rebuildWidgets(); },
+                Items.ARROW);
+        addButton("Следующие →", contentX + half + 4, footerY, contentWidth - half - 4, 20,
+                () -> { listOffset = Math.min(achievementMaxOffset(), listOffset + achievementVisibleRows()); rebuildWidgets(); },
+                Items.ARROW);
+    }
+
+    private int achievementVisibleRows() {
+        return visibleRows(contentY + 42, 14);
+    }
+
+    private int achievementMaxOffset() {
+        return Math.max(0, 21 - achievementVisibleRows());
     }
 
     private void initStorage() {
@@ -766,36 +785,55 @@ public final class SettlementScreen extends Screen {
             drawLine(contentY + 28, "Загружаю прогресс цивилизации…", 0xFF777777, contentWidth);
             return;
         }
-        record Achievement(String name, String condition, boolean unlocked, int tier) { }
+        record Achievement(String branch, String name, String condition, boolean unlocked, int tier) { }
         List<Achievement> tree = List.of(
-                new Achievement("I. Первое поселение", "Основано поселение", snapshot.founded(), 1),
-                new Achievement("II. Первые руки", "Население: не менее 5 жителей", snapshot.population() >= 5, 1),
-                new Achievement("III. Своя крыша", "Построен хотя бы один дом", snapshot.cabinCount() >= 1, 1),
-                new Achievement("IV. Хлеб насущный", "Построена ферма", snapshot.farmCount() >= 1, 2),
-                new Achievement("V. Ремесло", "Построена мастерская", snapshot.workshopCount() >= 1, 2),
-                new Achievement("VI. Специализация", "Есть лесоруб, строитель и фермер",
-                        snapshot.lumberjacks() >= 1 && snapshot.builders() >= 1 && snapshot.farmers() >= 1, 2),
-                new Achievement("VII. Растущая деревня", "Население: не менее 10 жителей",
-                        snapshot.population() >= 10, 3),
-                new Achievement("VIII. Каменный фундамент", "Уровень поселения: не менее 3",
-                        snapshot.level() >= 3, 3),
-                new Achievement("IX. Большое поселение", "Построено не менее 5 зданий",
-                        snapshot.cabinCount() + snapshot.farmCount() + snapshot.workshopCount() >= 5, 3)
+                new Achievement("ОСНОВАНИЕ", "I. Первое поселение", "Основать поселение", snapshot.founded(), 1),
+                new Achievement("ОСНОВАНИЕ", "II. Первые руки", "Население не менее 5", snapshot.population() >= 5, 1),
+                new Achievement("ОСНОВАНИЕ", "III. Своя крыша", "Построить первый дом", snapshot.cabinCount() >= 1, 1),
+                new Achievement("НАСЕЛЕНИЕ", "IV. Растущая деревня", "Население не менее 10", snapshot.population() >= 10, 2),
+                new Achievement("НАСЕЛЕНИЕ", "V. Полный дом", "Кроватей не меньше, чем жителей", snapshot.bedCount() >= snapshot.population(), 2),
+                new Achievement("РЕМЁСЛА", "VI. Хлеб насущный", "Построить ферму", snapshot.farmCount() >= 1, 1),
+                new Achievement("РЕМЁСЛА", "VII. Мастерская", "Построить мастерскую", snapshot.workshopCount() >= 1, 1),
+                new Achievement("РЕМЁСЛА", "VIII. Три профессии", "Лесоруб, строитель и фермер работают", snapshot.lumberjacks() >= 1 && snapshot.builders() >= 1 && snapshot.farmers() >= 1, 2),
+                new Achievement("СТРОИТЕЛЬСТВО", "IX. Каменный фундамент", "Уровень поселения не менее 3", snapshot.level() >= 3, 2),
+                new Achievement("СТРОИТЕЛЬСТВО", "X. Большое поселение", "Построить 5 зданий", snapshot.cabinCount() + snapshot.farmCount() + snapshot.workshopCount() >= 5, 3),
+                new Achievement("ЭКОНОМИКА", "XI. Запас на чёрный день", "Еды хватит минимум на 3 дня", snapshot.foodConsumptionPerDay() > 0 && snapshot.foodStock() >= snapshot.foodConsumptionPerDay() * 3, 2),
+                new Achievement("ЭКОНОМИКА", "XII. Изобилие", "Склад занят хотя бы наполовину", snapshot.warehouseSlots() > 0 && snapshot.warehouseOccupiedSlots() * 2 >= snapshot.warehouseSlots(), 2),
+                new Achievement("ТОРГОВЛЯ", "XIII. Торговый след", "Открыть вкладку экономики и развивать запасы", snapshot.woodDelta7d() + snapshot.stoneDelta7d() + snapshot.foodDelta7d() > 0, 2),
+                new Achievement("ТЕРРИТОРИЯ", "XIV. Своя земля", "Достичь 3-го уровня поселения", snapshot.level() >= 3, 2),
+                new Achievement("ТЕРРИТОРИЯ", "XV. Цивилизация", "Население не менее 10 и 5 зданий", snapshot.population() >= 10 && snapshot.cabinCount() + snapshot.farmCount() + snapshot.workshopCount() >= 5, 3),
+                new Achievement("МАСТЕРСТВО", "XVI. Слаженная работа", "Не менее 3 назначенных рабочих", snapshot.lumberjacks() + snapshot.builders() + snapshot.farmers() >= 3, 2),
+                new Achievement("МАСТЕРСТВО", "XVII. Без простоя", "Нет бездействующих жителей", snapshot.residentCount() > 0 && snapshot.idleResidents() == 0, 3),
+                new Achievement("МАСТЕРСТВО", "XVIII. Устойчивый рост", "Нет голодных дней", snapshot.hungerDays() == 0 && snapshot.population() >= 5, 2),
+                new Achievement("РАЗВИТИЕ", "XIX. Вверх и вперёд", "Достичь 2-го уровня поселения", snapshot.level() >= 2, 1),
+                new Achievement("РАЗВИТИЕ", "XX. Центр региона", "Построить 3 здания", snapshot.cabinCount() + snapshot.farmCount() + snapshot.workshopCount() >= 3, 2),
+                new Achievement("РАЗВИТИЕ", "XXI. Городская жизнь", "Население не менее 15", snapshot.population() >= 15, 3)
         );
-        drawLine(contentY + 3, "Ветка развития · выполненные условия открыты", 0xFF303030, contentWidth);
-        int startY = contentY + 22;
-        int rows = visibleRows(startY, 14);
-        int unlocked = 0;
-        for (int i = 0; i < Math.min(rows, tree.size()); i++) {
+        int totalUnlocked = (int) tree.stream().filter(Achievement::unlocked).count();
+        drawLine(contentY + 2, "ДЕРЕВО ДОСТИЖЕНИЙ · 7 направлений развития", 0xFF303030, contentWidth);
+        drawLine(contentY + 16, "Открыто " + totalUnlocked + "/" + tree.size()
+                + " · листай ветви кнопками ниже", 0xFF555555, contentWidth);
+
+        int startY = contentY + 42;
+        int rows = achievementVisibleRows();
+        listOffset = Math.min(listOffset, achievementMaxOffset());
+        String previousBranch = "";
+        int rendered = 0;
+        for (int i = listOffset; i < tree.size() && rendered < rows; i++) {
             Achievement achievement = tree.get(i);
-            if (achievement.unlocked()) unlocked++;
+            if (!achievement.branch().equals(previousBranch)) {
+                drawLine(startY + rendered * 14, "◆ " + achievement.branch(), 0xFF8A5A20, contentWidth);
+                rendered++;
+                if (rendered >= rows) break;
+                previousBranch = achievement.branch();
+            }
             String line = (achievement.unlocked() ? "✓ " : "○ ")
                     + achievement.name() + " — " + achievement.condition();
-            drawLine(startY + i * 14, line,
+            drawLine(startY + rendered * 14, line,
                     achievement.unlocked() ? 0xFF236B36 : 0xFF777777, contentWidth);
+            rendered++;
         }
-        drawLine(contentBottom - 12, "Открыто: " + unlocked + "/" + tree.size()
-                + " · прогресс рассчитывается из сохранённого состояния мира", 0xFF303030, contentWidth);
+        drawLine(contentBottom - 12, "Условия пока рассчитываются по текущему состоянию мира", 0xFF555555, contentWidth);
     }
 
     private void renderStorage() {
