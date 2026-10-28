@@ -209,7 +209,7 @@ public final class SettlementScreen extends Screen {
                     }, Items.BARRIER);
         } else {
             List<BuildingDefinition> definitions = BuildingDefinition.all();
-            int rows = Math.max(1, Math.min(3, visibleRows(navY + 22, 28)));
+            int rows = Math.max(1, Math.min(3, (contentBottom - (navY + 22) - 64) / 28));
             buildOffset = Math.min(buildOffset, Math.max(0, definitions.size() - 1));
 
             addButton("←", contentX, navY, 26, 18,
@@ -236,7 +236,7 @@ public final class SettlementScreen extends Screen {
 
             // Manual plot controls: coordinates point to the solid ground block
             // under the structure, and "~ ~-1 ~" defaults to the player's feet.
-            int fieldsY = navY + 118;
+            int fieldsY = navY + 22 + rows * 28 + 10;
             int fieldGap = 4;
             int fieldWidth = Math.max(18, (contentWidth - fieldGap * 3) / 4);
             buildX = createCoordinateField(buildXValue, "X / ~", contentX,
@@ -540,7 +540,7 @@ public final class SettlementScreen extends Screen {
         }
 
         List<BuildingDefinition> definitions = BuildingDefinition.all();
-        int rows = Math.max(1, Math.min(3, visibleRows(contentY + 22, 28)));
+        int rows = Math.max(1, Math.min(3, (contentBottom - (contentY + 22) - 64) / 28));
         int buttonWidth = Math.min(104, Math.max(78, contentWidth / 2));
         for (int i = buildOffset; i < Math.min(definitions.size(), buildOffset + rows); i++) {
             BuildingDefinition definition = definitions.get(i);
@@ -550,8 +550,6 @@ public final class SettlementScreen extends Screen {
             drawLineAt(contentX + buttonWidth + 8, y, cost, 0xFF303030,
                     Math.max(24, contentWidth - buttonWidth - 8));
         }
-        drawLine(contentY + 107, "Участок: X / Y / Z — блок земли под зданием; угол: 0 / 90 / 180 / 270.",
-                0xFF303030, contentWidth);
         if (!pendingBuild.isEmpty()) {
             String selectedId = pendingBuild.substring("civitas build ".length());
             String preview = BuildingDefinition.find(selectedId)
