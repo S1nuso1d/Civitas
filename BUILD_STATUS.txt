@@ -3,12 +3,12 @@ Target: Minecraft Java Edition 1.21.1 + Forge 52.1.20 + Java 21
 
 Added:
 - Persisted overworld chunk claims in CivitasSavedData; old worlds without claim data load with an empty claim set.
-- Founding automatically claims the founding chunk, which cannot be unclaimed.
+- Founding automatically claims the founding chunk, which cannot be unclaimed; existing founded worlds migrate to that chunk on load.
 - /civitas territory reports influence and claim capacity.
 - /civitas territory claim and unclaim manage the chunk where the owner stands.
 - /civitas territory show emits temporary particle markers along claimed chunk edges.
 - Explicit-position construction and blueprint previews require the anchor chunk to be claimed and inside the influence radius.
-- Claim capacity scales with influence (minimum 2, maximum 16 chunks).
+- Claim capacity scales with influence (minimum 2, maximum 16 chunks); new claims must touch an existing claim by an edge and remain within the influence radius.
 
 Limitations:
 - Claims are for the single player settlement in the overworld; no rival ownership or contested borders yet.
