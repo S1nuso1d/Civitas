@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.39.0] - Living Society (first slice)
+
+### Added
+- Added persistent personal orders for individual villagers: follow, stay, go home, guard a position, and reset to profession behavior.
+- Added `/civitas order <resident> <follow|stay|home|guard|reset> [position]` with suggestions for valid order names.
+- Personal orders take precedence over existing lumberjack, farmer and builder routines while preserving their existing work state.
+- Navigation updates are throttled; nearby bed scans are bounded and use a retry cooldown.
+
+### Scope note
+- This release is the first slice of the Living Society pass. Villager health/illness, social/family relationships, and interior comfort scoring are not implemented in this version.
+
+### Validation
+- Source committed; local Gradle build, automated tests, and in-game checks remain required.
+
 ## [0.38.0] - Senses & Schedules
 
 ### Added
