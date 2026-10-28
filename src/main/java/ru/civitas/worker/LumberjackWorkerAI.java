@@ -16,12 +16,14 @@ import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.tags.BlockTags;
 import net.minecraftforge.event.entity.living.LivingEvent;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import ru.civitas.block.SettlementWarehouseBlockEntity;
 import ru.civitas.data.CivitasSavedData;
+import ru.civitas.CivitasConfig;
 
 /**
  * First physical worker prototype. A tagged village villager walks to nearby
@@ -33,6 +35,7 @@ public final class LumberjackWorkerAI {
     private static final String CARRIED_ITEM_KEY = "civitas.worker_carried_item";
     private static final String CARRIED_COUNT_KEY = "civitas.worker_carried_count";
     private static final String CHOP_PROGRESS_KEY = "civitas.worker_chop_progress";
+    private static final String LAST_CHOP_KEY = "civitas.lumberjack.last_chop";
     private static final String PAUSED_KEY = "civitas.worker_paused";
     private static final String ISSUE_KEY = "civitas.worker_issue";
     private static final String TARGET_TREE_ASSIGNED_KEY = "civitas.worker_tree_target_assigned";
@@ -413,7 +416,10 @@ public final class LumberjackWorkerAI {
         String targetItemId = treeLog == null ? "" :
                 BuiltInRegistries.ITEM.getKey(level.getBlockState(treeLog).getBlock().asItem()).toString();
         boolean warehouseBlocked = persistent.getString(ISSUE_KEY).contains("Склад заполнен");
-        boolean mustDeliver = warehouseBlocked || carriedCount >= MAX_CARRIED
+        long lastChop = persistent.getLong(LAST_CHOP_KEY);
+        boolean deliveryWaitElapsed = carriedCount > 0 && lastChop > 0L
+                && level.getGameTime() - lastChop >= 200L;
+        boolean mustDeliver = warehouseBlocked || carriedCount >= MAX_CARRIED || deliveryWaitElapsed
                 || carriedCount > 0 && (treeLog == null || !carriedItemId.equals(targetItemId));
 
         BlockPos deliveryStand = warehousePos.offset(0, 1, 2);
@@ -556,6 +562,14 @@ public final class LumberjackWorkerAI {
         }
 
         if (harvested > 0) {
+            persistent.putLong(LAST_CHOP_KEY, level.getGameTime());
+            if (CivitasConfig.LUMBERJACK_REPLANT.get()) {
+                BlockPos treeBase = treeLog;
+                for (BlockPos logPos : currentTree) {
+                    if (logPos.getY() < treeBase.getY()) treeBase = logPos;
+                }
+                replant(level, treeBase, rootState.getBlock());
+            }
             if (carriedCount == 0) {
                 carriedItemId = actualItemId;
                 persistent.putString(CARRIED_ITEM_KEY, carriedItemId);
@@ -566,6 +580,27 @@ public final class LumberjackWorkerAI {
         persistent.putInt(CHOP_PROGRESS_KEY, 0);
         persistent.putInt(TARGET_TREE_SIZE_KEY, 0);
         updateWorkerName(villager, harvested > 0 ? " — срубил " + harvested + " бр." : " — ищет дерево");
+    }
+
+    private static void replant(ServerLevel level, BlockPos base, net.minecraft.world.level.block.Block logBlock) {
+        net.minecraft.world.level.block.Block sapling = saplingFor(logBlock);
+        if (sapling == null || !level.isLoaded(base) || !level.isEmptyBlock(base)) return;
+        BlockState ground = level.getBlockState(base.below());
+        if (ground.is(Blocks.DIRT) || ground.is(Blocks.GRASS_BLOCK) || ground.is(Blocks.PODZOL)) {
+            level.setBlockAndUpdate(base, sapling.defaultBlockState());
+        }
+    }
+
+    private static net.minecraft.world.level.block.Block saplingFor(net.minecraft.world.level.block.Block log) {
+        if (log == Blocks.OAK_LOG || log == Blocks.STRIPPED_OAK_LOG) return Blocks.OAK_SAPLING;
+        if (log == Blocks.BIRCH_LOG || log == Blocks.STRIPPED_BIRCH_LOG) return Blocks.BIRCH_SAPLING;
+        if (log == Blocks.SPRUCE_LOG || log == Blocks.STRIPPED_SPRUCE_LOG) return Blocks.SPRUCE_SAPLING;
+        if (log == Blocks.JUNGLE_LOG || log == Blocks.STRIPPED_JUNGLE_LOG) return Blocks.JUNGLE_SAPLING;
+        if (log == Blocks.ACACIA_LOG || log == Blocks.STRIPPED_ACACIA_LOG) return Blocks.ACACIA_SAPLING;
+        if (log == Blocks.DARK_OAK_LOG || log == Blocks.STRIPPED_DARK_OAK_LOG) return Blocks.DARK_OAK_SAPLING;
+        if (log == Blocks.MANGROVE_LOG || log == Blocks.STRIPPED_MANGROVE_LOG) return Blocks.MANGROVE_PROPAGULE;
+        if (log == Blocks.CHERRY_LOG || log == Blocks.STRIPPED_CHERRY_LOG) return Blocks.CHERRY_SAPLING;
+        return null;
     }
 
     private static BlockPos findNearestTreeLog(ServerLevel level, BlockPos origin,
