@@ -38,11 +38,16 @@ class BuildingBlueprintTest {
                 && p.blockId().equals("minecraft:crafting_table")));
         var walls = BuildingBlueprint.layer(BuildingDefinition.Type.CABIN, 3);
         assertEquals(2, walls.stream().filter(p -> p.blockId().equals("minecraft:glass")).count());
+        var doorway = BuildingBlueprint.layer(BuildingDefinition.Type.CABIN, 2);
+        assertTrue(doorway.stream().anyMatch(p -> p.relativePosition().equals(new BlockPos(0, 2, -2))
+                && p.blockId().equals("minecraft:oak_door")));
+        assertTrue(doorway.stream().anyMatch(p -> p.relativePosition().equals(new BlockPos(0, 3, -2))
+                && p.blockId().equals("minecraft:oak_door")));
         var roof = BuildingBlueprint.layer(BuildingDefinition.Type.CABIN, 5);
         assertTrue(roof.stream().anyMatch(p -> p.relativePosition().equals(new BlockPos(0, 5, 0))
                 && p.blockId().equals("minecraft:oak_planks")));
-        assertTrue(roof.stream().anyMatch(p -> p.relativePosition().equals(new BlockPos(0, 1, -2))
-                && p.clearsBlock()));
+        assertFalse(roof.stream().anyMatch(p -> p.clearsBlock()),
+                "Roof layer must not erase the cabin's doorway");
     }
 
     @Test
@@ -65,6 +70,11 @@ class BuildingBlueprintTest {
         assertTrue(base.stream().anyMatch(p -> p.blockId().equals("minecraft:anvil")));
         var walls = BuildingBlueprint.layer(BuildingDefinition.Type.WORKSHOP, 3);
         assertEquals(16, walls.stream().filter(p -> p.blockId().equals("minecraft:cobblestone")).count());
+        var doorway = BuildingBlueprint.layer(BuildingDefinition.Type.WORKSHOP, 2);
+        assertTrue(doorway.stream().anyMatch(p -> p.relativePosition().equals(new BlockPos(0, 2, -2))
+                && p.blockId().equals("minecraft:oak_door")));
+        assertTrue(doorway.stream().anyMatch(p -> p.relativePosition().equals(new BlockPos(0, 3, -2))
+                && p.blockId().equals("minecraft:oak_door")));
     }
 
     @Test
