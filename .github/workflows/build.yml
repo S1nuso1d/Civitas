@@ -28,10 +28,15 @@ jobs:
       - name: Compile and test mod
         run: gradle build --no-daemon
 
+      - name: Read mod version
+        id: mod-version
+        shell: bash
+        run: echo "mod_version=$(grep '^mod_version=' gradle.properties | cut -d= -f2)" >> "$GITHUB_OUTPUT"
+
       - name: Upload mod JAR
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: civitas-0.17.0-forge-1.21.1
+          name: civitas-${{ steps.mod-version.outputs.mod_version }}-forge-1.21.1
           path: build/libs/*.jar
           if-no-files-found: error
