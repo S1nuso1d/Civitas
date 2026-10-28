@@ -65,6 +65,8 @@ public final class CivitasSavedData extends SavedData {
     private BlockPos tradePoint;
     /** Persisted overworld chunk claims owned by this settlement. */
     private final Set<Long> claimedChunks = new HashSet<>();
+    /** Permanent milestone unlocks: stable achievement id -> world day first reached. */
+    private final Map<String, Long> unlockedAchievements = new TreeMap<>();
 
     public record BuildingRecord(String type, int x, int y, int z, int upgradeLevel, int rotationDegrees) {
         public BuildingRecord(String type, int x, int y, int z) {
@@ -314,6 +316,14 @@ public final class CivitasSavedData extends SavedData {
         }
         data.nextCaravanTick = Math.max(0L, tag.getLong("next_caravan_tick"));
         data.tradePoint = tag.contains("trade_point") ? BlockPos.of(tag.getLong("trade_point")) : null;
+        ListTag storedAchievements = tag.getList("unlocked_achievements", Tag.TAG_COMPOUND);
+        for (int i = 0; i < Math.min(256, storedAchievements.size()); i++) {
+            CompoundTag achievement = storedAchievements.getCompound(i);
+            String id = achievement.getString("id");
+            if (id.matches("[a-z0-9_]{1,64}")) {
+                data.unlockedAchievements.putIfAbsent(id, Math.max(0L, achievement.getLong("day")));
+            }
+        }
         ListTag storedClaims = tag.getList("territory_claims", Tag.TAG_COMPOUND);
         for (int i = 0; i < storedClaims.size(); i++) {
             CompoundTag claim = storedClaims.getCompound(i);
@@ -417,6 +427,14 @@ public final class CivitasSavedData extends SavedData {
             storedClaims.add(claim);
         }
         tag.put("territory_claims", storedClaims);
+        ListTag storedAchievements = new ListTag();
+        for (Map.Entry<String, Long> entry : unlockedAchievements.entrySet()) {
+            CompoundTag achievement = new CompoundTag();
+            achievement.putString("id", entry.getKey());
+            achievement.putLong("day", Math.max(0L, entry.getValue()));
+            storedAchievements.add(achievement);
+        }
+        tag.put("unlocked_achievements", storedAchievements);
         return tag;
     }
 
@@ -713,6 +731,23 @@ public final class CivitasSavedData extends SavedData {
         boolean removed = claimedChunks.remove(packed);
         if (removed) setDirty();
         return removed;
+    }
+
+    /** Unlocks a milestone once; repeated checks never overwrite its original day. */
+    public boolean unlockAchievement(String id, long worldDay) {
+        if (id == null || !id.matches("[a-z0-9_]{1,64}") || unlockedAchievements.size() >= 256) return false;
+        if (unlockedAchievements.containsKey(id)) return false;
+        unlockedAchievements.put(id, Math.max(0L, worldDay));
+        setDirty();
+        return true;
+    }
+
+    public List<String> getUnlockedAchievementIds() {
+        return Collections.unmodifiableList(new ArrayList<>(unlockedAchievements.keySet()));
+    }
+
+    public long getAchievementUnlockDay(String id) {
+        return unlockedAchievements.getOrDefault(id, -1L);
     }
 
     public List<ChunkPos> getClaimedChunks() {
