@@ -2,6 +2,7 @@ package ru.civitas.world;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.world.level.block.BedBlock;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.BlockTags;
@@ -12,6 +13,7 @@ import net.minecraft.world.level.block.DoorBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
+import net.minecraft.world.level.block.state.properties.BedPart;
 import net.minecraft.world.level.block.Rotation;
 
 import java.util.ArrayList;
@@ -113,6 +115,7 @@ public final class BuildingBlueprint {
     public static void placeLayer(ServerLevel level, BlockPos ground, BuildingDefinition.Type type,
                                   int layer, int rotationDegrees) {
         List<BlockPos> deferredDoorUpdates = new ArrayList<>();
+        List<BlockPos> deferredBedUpdates = new ArrayList<>();
         for (Placement p : layer(type, layer, rotationDegrees)) {
             BlockPos target = ground.offset(p.relativePosition());
             if (!level.hasChunkAt(target)) continue;
@@ -122,12 +125,20 @@ public final class BuildingBlueprint {
             if (state.getBlock() instanceof DoorBlock) {
                 level.setBlock(target, state, 2);
                 deferredDoorUpdates.add(target.immutable());
+            } else if (state.getBlock() instanceof BedBlock) {
+                // Beds have two halves too. Place both without neighbour updates,
+                // then notify neighbours only after the foot and head are present.
+                level.setBlock(target, state, 2);
+                deferredBedUpdates.add(target.immutable());
             } else {
                 level.setBlock(target, state, 3);
             }
         }
         for (BlockPos doorPos : deferredDoorUpdates) {
             level.updateNeighborsAt(doorPos, level.getBlockState(doorPos).getBlock());
+        }
+        for (BlockPos bedPos : deferredBedUpdates) {
+            level.updateNeighborsAt(bedPos, level.getBlockState(bedPos).getBlock());
         }
     }
 
@@ -173,6 +184,12 @@ public final class BuildingBlueprint {
             state = state.setValue(DoorBlock.HALF,
                     placement.relativePosition().getY() == 3 ? DoubleBlockHalf.UPPER : DoubleBlockHalf.LOWER);
         }
+        if (block instanceof BedBlock && state.hasProperty(BedBlock.PART)
+                && state.hasProperty(BedBlock.FACING)) {
+            BlockPos pos = placement.relativePosition();
+            state = state.setValue(BedBlock.PART, pos.getZ() == 1 ? BedPart.FOOT : BedPart.HEAD);
+            state = state.setValue(BedBlock.FACING, Direction.NORTH);
+        }
         if (state.hasProperty(BlockStateProperties.HORIZONTAL_FACING)) {
             Rotation rotation = switch (Math.floorMod(rotationDegrees, 360)) {
                 case 0 -> Rotation.NONE;
@@ -199,9 +216,12 @@ public final class BuildingBlueprint {
     private static void cabin(Map<BlockPos, Placement> b, int y) {
         if (y == 1) {
             for (int x=-2;x<=2;x++) for (int z=-2;z<=2;z++) put(b,x,1,z,"minecraft:oak_planks");
-            put(b,0,1,0,"minecraft:crafting_table");
-            put(b,1,1,0,"minecraft:barrel");
-            put(b,0,1,2,"minecraft:red_bed");
+            // Furnishings sit on top of the plank floor, not in the floor layer.
+            put(b,1,2,0,"minecraft:crafting_table");
+            put(b,1,2,1,"minecraft:barrel");
+            // One complete two-block bed: foot south, head north, both at y=2.
+            put(b,-1,2,1,"minecraft:red_bed");
+            put(b,-1,2,0,"minecraft:red_bed");
         } else if (y <= 4) {
             for (int x=-2;x<=2;x++) for (int z=-2;z<=2;z++) {
                 if (Math.abs(x)!=2 && Math.abs(z)!=2) continue;
