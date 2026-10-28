@@ -10,14 +10,24 @@ public final class VillagerEquipment {
     private VillagerEquipment() {
     }
 
+    public static void ensure(Villager villager, String role) {
+        ItemStack expected = toolFor(role);
+        if (!ItemStack.isSameItem(villager.getMainHandItem(), expected)) {
+            villager.setItemSlot(EquipmentSlot.MAINHAND, expected);
+        }
+    }
+
     public static void apply(Villager villager, String role) {
-        ItemStack tool = switch (role) {
+        villager.setItemSlot(EquipmentSlot.MAINHAND, toolFor(role));
+    }
+
+    private static ItemStack toolFor(String role) {
+        return switch (role) {
             case "lumberjack" -> new ItemStack(Items.IRON_AXE);
             case "builder" -> new ItemStack(Items.IRON_SHOVEL);
             case "farmer" -> new ItemStack(Items.IRON_HOE);
             default -> ItemStack.EMPTY;
         };
-        villager.setItemSlot(EquipmentSlot.MAINHAND, tool);
     }
 
     public static void clear(Villager villager) {
