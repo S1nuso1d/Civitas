@@ -1,4 +1,12 @@
-# Civitas — Alpha 0.40.2 (Forge 1.21.1)
+# Civitas — Alpha 0.40.3 (Forge 1.21.1)
+
+## Alpha 0.40.3 — In-game Blueprint Planner
+- Added a Blueprint Planner item to open a graphical catalog for cabins, farms and workshops.
+- The screen shows dimensions, construction stages and costs, supports 90-degree rotation, and sends server-side preview/build requests for the block targeted by the player.
+- The server remains authoritative for territory, site, and warehouse resource validation. The screen currently uses the existing preview response; it does not yet render a translucent block-by-block ghost projection.
+- Build and in-game verification are pending.
+
+## Alpha 0.40.2 — Blueprint Catalog
 
 ## Alpha 0.40.2 — Blueprint Catalog
 - Added `/civitas blueprints` to list available building blueprints, dimensions, construction stages, and material costs in game.
