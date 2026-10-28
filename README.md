@@ -1,4 +1,9 @@
-# Civitas — Alpha 0.40.3 (Forge 1.21.1)
+# Civitas — Alpha 0.42.0 (Forge 1.21.1)
+
+## Alpha 0.42.0 — Living Systems Pass (first slice)
+- Press F4 to toggle the real-time settlement HUD; target a nearby villager to inspect its visible status, movement, health and profession.
+- HUD data comes from the existing server snapshot; no network/save schema changes were introduced.
+- Worker needs, traditions/culture, achievements, sounds and public modding APIs remain planned follow-up slices. Build and in-game verification are pending.
 
 ## Alpha 0.40.3 — In-game Blueprint Planner
 - Added a Blueprint Planner item to open a graphical catalog for cabins, farms and workshops.
