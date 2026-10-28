@@ -1,14 +1,16 @@
 # Changelog
 
-## [0.29.0] - Claimed Territory Protection
+## [0.30.0] - Territory Protection Hardening
 
 ### Added
-- Server-side protection for claimed overworld chunks against non-owner block breaking, block placement, and right-click block interaction.
-- Complete rotated building footprint validation against territory influence and claimed chunks.
-- Automatic building sites now use the same validation before resource reservation and vegetation clearing.
+- Claimed overworld chunks block non-owner player block breaking, placement, and block interaction; warning messages are rate-limited.
+- Explosions no longer remove blocks inside claimed overworld chunks.
+- Building placement validates the full rotated footprint against influence and claimed chunks before resources are reserved or replaceable vegetation is cleared.
+- Every construction layer revalidates the complete plot. If claims or influence change after an order is queued, construction pauses before materials are consumed or blocks are placed.
 
-### Validation
-- The exact release commit still requires a local Gradle build, unit tests, and in-game checks.
+### Scope and validation
+- Protection covers player edits and explosion block damage. Fire/fluid spread, mob griefing, natural updates and third-party mod changes are not comprehensively prevented.
+- The exact release still requires a Gradle build, unit tests, and manual in-game checks.
 
 ## [0.28.0] - Persistent Chunk Territory
 
