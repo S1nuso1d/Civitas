@@ -1,15 +1,13 @@
-# Civitas — Alpha 0.38.0 (Forge 1.21.1)
+# Civitas — Alpha 0.39.0 (Forge 1.21.1)
 
-## Alpha 0.38.0 — Senses & Schedules
-- Added a shared worker lifecycle helper for night rest, nearby unpowered-door opening, road movement speed, and work feedback.
-- Assigned workers gain a non-stacking +35% base movement-speed modifier while standing on supported road blocks; it is removed when they leave the road or lose their job.
-- Lumberjacks, builders, and farmers rest during the night window while retaining their saved task and cargo state.
-- Work cycles now emit throttled role-specific sounds and particles; nearby players may hear occasional worker chatter.
-- Rain reduces farmer harvest progress by 25%; dry weather gives lumberjacks a small cumulative chopping bonus.
-- Workers open adjacent unpowered doors during travel and close tracked doors after 30 ticks when no villager is nearby.
+## Alpha 0.39.0 — Living Society (first slice)
+- Added persistent per-villager personal orders: follow the nearest player, stay in place, go to a nearby bed, guard a specified block position, or reset to profession AI.
+- Added `/civitas order <resident> <follow|stay|home|guard|reset> [position]`; `guard` requires a block position.
+- Personal orders take priority over lumberjack, farmer and builder work routines without deleting their saved task targets or cargo.
+- Navigation goals are refreshed at most once every 10 game ticks. Bed searches are bounded and retried on a cooldown.
+- This is the first slice of Living Society. Health, relationship/family simulation, and interior-comfort scoring are not included yet; they require separate integration with population and settlement-state systems.
 
 Validation: source changes committed; Gradle build, automated tests, and in-game behavior still require verification.
-
 Civitas — модификация Minecraft Java Edition о развитии поселения от деревни к цивилизации. Жители физически работают и строят настоящие здания, а центральный склад и очередь заказов образуют основу локальной экономики.
 
 ## Что добавлено в Alpha 0.37.2 — Worker Search Backoff
