@@ -59,7 +59,7 @@ Civitas — модификация Minecraft Java Edition о развитии п
    .\tools\gradle-run.ps1 build
    ```
 
-4. После `BUILD SUCCESSFUL` ожидаемый JAR: `build\libs\civitas-0.16.0.jar`.
+4. После `BUILD SUCCESSFUL` ожидаемый JAR: `build\libs\civitas-0.17.0.jar`.
 
 ## Установка в TLauncher
 
