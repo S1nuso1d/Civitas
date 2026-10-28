@@ -326,7 +326,7 @@ public final class SettlementBuildingManager {
     private static void cabinLayer(ServerLevel l, BlockPos g, int y) {
         if(y==1){for(int x=-2;x<=2;x++)for(int z=-2;z<=2;z++)set(l,g.offset(x,1,z),Blocks.OAK_PLANKS);set(l,g.offset(0,1,0),Blocks.CRAFTING_TABLE);set(l,g.offset(1,1,0),Blocks.BARREL);set(l,g.offset(0,1,2),Blocks.RED_BED);}
         else if(y<=4){for(int x=-2;x<=2;x++)for(int z=-2;z<=2;z++){if(Math.abs(x)!=2&&Math.abs(z)!=2)continue;if(y==2&&x==0&&z==-2)continue;if(y==3&&(Math.abs(x)==2&&z==0))set(l,g.offset(x,y,z),Blocks.GLASS);else set(l,g.offset(x,y,z),Blocks.OAK_LOG);}}
-        else{for(int x=-3;x<=3;x++)for(int z=-3;z<=3;z++)set(l,g.offset(x,5,z),Blocks.SPRUCE_PLANKS);set(l,g.offset(0,1,-2),Blocks.AIR);set(l,g.offset(0,2,-2),Blocks.AIR);}
+        else{for(int x=-3;x<=3;x++)for(int z=-3;z<=3;z++)set(l,g.offset(x,5,z),Blocks.OAK_PLANKS);set(l,g.offset(0,1,-2),Blocks.AIR);set(l,g.offset(0,2,-2),Blocks.AIR);}
     }
     private static void farmLayer(ServerLevel l, BlockPos g, int y) {
         if(y==1){for(int x=-3;x<=3;x++)for(int z=-3;z<=3;z++){if(Math.abs(x)==3||Math.abs(z)==3)set(l,g.offset(x,1,z),Blocks.OAK_FENCE);else if(x==0&&z==0)set(l,g.offset(x,1,z),Blocks.WATER);else set(l,g.offset(x,1,z),Blocks.FARMLAND);}set(l,g.offset(0,1,-3),Blocks.AIR);set(l,g.offset(1,1,0),Blocks.COMPOSTER);set(l,g.offset(-1,1,0),Blocks.BARREL);}
