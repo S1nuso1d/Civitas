@@ -29,6 +29,7 @@ import ru.civitas.block.SettlementWarehouseBlockEntity;
 import ru.civitas.data.CivitasSavedData;
 import ru.civitas.worker.ConstructionWorkerAI;
 import ru.civitas.worker.LumberjackWorkerAI;
+import ru.civitas.worker.PersonalOrders;
 import ru.civitas.world.BuildingDefinition;
 import ru.civitas.world.SettlementBuildingManager;
 import ru.civitas.trade.NeighborCivilization;
@@ -123,6 +124,16 @@ public final class CivitasCommands {
                                                 .then(Commands.argument("rotation", IntegerArgumentType.integer(0, 359))
                                                         .executes(ctx -> buildAt(ctx, BuildingDefinition.Type.WORKSHOP,
                                                                 IntegerArgumentType.getInteger(ctx, "rotation")))))))
+                        .then(Commands.literal("order")
+                                .then(Commands.argument("resident", EntityArgument.entity())
+                                        .then(Commands.argument("order", StringArgumentType.word())
+                                                .suggests((context, builder) -> {
+                                                    for (String value : new String[]{"follow", "stay", "home", "guard", "reset"}) builder.suggest(value);
+                                                    return builder.buildFuture();
+                                                })
+                                                .executes(CivitasCommands::personalOrder)
+                                                .then(Commands.argument("position", BlockPosArgument.blockPos())
+                                                        .executes(CivitasCommands::personalOrderAt)))))
                         .then(Commands.literal("worker")
                                 .then(Commands.literal("lumberjack")
                                         .executes(CivitasCommands::assignLumberjack)
@@ -144,6 +155,49 @@ public final class CivitasCommands {
                                         .then(Commands.argument("amount", IntegerArgumentType.integer(1, 2304))
                                                 .executes(CivitasCommands::withdraw))))
         );
+    }
+
+    private static int personalOrder(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        return applyPersonalOrder(context, null);
+    }
+
+    private static int personalOrderAt(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        return applyPersonalOrder(context, BlockPosArgument.getBlockPos(context, "position"));
+    }
+
+    private static int applyPersonalOrder(CommandContext<CommandSourceStack> context, BlockPos target)
+            throws CommandSyntaxException {
+        if (!(EntityArgument.getEntity(context, "resident") instanceof Villager villager)) {
+            context.getSource().sendFailure(Component.literal("Цель должна быть жителем Minecraft."));
+            return 0;
+        }
+        String requested = StringArgumentType.getString(context, "order").toLowerCase(java.util.Locale.ROOT);
+        PersonalOrders.Order order = switch (requested) {
+            case "follow" -> PersonalOrders.Order.FOLLOW;
+            case "stay" -> PersonalOrders.Order.STAY;
+            case "home" -> PersonalOrders.Order.GO_HOME;
+            case "guard" -> PersonalOrders.Order.GUARD;
+            case "reset" -> PersonalOrders.Order.NONE;
+            default -> null;
+        };
+        if (order == null) {
+            context.getSource().sendFailure(Component.literal("Неизвестный приказ. Используй follow, stay, home, guard или reset."));
+            return 0;
+        }
+        if (order == PersonalOrders.Order.GUARD && target == null) {
+            context.getSource().sendFailure(Component.literal("Для приказа guard укажи координаты: /civitas order <житель> guard <позиция>."));
+            return 0;
+        }
+        PersonalOrders.set(villager, order, target);
+        String message = switch (order) {
+            case NONE -> "Приказ снят: житель вернётся к обычному поведению.";
+            case FOLLOW -> "Приказ принят: житель будет следовать за ближайшим игроком.";
+            case STAY -> "Приказ принят: житель останется на месте.";
+            case GO_HOME -> "Приказ принят: житель ищет ближайшую кровать.";
+            case GUARD -> "Приказ принят: житель охраняет указанную точку.";
+        };
+        context.getSource().sendSuccess(() -> Component.literal(message), false);
+        return Command.SINGLE_SUCCESS;
     }
 
     private static int visitNeighbor(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
@@ -197,6 +251,7 @@ public final class CivitasCommands {
         source.sendSuccess(() -> Component.literal("§e/civitas overview §7— сводка поселения: жители, здания, стройка и склад"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas rename <название> §7— переименовать поселение"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas workers §7— список жителей и их роли"), false);
+        source.sendSuccess(() -> Component.literal("§e/civitas order <житель> <follow|stay|home|guard|reset> [позиция] §7— личный приказ жителю"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas buildings §7— реестр построенных зданий"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas construction §7— очередь и прогресс строительства"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas preview cabin|farm|workshop <позиция> [угол] §7— показать чертёж частицами"), false);
