@@ -277,6 +277,17 @@ public final class BuildingBlueprint {
         }
     }
 
+    public static void removeHouseUpgrade(ServerLevel level, BlockPos ground,
+                                            int newLevel, int rotationDegrees) {
+        for (Placement placement : houseUpgrade(newLevel, rotationDegrees)) {
+            BlockPos target = ground.offset(placement.relativePosition());
+            if (level.hasChunkAt(target)
+                    && level.getBlockState(target).is(resolveBlock(placement.blockId()))) {
+                level.setBlock(target, net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(), 3);
+            }
+        }
+    }
+
     private static void put(Map<BlockPos, Placement> b, int x, int y, int z, String blockId) {
         b.put(new BlockPos(x, y, z), new Placement(new BlockPos(x, y, z), blockId, -1));
     }
