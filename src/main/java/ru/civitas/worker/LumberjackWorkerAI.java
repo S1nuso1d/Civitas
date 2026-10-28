@@ -387,6 +387,9 @@ public final class LumberjackWorkerAI {
         }
 
         var persistent = villager.getPersistentData();
+        if (persistent.getString(ISSUE_KEY).startsWith("Ждёт загрузки")) {
+            persistent.putString(ISSUE_KEY, "");
+        }
         String carriedItemId = persistent.getString(CARRIED_ITEM_KEY);
         int carriedCount = Math.max(0, persistent.getInt(CARRIED_COUNT_KEY));
         if (carriedCount == 0) {
