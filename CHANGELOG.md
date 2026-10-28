@@ -1,5 +1,15 @@
 # Changelog
 
+## Alpha 0.18.0 — управление конкретными жителями
+
+- The resident dashboard carries stable server-side UUIDs, with names, assigned roles, and live activity stored as separate fields.
+- Resident rows are selectable. Profession assignment, lumberjack pause/resume, and role release now target only the selected villager.
+- The server revalidates settlement ownership, Overworld dimension, UUID, entity type, and settlement radius for every resident action.
+- Builder assignment is centralized so the GUI and commands use the same cargo-safety rules while preserving queued construction orders.
+- Residents are listed by distance with a deterministic UUID tie-breaker; missing or out-of-range residents are rejected safely.
+- The network protocol and mod version advance to 2 / 0.18.0.
+- CI compilation and tests must pass before distributing the artifact; manual in-game validation is still required.
+
 ## Alpha 0.16.0 — атомарное списание материалов
 
 - Warehouse contents are snapshotted before per-layer deductions.

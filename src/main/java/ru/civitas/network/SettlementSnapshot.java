@@ -28,6 +28,9 @@ public record SettlementSnapshot(
         int warehouseSlots,
         String statusMessage,
         List<String> residents,
+        List<String> residentUuids,
+        List<String> residentRoles,
+        List<String> residentStatuses,
         List<String> buildings,
         List<String> construction,
         List<String> storage
@@ -42,7 +45,16 @@ public record SettlementSnapshot(
         settlementName = safe(settlementName);
         ownerName = safe(ownerName);
         statusMessage = safe(statusMessage);
-        residents = List.copyOf(residents);
+        residents = boundedLines(residents, MAX_RESIDENT_LINES);
+        residentUuids = boundedLines(residentUuids, MAX_RESIDENT_LINES);
+        residentRoles = boundedLines(residentRoles, MAX_RESIDENT_LINES);
+        residentStatuses = boundedLines(residentStatuses, MAX_RESIDENT_LINES);
+        int alignedResidents = Math.min(Math.min(residents.size(), residentUuids.size()),
+                Math.min(residentRoles.size(), residentStatuses.size()));
+        residents = List.copyOf(residents.subList(0, alignedResidents));
+        residentUuids = List.copyOf(residentUuids.subList(0, alignedResidents));
+        residentRoles = List.copyOf(residentRoles.subList(0, alignedResidents));
+        residentStatuses = List.copyOf(residentStatuses.subList(0, alignedResidents));
         buildings = List.copyOf(buildings);
         construction = List.copyOf(construction);
         storage = List.copyOf(storage);
@@ -53,7 +65,7 @@ public record SettlementSnapshot(
                 false, "Нет поселения", "", 1, 0,
                 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, message,
-                List.of(), List.of(), List.of(), List.of()
+                List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of()
         );
     }
 
@@ -76,6 +88,9 @@ public record SettlementSnapshot(
         buffer.writeVarInt(warehouseSlots);
         buffer.writeUtf(statusMessage, MAX_LINE_LENGTH);
         writeLines(buffer, residents, MAX_RESIDENT_LINES);
+        writeLines(buffer, residentUuids, MAX_RESIDENT_LINES);
+        writeLines(buffer, residentRoles, MAX_RESIDENT_LINES);
+        writeLines(buffer, residentStatuses, MAX_RESIDENT_LINES);
         writeLines(buffer, buildings, MAX_BUILDING_LINES);
         writeLines(buffer, construction, MAX_CONSTRUCTION_LINES);
         writeLines(buffer, storage, MAX_STORAGE_LINES);
@@ -100,6 +115,9 @@ public record SettlementSnapshot(
                 readBoundedInt(buffer, 27),
                 readBoundedInt(buffer, 27),
                 buffer.readUtf(MAX_LINE_LENGTH),
+                readLines(buffer, MAX_RESIDENT_LINES),
+                readLines(buffer, MAX_RESIDENT_LINES),
+                readLines(buffer, MAX_RESIDENT_LINES),
                 readLines(buffer, MAX_RESIDENT_LINES),
                 readLines(buffer, MAX_BUILDING_LINES),
                 readLines(buffer, MAX_CONSTRUCTION_LINES),
@@ -133,6 +151,14 @@ public record SettlementSnapshot(
             lines.add(buffer.readUtf(MAX_LINE_LENGTH));
         }
         return List.copyOf(lines);
+    }
+
+    private static List<String> boundedLines(List<String> lines, int max) {
+        if (lines == null || lines.isEmpty()) return List.of();
+        int size = Math.min(lines.size(), max);
+        List<String> copy = new ArrayList<>(size);
+        for (int i = 0; i < size; i++) copy.add(safe(lines.get(i)));
+        return List.copyOf(copy);
     }
 
     private static String safe(String value) {

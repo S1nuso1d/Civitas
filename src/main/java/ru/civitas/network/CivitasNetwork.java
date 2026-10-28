@@ -2,6 +2,8 @@ package ru.civitas.network;
 
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.protocol.PacketFlow;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.level.Level;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -21,6 +23,7 @@ import ru.civitas.client.ClientNetworkHandler;
 import ru.civitas.data.CivitasSavedData;
 import ru.civitas.world.BuildingDefinition;
 import ru.civitas.worker.LumberjackWorkerAI;
+import ru.civitas.worker.ConstructionWorkerAI;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -37,7 +40,7 @@ import java.util.regex.Pattern;
 public final class CivitasNetwork {
     public static final SimpleChannel CHANNEL = ChannelBuilder
             .named(ResourceLocation.fromNamespaceAndPath(CivitasMod.MOD_ID, "main"))
-            .networkProtocolVersion(1)
+            .networkProtocolVersion(2)
             .simpleChannel();
 
     private static final Pattern ITEM_ID_PATTERN =
@@ -55,6 +58,11 @@ public final class CivitasNetwork {
         CANCEL_ORDER,
         ASSIGN_LUMBERJACK,
         ASSIGN_BUILDER,
+        ASSIGN_LUMBERJACK_TO,
+        ASSIGN_BUILDER_TO,
+        PAUSE_SELECTED,
+        RESUME_SELECTED,
+        RELEASE_SELECTED,
         PAUSE_LUMBERJACK,
         RESUME_LUMBERJACK,
         CLEAR_LUMBERJACK,
@@ -138,6 +146,12 @@ public final class CivitasNetwork {
             return;
         }
 
+        if (isResidentAction(packet.action())) {
+            handleResidentAction(packet, player);
+            context.setPacketHandled(true);
+            return;
+        }
+
         String command = commandFor(packet);
         if (command == null) {
             player.sendSystemMessage(net.minecraft.network.chat.Component.literal(
@@ -154,6 +168,129 @@ public final class CivitasNetwork {
         sendSnapshot(player,
                 "Данные поселения синхронизированы. Ответ команды — в чате.");
         context.setPacketHandled(true);
+    }
+
+
+    private static boolean isResidentAction(Action action) {
+        return action == Action.ASSIGN_LUMBERJACK_TO
+                || action == Action.ASSIGN_BUILDER_TO
+                || action == Action.PAUSE_SELECTED
+                || action == Action.RESUME_SELECTED
+                || action == Action.RELEASE_SELECTED;
+    }
+
+    /**
+     * Applies resident operations directly to the UUID selected by the client.
+     * The client-provided UUID is only an identifier; every permission, entity,
+     * dimension, and settlement-range check is repeated on the authoritative server.
+     */
+    private static void handleResidentAction(ActionPacket packet, ServerPlayer player) {
+        MinecraftServer server = player.getServer();
+        if (server == null) return;
+
+        CivitasSavedData data = CivitasSavedData.get(server);
+        if (!data.isFounded()) {
+            residentActionFailure(player, "Сначала основай поселение.");
+            return;
+        }
+        if (!data.isOwner(player) && !player.createCommandSourceStack().hasPermission(2)) {
+            residentActionFailure(player, "Управлять жителями может только владелец поселения.");
+            return;
+        }
+        if (!player.level().dimension().equals(Level.OVERWORLD)) {
+            residentActionFailure(player, "Управление профессиями доступно только в обычном мире.");
+            return;
+        }
+
+        UUID residentId;
+        try {
+            residentId = UUID.fromString(packet.value().trim());
+        } catch (IllegalArgumentException exception) {
+            residentActionFailure(player, "Выбери жителя в списке перед выполнением действия.");
+            return;
+        }
+
+        ServerLevel level = server.overworld();
+        var entity = level.getEntity(residentId);
+        if (!(entity instanceof Villager villager) || villager.level() != level) {
+            residentActionFailure(player, "Выбранный житель больше не найден. Обнови список жителей.");
+            return;
+        }
+
+        var center = data.hasStarterVillage() ? data.getStarterVillageCenter() : data.getCenter();
+        if (!new AABB(center).inflate(24, 12, 24)
+                .contains(villager.getX(), villager.getY(), villager.getZ())) {
+            residentActionFailure(player, "Житель находится вне границ поселения. Выбери жителя поблизости.");
+            return;
+        }
+
+        String role = LumberjackWorkerAI.getWorkerRole(villager);
+        String name = villager.getCustomName() == null
+                ? villager.getName().getString() : villager.getCustomName().getString();
+        boolean succeeded;
+        String message;
+        switch (packet.action()) {
+            case ASSIGN_LUMBERJACK_TO -> {
+                if ("lumberjack".equals(role)
+                        && villager.getPersistentData().getInt("civitas.worker_carried_count") > 0) {
+                    succeeded = true;
+                    message = name + " уже лесоруб и доставит накопленные брёвна.";
+                } else {
+                    succeeded = LumberjackWorkerAI.assignLumberjackTo(level, center, villager);
+                    message = succeeded
+                            ? "Житель «" + name + "» назначен лесорубом."
+                            : "Не удалось назначить лесоруба: проверь груз текущего лесоруба и выбранного жителя.";
+                }
+            }
+            case ASSIGN_BUILDER_TO -> {
+                succeeded = ConstructionWorkerAI.assignBuilderTo(level, center, villager);
+                message = succeeded
+                        ? "Житель «" + name + "» назначен строителем. Очередь строительства сохранена."
+                        : "Нельзя назначить строителя: возможно, житель ещё несёт брёвна или находится вне поселения.";
+            }
+            case PAUSE_SELECTED -> {
+                succeeded = LumberjackWorkerAI.setLumberjackPaused(villager, true);
+                message = succeeded
+                        ? "Работа лесоруба «" + name + "» приостановлена. Его груз сохранён."
+                        : "Пауза доступна только выбранному жителю с профессией лесоруба.";
+            }
+            case RESUME_SELECTED -> {
+                succeeded = LumberjackWorkerAI.setLumberjackPaused(villager, false);
+                message = succeeded
+                        ? "Лесоруб «" + name + "» продолжил работу."
+                        : "Продолжить работу можно только у выбранного лесоруба.";
+            }
+            case RELEASE_SELECTED -> {
+                if ("lumberjack".equals(role)) {
+                    succeeded = LumberjackWorkerAI.releaseLumberjackRole(villager);
+                    message = succeeded
+                            ? "Профессия снята с жителя «" + name + "»."
+                            : "Сначала дождись доставки всех брёвен на склад.";
+                } else if ("builder".equals(role)) {
+                    succeeded = ConstructionWorkerAI.releaseBuilderRole(villager);
+                    message = succeeded
+                            ? "Профессия снята с жителя «" + name + "». Очередь строительства сохранена."
+                            : "Не удалось снять профессию у выбранного жителя.";
+                } else {
+                    succeeded = false;
+                    message = "У выбранного жителя нет профессии Civitas.";
+                }
+            }
+            default -> {
+                residentActionFailure(player, "Недопустимое действие для выбранного жителя.");
+                return;
+            }
+        }
+
+        if (!succeeded) {
+            player.sendSystemMessage(Component.literal("Civitas: " + message));
+        }
+        sendSnapshot(player, message);
+    }
+
+    private static void residentActionFailure(ServerPlayer player, String message) {
+        player.sendSystemMessage(Component.literal("Civitas: " + message));
+        sendSnapshot(player, message);
     }
 
     private static String commandFor(ActionPacket packet) {
@@ -179,6 +316,8 @@ public final class CivitasNetwork {
                     : null;
             case ASSIGN_LUMBERJACK -> "civitas worker lumberjack";
             case ASSIGN_BUILDER -> "civitas worker builder";
+            case ASSIGN_LUMBERJACK_TO, ASSIGN_BUILDER_TO, PAUSE_SELECTED,
+                    RESUME_SELECTED, RELEASE_SELECTED -> null;
             case PAUSE_LUMBERJACK -> "civitas worker pause";
             case RESUME_LUMBERJACK -> "civitas worker resume";
             case CLEAR_LUMBERJACK -> "civitas worker clear";
@@ -246,14 +385,23 @@ public final class CivitasNetwork {
 
         ServerLevel level = server.overworld();
         var center = data.hasStarterVillage() ? data.getStarterVillageCenter() : data.getCenter();
-        List<String> residentLines = new ArrayList<>();
+        List<Villager> villageResidents = new ArrayList<>(level.getEntitiesOfClass(
+                Villager.class, new AABB(center).inflate(24, 12, 24)));
+        villageResidents.sort(java.util.Comparator
+                .comparingDouble((Villager villager) -> villager.distanceToSqr(
+                        center.getX() + 0.5D, center.getY() + 0.5D, center.getZ() + 0.5D))
+                .thenComparing(villager -> villager.getUUID().toString()));
+
+        List<String> residentNames = new ArrayList<>();
+        List<String> residentUuids = new ArrayList<>();
+        List<String> residentRoles = new ArrayList<>();
+        List<String> residentStatuses = new ArrayList<>();
         int lumberjacks = 0;
         int builders = 0;
         int idle = 0;
         int residentCount = 0;
 
-        for (Villager villager : level.getEntitiesOfClass(
-                Villager.class, new AABB(center).inflate(24, 12, 24))) {
+        for (Villager villager : villageResidents) {
             residentCount++;
             String role = LumberjackWorkerAI.getWorkerRole(villager);
             String roleLabel;
@@ -268,17 +416,15 @@ public final class CivitasNetwork {
                 roleLabel = "Без назначения";
             }
 
-            if (residentLines.size() < 64) {
+            if (residentNames.size() < 64) {
                 String name = villager.getCustomName() == null
                         ? villager.getName().getString()
                         : villager.getCustomName().getString();
                 String residentStatus = LumberjackWorkerAI.getWorkerStatus(villager);
-                String blockedReason = villager.getPersistentData().getString("civitas.builder_blocked_reason");
-                if (!blockedReason.isBlank() && "builder".equals(role)) {
-                    // Show the real blocking cause: not every pause is a supply problem.
-                    residentStatus += " | " + blockedReason;
-                }
-                residentLines.add(name + " — " + roleLabel + " | " + residentStatus);
+                residentNames.add(name);
+                residentUuids.add(villager.getUUID().toString());
+                residentRoles.add(role);
+                residentStatuses.add(residentStatus);
             }
         }
 
@@ -388,7 +534,10 @@ public final class CivitasNetwork {
                 occupiedSlots,
                 warehouseSlots,
                 statusMessage,
-                residentLines,
+                residentNames,
+                residentUuids,
+                residentRoles,
+                residentStatuses,
                 buildingLines,
                 constructionLines,
                 storageLines

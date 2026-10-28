@@ -308,6 +308,41 @@ public final class ConstructionWorkerAI {
         tag.putInt(TARGET_Z_KEY, site.getZ());
     }
 
+    /**
+     * Assigns one specific villager as builder. Existing construction orders are retained;
+     * a lumberjack must first deliver any carried logs before changing profession.
+     */
+    public static boolean assignBuilderTo(ServerLevel level, BlockPos settlementCenter, Villager villager) {
+        if (level == null || settlementCenter == null || villager == null || villager.level() != level) {
+            return false;
+        }
+        if (!new AABB(settlementCenter).inflate(24, 12, 24)
+                .contains(villager.getX(), villager.getY(), villager.getZ())) {
+            return false;
+        }
+
+        var tag = villager.getPersistentData();
+        String currentRole = tag.getString(ROLE_KEY);
+        if ("builder".equals(currentRole)) return true;
+        if ("lumberjack".equals(currentRole)) {
+            if (tag.getInt("civitas.worker_carried_count") > 0
+                    || !LumberjackWorkerAI.releaseLumberjackRole(villager)) {
+                return false;
+            }
+        } else if (!currentRole.isBlank()) {
+            return false;
+        }
+
+        releaseBuilderRole(villager);
+        tag.putString(ROLE_KEY, "builder");
+        tag.putInt(WORK_PROGRESS_KEY, 0);
+        tag.remove(BLOCKED_REASON_KEY);
+        villager.setCustomName(Component.literal("Строитель Civitas"));
+        villager.setCustomNameVisible(true);
+        villager.setPersistenceRequired();
+        return true;
+    }
+
     /** Releases a selected builder so another worker can take its queued order. */
     public static boolean releaseBuilderRole(Villager villager) {
         if (villager == null) return false;

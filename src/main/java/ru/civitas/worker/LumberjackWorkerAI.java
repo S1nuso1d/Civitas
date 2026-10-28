@@ -129,18 +129,26 @@ public final class LumberjackWorkerAI {
         AABB area = new AABB(villageCenter).inflate(24, 12, 24);
         for (Villager villager : level.getEntitiesOfClass(Villager.class, area)) {
             if ("lumberjack".equals(getWorkerRole(villager))) {
-                villager.getPersistentData().putBoolean(PAUSED_KEY, paused);
-                if (paused) {
-                    villager.getNavigation().stop();
-                    updateWorkerName(villager, " — пауза");
-                } else {
-                    villager.getPersistentData().putString(ISSUE_KEY, "");
-                    updateWorkerName(villager, "");
-                }
-                return true;
+                return setLumberjackPaused(villager, paused);
             }
         }
         return false;
+    }
+
+    /** Pauses or resumes the explicitly selected lumberjack without changing any other resident. */
+    public static boolean setLumberjackPaused(Villager villager, boolean paused) {
+        if (villager == null || !"lumberjack".equals(getWorkerRole(villager))) return false;
+        var persistent = villager.getPersistentData();
+        if (persistent.getBoolean(PAUSED_KEY) == paused) return true;
+        persistent.putBoolean(PAUSED_KEY, paused);
+        if (paused) {
+            villager.getNavigation().stop();
+            updateWorkerName(villager, " — пауза");
+        } else {
+            persistent.putString(ISSUE_KEY, "");
+            updateWorkerName(villager, "");
+        }
+        return true;
     }
 
     /** Assigns the explicitly selected villager, without stealing another worker's active cargo. */

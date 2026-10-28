@@ -20,6 +20,8 @@ public final class SettlementScreen extends Screen {
     private static final int MAX_PANEL_WIDTH = 520;
     private static final int MAX_PANEL_HEIGHT = 420;
     private static final int PAD = 12;
+    private static final int RESIDENT_ROW_HEIGHT = 14;
+    private static final int RESIDENT_LIST_TOP = 80;
 
     private enum Tab {
         OVERVIEW("Обзор"),
@@ -69,6 +71,7 @@ public final class SettlementScreen extends Screen {
     private String buildZValue = "~";
     private String buildRotationValue = "0";
     private String pendingBuild = "";
+    private String selectedResidentId = "";
 
     private int buildOffset;
     private int listOffset;
@@ -152,6 +155,7 @@ public final class SettlementScreen extends Screen {
     }
 
     private void initResidents() {
+        ensureSelectedResident();
         int half = (contentWidth - 4) / 2;
         addButton("Назначение", contentX, contentY, half, 20,
                 () -> { residentControlPage = 0; listOffset = 0; rebuildWidgets(); }, null);
@@ -159,24 +163,56 @@ public final class SettlementScreen extends Screen {
                 () -> { residentControlPage = 1; listOffset = 0; rebuildWidgets(); }, null);
 
         int actionY = contentY + 23;
+        int selectedIndex = selectedResidentIndex();
+        boolean hasSelection = selectedIndex >= 0;
+        String selectedRole = hasSelection ? snapshot.residentRoles().get(selectedIndex) : "";
+
         if (residentControlPage == 0) {
-            addButton("Лесоруб", contentX, actionY, half, 20,
-                    () -> sendAction(CivitasNetwork.Action.ASSIGN_LUMBERJACK, "", 0), Items.IRON_AXE);
-            addButton("Строитель", contentX + half + 4, actionY, contentWidth - half - 4, 20,
-                    () -> sendAction(CivitasNetwork.Action.ASSIGN_BUILDER, "", 0), Items.IRON_PICKAXE);
+            String lumberjackLabel = half < 90 ? "Лесоруб" : "Назначить лесорубом";
+            String builderLabel = contentWidth - half - 4 < 90 ? "Строитель" : "Назначить строителем";
+            addButton(lumberjackLabel, contentX, actionY, half, 20,
+                    () -> sendSelectedResidentAction(CivitasNetwork.Action.ASSIGN_LUMBERJACK_TO),
+                    Items.IRON_AXE, hasSelection);
+            addButton(builderLabel, contentX + half + 4, actionY, contentWidth - half - 4, 20,
+                    () -> sendSelectedResidentAction(CivitasNetwork.Action.ASSIGN_BUILDER_TO),
+                    Items.IRON_PICKAXE, hasSelection);
         } else {
             int third = (contentWidth - 8) / 3;
+            boolean selectedLumberjack = hasSelection && "lumberjack".equals(selectedRole);
+            boolean hasRole = hasSelection && !selectedRole.isBlank();
             addButton("Пауза", contentX, actionY, third, 20,
-                    () -> sendAction(CivitasNetwork.Action.PAUSE_LUMBERJACK, "", 0), Items.CLOCK);
+                    () -> sendSelectedResidentAction(CivitasNetwork.Action.PAUSE_SELECTED),
+                    Items.CLOCK, selectedLumberjack);
             addButton("Старт", contentX + third + 4, actionY, third, 20,
-                    () -> sendAction(CivitasNetwork.Action.RESUME_LUMBERJACK, "", 0), Items.LIME_DYE);
-            addButton("Снять", contentX + (third + 4) * 2, actionY,
+                    () -> sendSelectedResidentAction(CivitasNetwork.Action.RESUME_SELECTED),
+                    Items.LIME_DYE, selectedLumberjack);
+            addButton("Снять роль", contentX + (third + 4) * 2, actionY,
                     contentWidth - (third + 4) * 2, 20,
-                    () -> sendAction(CivitasNetwork.Action.CLEAR_LUMBERJACK, "", 0), Items.BARRIER);
+                    () -> sendSelectedResidentAction(CivitasNetwork.Action.RELEASE_SELECTED),
+                    Items.BARRIER, hasRole);
         }
 
-        int navY = contentY + 44;
-        addListNavigation(snapshot == null ? 0 : snapshot.residents().size(), navY);
+        addResidentNavigation(snapshot == null ? 0 : snapshot.residents().size(), contentY + 44);
+        List<String> names = snapshot == null ? List.of() : snapshot.residents();
+        List<String> uuids = snapshot == null ? List.of() : snapshot.residentUuids();
+        List<String> roles = snapshot == null ? List.of() : snapshot.residentRoles();
+        int startY = contentY + RESIDENT_LIST_TOP;
+        int rows = visibleRows(startY, RESIDENT_ROW_HEIGHT);
+        listOffset = Math.min(listOffset, Math.max(0, names.size() - rows));
+        for (int row = 0; row < rows && listOffset + row < names.size(); row++) {
+            int index = listOffset + row;
+            String residentId = uuids.get(index);
+            String roleLabel = roleLabel(roles.get(index));
+            boolean selected = residentId.equals(selectedResidentId);
+            String label = (selected ? "» " : "") + names.get(index) + " · " + roleLabel;
+            label = fitText(label, Math.max(20, contentWidth - 8));
+            addButton(label, contentX, startY + row * RESIDENT_ROW_HEIGHT,
+                    contentWidth, RESIDENT_ROW_HEIGHT,
+                    () -> {
+                        selectedResidentId = residentId;
+                        rebuildWidgets();
+                    }, null, true);
+        }
     }
 
     private void initConstruction() {
@@ -364,13 +400,70 @@ public final class SettlementScreen extends Screen {
 
     private void addButton(String label, int x, int y, int buttonWidth, int buttonHeight,
                            Runnable action, Item icon) {
+        addButton(label, x, y, buttonWidth, buttonHeight, action, icon, true);
+    }
+
+    private void addButton(String label, int x, int y, int buttonWidth, int buttonHeight,
+                           Runnable action, Item icon, boolean enabled) {
         String buttonLabel = icon == null ? label : "   " + label;
-        addRenderableWidget(Button.builder(Component.literal(buttonLabel), button -> action.run())
-                .bounds(x, y, buttonWidth, buttonHeight).build());
+        Button widget = Button.builder(Component.literal(buttonLabel), button -> action.run())
+                .bounds(x, y, buttonWidth, buttonHeight).build();
+        widget.active = enabled;
+        addRenderableWidget(widget);
         if (icon != null) {
             icons.add(new IconPosition(x + 3, y + Math.max(1, (buttonHeight - 16) / 2),
                     new ItemStack(icon)));
         }
+    }
+
+    private void addResidentNavigation(int itemCount, int y) {
+        int rows = visibleRows(contentY + RESIDENT_LIST_TOP, RESIDENT_ROW_HEIGHT);
+        int maxOffset = Math.max(0, itemCount - rows);
+        int arrowsX = contentX + contentWidth - 54;
+        addButton("←", arrowsX, y, 24, 16,
+                () -> { listOffset = Math.max(0, listOffset - rows); rebuildWidgets(); }, null);
+        addButton("→", arrowsX + 28, y, 24, 16,
+                () -> { listOffset = Math.min(maxOffset, listOffset + rows); rebuildWidgets(); }, null);
+    }
+
+    private void ensureSelectedResident() {
+        if (snapshot == null || snapshot.residentUuids().isEmpty()) {
+            selectedResidentId = "";
+            return;
+        }
+        if (!snapshot.residentUuids().contains(selectedResidentId)) {
+            selectedResidentId = snapshot.residentUuids().get(0);
+        }
+    }
+
+    private int selectedResidentIndex() {
+        if (snapshot == null || selectedResidentId.isBlank()) return -1;
+        return snapshot.residentUuids().indexOf(selectedResidentId);
+    }
+
+    private void sendSelectedResidentAction(CivitasNetwork.Action action) {
+        int index = selectedResidentIndex();
+        if (index < 0) return;
+        sendAction(action, snapshot.residentUuids().get(index), 0);
+    }
+
+    private static String roleLabel(String role) {
+        return switch (role == null ? "" : role) {
+            case "lumberjack" -> "Лесоруб";
+            case "builder" -> "Строитель";
+            default -> "Без назначения";
+        };
+    }
+
+    private String fitText(String value, int maxWidth) {
+        String fitted = value == null ? "" : value;
+        while (font.width(fitted) > maxWidth && fitted.length() > 1) {
+            fitted = fitted.substring(0, fitted.length() - 1);
+        }
+        if (!fitted.equals(value) && fitted.length() > 1) {
+            fitted = fitted.substring(0, fitted.length() - 1) + "…";
+        }
+        return fitted;
     }
 
     private void switchTab(Tab tab) {
@@ -436,6 +529,10 @@ public final class SettlementScreen extends Screen {
 
     public void acceptSnapshot(SettlementSnapshot nextSnapshot) {
         snapshot = nextSnapshot;
+        ensureSelectedResident();
+        if (activeTab == Tab.RESIDENTS) {
+            rebuildWidgets();
+        }
         if (settlementName == null || !settlementName.isFocused()) {
             settlementNameValue = nextSnapshot.founded()
                     ? nextSnapshot.settlementName() : "Новая деревня";
@@ -509,19 +606,29 @@ public final class SettlementScreen extends Screen {
 
     private void renderResidents() {
         if (snapshot == null) {
-            drawLine(contentY + 65, "Запрашиваю жителей…", 0xFF303030, contentWidth);
+            drawLine(contentY + 64, "Запрашиваю жителей…", 0xFF303030, contentWidth);
             return;
         }
+
         drawLine(contentY + 45, "Жителей рядом: " + snapshot.residentCount(),
                 0xFF303030, Math.max(50, contentWidth - 58));
-        List<String> lines = snapshot.residents();
-        int startY = contentY + 61;
-        int rows = visibleRows(startY, 12);
-        listOffset = Math.min(listOffset, Math.max(0, lines.size() - rows));
-        for (int i = 0; i < rows && listOffset + i < lines.size(); i++) {
-            drawLine(startY + i * 12, lines.get(listOffset + i), 0xFF303030, contentWidth);
+
+        int selectedIndex = selectedResidentIndex();
+        if (selectedIndex >= 0) {
+            String name = snapshot.residents().get(selectedIndex);
+            String role = roleLabel(snapshot.residentRoles().get(selectedIndex));
+            String status = snapshot.residentStatuses().get(selectedIndex);
+            drawLine(contentY + 64, "Выбран: " + name + " · " + role + " · " + status,
+                    0xFF303030, contentWidth);
+        } else {
+            drawLine(contentY + 64, "Выбери жителя в списке ниже, чтобы управлять его профессией.",
+                    0xFF777777, contentWidth);
         }
-        if (lines.isEmpty()) drawLine(startY, "Жители поблизости не найдены.", 0xFF777777, contentWidth);
+
+        if (snapshot.residents().isEmpty()) {
+            drawLine(contentY + RESIDENT_LIST_TOP, "Жители поблизости не найдены.",
+                    0xFF777777, contentWidth);
+        }
     }
 
     private void renderConstruction() {

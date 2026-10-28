@@ -394,27 +394,16 @@ public final class CivitasCommands {
             return 0;
         }
 
-        var persistent = villager.getPersistentData();
-        String currentRole = persistent.getString("civitas.worker_role");
+        String currentRole = LumberjackWorkerAI.getWorkerRole(villager);
         if ("builder".equals(currentRole)) {
             context.getSource().sendSuccess(() -> Component.literal("§eЭтот житель уже назначен строителем."), false);
             return Command.SINGLE_SUCCESS;
         }
-        if ("lumberjack".equals(currentRole)) {
-            if (persistent.getInt("civitas.worker_carried_count") > 0
-                    || !LumberjackWorkerAI.releaseLumberjackRole(villager)) {
-                context.getSource().sendFailure(Component.literal(
-                        "Сначала дождись, пока лесоруб доставит все брёвна на склад."));
-                return 0;
-            }
+        if (!ConstructionWorkerAI.assignBuilderTo(overworld, center, villager)) {
+            context.getSource().sendFailure(Component.literal(
+                    "Нельзя назначить строителя: дождись доставки груза лесорубом и проверь, что житель рядом с поселением."));
+            return 0;
         }
-        ConstructionWorkerAI.releaseBuilderRole(villager);
-        persistent.putString("civitas.worker_role", "builder");
-        persistent.putInt("civitas.builder_work_progress_ticks", 0);
-        persistent.remove("civitas.builder_blocked_reason");
-        villager.setCustomName(Component.literal("Строитель Civitas"));
-        villager.setCustomNameVisible(true);
-        villager.setPersistenceRequired();
 
         context.getSource().sendSuccess(() -> Component.literal(
                 "§aВыбранный житель назначен строителем. Активные заказы сохраняются и могут перейти другому строителю."),
