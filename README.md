@@ -1,4 +1,12 @@
-# Civitas — Alpha 0.40.0 (Forge 1.21.1)
+# Civitas — Alpha 0.40.1 (Forge 1.21.1)
+
+## Alpha 0.40.1 — Optional Mod Integration
+- Added `/civitas addons` to report whether Biomes O' Plenty, Signpost, Xaero's Minimap and Dynamic Lights are loaded, and to warn when Biomes O' Plenty's GlitchCore or TerraBlender dependencies are missing.
+- Added `/civitas map` to print the settlement center coordinates for a manually created Xaero waypoint.
+- All integrations are optional: Civitas does not link against third-party classes, so the mod remains loadable without these add-ons.
+- The command checks mod presence only; it does not prove that the full mod combination launches correctly. Dynamic Lights still needs in-game verification on Forge 52.1.20.
+
+Validation: compatibility commands committed; the current commit still requires CI build/tests and an in-game launch.
 
 ## Alpha 0.40.0 — Reliability & Polish Pass (first slice)
 - Added a shared navigation watchdog that retries stalled worker routes without teleporting villagers or discarding their saved targets and cargo.
