@@ -256,7 +256,7 @@ public final class SettlementScreen extends Screen {
                             safeInteger(amountValue, 1, 2304, 1));
                 }, Items.BARREL);
 
-        addListNavigation(snapshot == null ? 0 : snapshot.storage().size(), contentY + 40);
+        addListNavigation(snapshot == null ? 0 : snapshot.storage().size(), contentY + 59);
     }
 
     private void addListNavigation(int itemCount, int y) {
@@ -481,7 +481,7 @@ public final class SettlementScreen extends Screen {
                 + "/" + snapshot.warehouseSlots() + " слотов", 0xFF303030,
                 Math.max(40, contentWidth - 58));
         List<String> lines = snapshot.storage();
-        int startY = contentY + 62;
+        int startY = contentY + 80;
         int rows = visibleRows(startY, 12);
         listOffset = Math.min(listOffset, Math.max(0, lines.size() - rows));
         for (int i = 0; i < rows && listOffset + i < lines.size(); i++) {
