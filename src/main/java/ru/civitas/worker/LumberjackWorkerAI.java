@@ -297,7 +297,6 @@ public final class LumberjackWorkerAI {
         // An exhausted path must not silently discard cargo. Deliver the saved
         // load first, then leave an explicit issue until the player reassigns the worker.
         if (WorkerNavigationGuard.isExhausted(villager, "lumberjack")) {
-            villager.getNavigation().stop();
             persistent.putString(ISSUE_KEY,
                     "Маршрут заблокирован после 3 попыток. Переназначь лесоруба для возобновления работы.");
             if (carriedCount > 0) {
@@ -307,8 +306,11 @@ public final class LumberjackWorkerAI {
                     villager.getNavigation().moveTo(safeDeliveryStand.getX() + 0.5D, safeDeliveryStand.getY(),
                             safeDeliveryStand.getZ() + 0.5D, 0.9D);
                 } else {
+                    villager.getNavigation().stop();
                     depositCarriedLogs(warehouse, persistent, carriedItemId, carriedCount);
                 }
+            } else {
+                villager.getNavigation().stop();
             }
             updateWorkerName(villager, " — путь заблокирован");
             return;
