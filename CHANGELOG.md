@@ -1,3 +1,15 @@
+## [0.25.0] - Neighbor Resource Intelligence
+
+### Added
+- Diplomacy cards now show neighboring civilization timber, stone and iron reserves alongside population, territory, food, stability and reputation.
+- The server includes the new stockpile fields in the authoritative diplomacy snapshot; the client does not infer or simulate resource values.
+- Bumped the network protocol to version 6 because the diplomacy packet schema changed.
+- The diplomacy row uses compact, width-bounded labels for smaller windows.
+
+### Validation
+- Build, tests and JAR packaging must be verified for this exact commit.
+- Manual GUI layout and client/server compatibility checks remain required.
+
 ## [0.24.0] - Diplomacy Has Economic Consequences
 
 ### Added
