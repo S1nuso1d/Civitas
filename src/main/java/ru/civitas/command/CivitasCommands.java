@@ -179,6 +179,9 @@ public final class CivitasCommands {
     private static int help(CommandSourceStack source) {
         source.sendSuccess(() -> Component.literal("§6§lCivitas — команды прототипа"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas found <название> §7— основать поселение в текущей точке"), false);
+        source.sendSuccess(() -> Component.literal("§e/civitas diplomacy §7— список соседних цивилизаций"), false);
+        source.sendSuccess(() -> Component.literal("§e/civitas visit <номер> §7— физически посетить соседнее поселение"), false);
+        source.sendSuccess(() -> Component.literal("§e/civitas return §7— вернуться из соседнего поселения"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas status §7— состояние поселения"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas overview §7— сводка поселения: жители, здания, стройка и склад"), false);
         source.sendSuccess(() -> Component.literal("§e/civitas rename <название> §7— переименовать поселение"), false);
