@@ -1,4 +1,22 @@
-## Alpha 0.6.0 — строительная система\n\n- Added three placeable settlement structures: cabin, farm and workshop.\n- Building costs are charged from the same physical warehouse used by the inventory UI and storage commands.\n- Build sites are checked before resources are removed; occupied terrain and insufficient materials abort the build.\n- Added building buttons to the settlement management screen.\n- GitHub Actions compilation and manual in-game checks are pending.\n\n# Changelog
+# Changelog
+
+## Alpha 0.11.0 — реестр зданий, сетевое состояние и вкладки
+
+- Added a central `BuildingDefinition` registry for buildable ids, display labels, material costs, footprints and layer counts.
+- Unified server-side construction validation, material refunds and client cost previews around that registry.
+- Added Forge `SimpleChannel` request, snapshot and typed action packets. The server remains authoritative and reuses command validation for actions.
+- Reworked the settlement dashboard into Overview, Residents, Construction and Storage tabs, with a viewport-aware layout and automatic snapshot refresh while open.
+- Removed legacy instant-building methods that were unused after construction was moved to a persistent queue.
+- Fixed the Java compilation issue in `/civitas overview` caused by captured mutable counters.
+- Build and in-game validation are pending.
+
+## Alpha 0.6.0 — строительная система
+
+- Added three placeable settlement structures: cabin, farm and workshop.
+- Building costs are charged from the same physical warehouse used by the inventory UI and storage commands.
+- Build sites are checked before resources are removed; occupied terrain and insufficient materials abort the build.
+- Added building buttons to the settlement management screen.
+- GitHub Actions compilation and manual in-game checks are pending.
 
 ## Alpha 0.7.0 — сохранённая очередь строительства
 
