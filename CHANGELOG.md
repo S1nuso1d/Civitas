@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.32.1] - Achievement accuracy pass
+
+### Fixed
+- Renamed misleading achievement labels: resource stock trends are now described as resource balance, not trade; settlement-level milestones no longer claim to measure territorial ownership.
+- Resource-balance achievement uses a `long` sum to avoid integer overflow when combining seven-day deltas.
+- Corrected the number and wording of achievement development areas in the UI.
+
+### Validation
+- Source change committed; local build, tests and in-game display still require verification.
+
 ## [0.32.0] - Living Settlement
 
 ### Interface and progression
