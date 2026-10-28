@@ -195,6 +195,13 @@ public final class SettlementBuildingManager {
 
         BlockPos ground = new BlockPos(order.x(), order.y(), order.z());
         int layer = order.progress() + 1;
+        if (layer < 1 || layer > BuildingDefinition.get(type).totalLayers()) {
+            return new BuildResult(false, "У заказа некорректный номер слоя; строительство остановлено без списания ресурсов.");
+        }
+        if (!BuildingBlueprint.canPlaceLayer(level, ground, type, layer)) {
+            return new BuildResult(false,
+                    "Слой " + layer + " пока нельзя безопасно построить: участок занят или часть чанков не загружена. Материалы не списаны.");
+        }
         if (order.materialsReservedInWarehouse()) {
             if (!order.hasValidLayerCosts() || order.progress() < 0
                     || order.progress() >= order.layerCosts().size()) {
