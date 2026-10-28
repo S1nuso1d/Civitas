@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.19.0] - Agriculture & Population
+
+### Added
+- Farmer profession with persistent multi-item crop cargo, safe warehouse delivery, crop reservations, and dropped cargo recovery on worker death.
+- Food registry with nutrition values and transactional warehouse operations (all-or-nothing cargo deposit).
+- Daily food consumption, hunger streak, housing-aware population growth, and a three-day food reserve requirement.
+- Persistent 30-day economy history with daily wood, stone, food and population snapshots, food production/consumption, and event feed.
+- Overview food/housing indicators and a dedicated Economy tab.
+- Common config for food consumption, growth interval, reserve threshold, farmer radius, and history capacity.
+- Unit tests for snapshot codec, nutrition values, cargo persistence, inventory transactions, reservation ownership, and economy history.
+
+### Compatibility
+- Existing 0.18.0 settlement saves remain loadable; new economy and reservation fields default safely when absent.
+- Network snapshot protocol advanced to version 3 for the expanded economy payload.
+
+# Changelog
+
 ## Alpha 0.18.0 — управление конкретными жителями
 
 - The resident dashboard carries stable server-side UUIDs, with names, assigned roles, and live activity stored as separate fields.

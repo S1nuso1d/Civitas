@@ -181,6 +181,10 @@ public final class LumberjackWorkerAI {
         if ("builder".equals(getWorkerRole(chosen))) {
             ConstructionWorkerAI.releaseBuilderRole(chosen);
         }
+        if ("farmer".equals(getWorkerRole(chosen))
+                && !FarmerWorkerAI.releaseFarmerRole(chosen)) {
+            return false;
+        }
         clearTreeTarget(chosen.getPersistentData());
         chosen.getPersistentData().putInt(CHOP_PROGRESS_KEY, 0);
         chosen.getPersistentData().putString(ISSUE_KEY, "");

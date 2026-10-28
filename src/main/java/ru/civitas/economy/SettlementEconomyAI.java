@@ -1,35 +1,36 @@
 package ru.civitas.economy;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.item.Item;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.BedBlock;
-import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BedPart;
 import net.minecraft.world.level.levelgen.Heightmap;
-import net.minecraft.core.Direction;
 import net.minecraft.world.phys.AABB;
 import net.minecraftforge.event.TickEvent;
+import ru.civitas.CivitasConfig;
 import ru.civitas.block.SettlementWarehouseBlockEntity;
 import ru.civitas.data.CivitasSavedData;
+import ru.civitas.data.StorageFoodExtension;
 
 import java.util.List;
 
-/** Daily food consumption and conditional population growth for the starter settlement. */
+/** Daily server-side food upkeep, growth, and economy history. */
 public final class SettlementEconomyAI {
     private static final int TICKS_PER_DAY = 24_000;
-    private static final int GROWTH_DAYS_REQUIRED = 3;
     private static final int MAX_BEDS_SCAN = 24;
-
-    private static final List<Item> FOOD = List.of(
-            Items.BREAD, Items.BAKED_POTATO, Items.POTATO, Items.CARROT, Items.BEETROOT
-    );
+    private static final List<Item> WOOD_ITEMS = List.of(Items.OAK_LOG, Items.BIRCH_LOG, Items.SPRUCE_LOG,
+            Items.JUNGLE_LOG, Items.ACACIA_LOG, Items.DARK_OAK_LOG, Items.MANGROVE_LOG, Items.CHERRY_LOG,
+            Items.CRIMSON_STEM, Items.WARPED_STEM);
+    private static final List<Item> STONE_ITEMS = List.of(Items.COBBLESTONE, Items.STONE, Items.DEEPSLATE,
+            Items.COBBLED_DEEPSLATE, Items.ANDESITE, Items.DIORITE, Items.GRANITE);
 
     private SettlementEconomyAI() { }
 
@@ -39,83 +40,113 @@ public final class SettlementEconomyAI {
 
         CivitasSavedData data = CivitasSavedData.get(level.getServer());
         if (!data.hasStarterVillage()) return;
-        long day = Math.max(0L, level.getDayTime() / TICKS_PER_DAY);
-        if (data.getLastEconomyDay() < 0L) {
-            data.setLastEconomyDay(day);
-            return;
-        }
-        if (day <= data.getLastEconomyDay()) return;
-
-        // Process each elapsed day at most once per tick; normal gameplay advances one day at a time.
-        data.setLastEconomyDay(day);
         BlockPos center = data.getStarterVillageCenter();
         if (!level.hasChunkAt(center)
                 || !(level.getBlockEntity(center) instanceof SettlementWarehouseBlockEntity warehouse)) return;
 
-        AABB area = new AABB(center).inflate(MAX_BEDS_SCAN, 12, MAX_BEDS_SCAN);
-        int residents = level.getEntitiesOfClass(Villager.class, area).size();
+        long day = Math.max(0L, level.getDayTime() / TICKS_PER_DAY);
+        long lastDay = data.getLastEconomyDay();
+        if (lastDay < 0) {
+            data.setLastEconomyDay(day);
+            recordDailySnapshot(level, data, warehouse, day);
+            return;
+        }
+        if (day < lastDay) {
+            data.setLastEconomyDay(day);
+            data.setGrowthProgressDays(0);
+            data.getEconomyHistory().recordEvent(day, "Время мира изменено; дневной цикл переинициализирован");
+            data.setDirty();
+            return;
+        }
+        if (day == lastDay) return;
+
+        long firstDay = Math.max(lastDay + 1, day - 29);
+        for (long processedDay = firstDay; processedDay <= day; processedDay++) {
+            processDay(level, data, warehouse, center, processedDay);
+            data.setLastEconomyDay(processedDay);
+        }
+    }
+
+    private static void processDay(ServerLevel level, CivitasSavedData data,
+                                   SettlementWarehouseBlockEntity warehouse, BlockPos center, long day) {
+        int residents = countResidents(level, center);
         data.setPopulation(residents);
-        int availableFood = countFood(warehouse);
-        int dailyNeed = Math.max(1, residents);
-        boolean fed = availableFood >= dailyNeed;
-        if (fed) {
-            removeFood(warehouse, dailyNeed);
-            data.setHungerDays(0);
-            data.setGrowthProgressDays(data.getGrowthProgressDays() + 1);
+        int dailyNeed = (int) Math.min(Integer.MAX_VALUE,
+                (long) residents * CivitasConfig.FOOD_PER_DAY.get());
+
+        boolean fed = false;
+        int consumed = 0;
+        if (residents > 0 && dailyNeed > 0) {
+            consumed = StorageFoodExtension.consumeFood(warehouse, dailyNeed);
+            fed = consumed >= dailyNeed;
+            data.getEconomyHistory().recordFoodConsumption(day, consumed);
+            if (fed) {
+                if (data.getHungerDays() > 0) {
+                    data.getEconomyHistory().recordEvent(day, "Запасы еды восстановлены; голод закончился");
+                }
+                data.setHungerDays(0);
+                data.setGrowthProgressDays(Math.min(CivitasConfig.GROWTH_INTERVAL_DAYS.get(),
+                        data.getGrowthProgressDays() + 1));
+            } else {
+                if (data.getHungerDays() == 0) {
+                    data.getEconomyHistory().recordEvent(day, "Голод: не хватает "
+                            + Math.max(0, dailyNeed - consumed) + " ед. еды");
+                }
+                data.setHungerDays(data.getHungerDays() + 1);
+                data.setGrowthProgressDays(0);
+            }
         } else {
-            removeFood(warehouse, availableFood);
-            data.setHungerDays(data.getHungerDays() + 1);
+            data.setHungerDays(0);
             data.setGrowthProgressDays(0);
         }
 
-        if (fed && data.getGrowthProgressDays() >= GROWTH_DAYS_REQUIRED) {
-            int beds = countBeds(level, center);
-            if (beds > residents) {
-                BlockPos spawn = findSpawnPosition(level, center);
-                if (spawn != null) {
-                    Villager newcomer = EntityType.VILLAGER.create(level);
-                    if (newcomer != null) {
-                        newcomer.moveTo(spawn.getX() + 0.5D, spawn.getY(), spawn.getZ() + 0.5D,
-                                level.random.nextFloat() * 360.0F, 0.0F);
-                        newcomer.setPersistenceRequired();
-                        if (level.addFreshEntity(newcomer)) {
-                            data.setPopulation(residents + 1);
-                            data.setGrowthProgressDays(0);
-                        }
+        int foodAfterUpkeep = StorageFoodExtension.totalFoodValue(warehouse);
+        int beds = countBeds(level, center);
+        int interval = CivitasConfig.GROWTH_INTERVAL_DAYS.get();
+        long reserveNeed = (long) dailyNeed * CivitasConfig.GROWTH_FOOD_RESERVE.get();
+        if (residents > 0 && fed && data.getGrowthProgressDays() >= interval
+                && beds > residents && foodAfterUpkeep >= reserveNeed) {
+            BlockPos spawn = findSpawnPosition(level, center);
+            if (spawn != null) {
+                Villager newcomer = EntityType.VILLAGER.create(level);
+                if (newcomer != null) {
+                    newcomer.moveTo(spawn.getX() + 0.5D, spawn.getY(), spawn.getZ() + 0.5D,
+                            level.random.nextFloat() * 360.0F, 0.0F);
+                    String[] names = {"Алексей", "Мирон", "Илья", "Вера", "Анна", "Марта", "Лев", "Ева", "Никита", "София"};
+                    newcomer.setCustomName(Component.literal(names[level.random.nextInt(names.length)]));
+                    newcomer.setPersistenceRequired();
+                    if (level.addFreshEntity(newcomer)) {
+                        residents++;
+                        data.setPopulation(residents);
+                        data.setGrowthProgressDays(0);
+                        data.getEconomyHistory().recordEvent(day, "В деревне появился новый житель");
                     }
                 }
             }
         }
+
+        recordDailySnapshot(level, data, warehouse, day);
+        data.setDirty();
     }
 
-    public static int countFood(SettlementWarehouseBlockEntity warehouse) {
-        int total = 0;
-        for (int slot = 0; slot < warehouse.getContainerSize(); slot++) {
-            ItemStack stack = warehouse.getItem(slot);
-            if (!stack.isEmpty() && FOOD.contains(stack.getItem())) {
-                total = (int) Math.min(Integer.MAX_VALUE, (long) total + stack.getCount());
-            }
-        }
-        return total;
+    private static void recordDailySnapshot(ServerLevel level, CivitasSavedData data,
+                                            SettlementWarehouseBlockEntity warehouse, long day) {
+        int residents = countResidents(level, data.getStarterVillageCenter());
+        data.setPopulation(residents);
+        data.getEconomyHistory().recordDaily(day,
+                countItems(warehouse, WOOD_ITEMS),
+                countItems(warehouse, STONE_ITEMS),
+                StorageFoodExtension.totalFoodValue(warehouse),
+                residents);
+        data.setDirty();
     }
 
-    private static void removeFood(SettlementWarehouseBlockEntity warehouse, int amount) {
-        int remaining = Math.max(0, amount);
-        for (Item food : FOOD) {
-            for (int slot = 0; slot < warehouse.getContainerSize() && remaining > 0; slot++) {
-                ItemStack stack = warehouse.getItem(slot);
-                if (stack.isEmpty() || stack.getItem() != food) continue;
-                int moved = Math.min(remaining, stack.getCount());
-                stack.shrink(moved);
-                remaining -= moved;
-                if (stack.isEmpty()) warehouse.setItem(slot, ItemStack.EMPTY);
-                else warehouse.setChanged();
-            }
-            if (remaining == 0) return;
-        }
+    public static int countResidents(ServerLevel level, BlockPos center) {
+        return level.getEntitiesOfClass(Villager.class,
+                new AABB(center).inflate(MAX_BEDS_SCAN, 12, MAX_BEDS_SCAN)).size();
     }
 
-    private static int countBeds(ServerLevel level, BlockPos center) {
+    public static int countBeds(ServerLevel level, BlockPos center) {
         int count = 0;
         for (BlockPos pos : BlockPos.betweenClosed(center.offset(-MAX_BEDS_SCAN, -8, -MAX_BEDS_SCAN),
                 center.offset(MAX_BEDS_SCAN, 8, MAX_BEDS_SCAN))) {
@@ -124,6 +155,24 @@ public final class SettlementEconomyAI {
             if (state.getBlock() instanceof BedBlock && state.getValue(BedBlock.PART) == BedPart.HEAD) count++;
         }
         return count;
+    }
+
+    public static int countItem(SettlementWarehouseBlockEntity warehouse, Item item) {
+        if (warehouse == null) return 0;
+        int total = 0;
+        for (int slot = 0; slot < warehouse.getContainerSize(); slot++) {
+            var stack = warehouse.getItem(slot);
+            if (!stack.isEmpty() && stack.is(item)) {
+                total = (int) Math.min(Integer.MAX_VALUE, (long) total + stack.getCount());
+            }
+        }
+        return total;
+    }
+
+    private static int countItems(SettlementWarehouseBlockEntity warehouse, List<Item> items) {
+        long total = 0L;
+        for (Item item : items) total += countItem(warehouse, item);
+        return (int) Math.min(Integer.MAX_VALUE, total);
     }
 
     private static BlockPos findSpawnPosition(ServerLevel level, BlockPos center) {
@@ -135,7 +184,8 @@ public final class SettlementEconomyAI {
             for (Direction direction : List.of(Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST)) {
                 int x = bed.getX() + direction.getStepX();
                 int z = bed.getZ() + direction.getStepZ();
-                if (!level.hasChunkAt(new BlockPos(x, bed.getY(), z))) continue;
+                BlockPos horizontal = new BlockPos(x, bed.getY(), z);
+                if (!level.hasChunkAt(horizontal)) continue;
                 int y = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z);
                 BlockPos feet = new BlockPos(x, y, z);
                 BlockPos head = feet.above();

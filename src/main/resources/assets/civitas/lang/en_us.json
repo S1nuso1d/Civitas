@@ -7,6 +7,19 @@
   "screen.civitas.settlement_name": "Settlement name",
   "screen.civitas.name_hint": "For example, New Village",
   "screen.civitas.item_id": "Item ID",
-  "screen.civitas.amount": "Amount"
+  "screen.civitas.amount": "Amount",
+  "civitas.tab.economy": "Economy",
+  "civitas.food.title": "Food",
+  "civitas.food.stock": "In storage: %s units",
+  "civitas.food.need": "Consumption: %s units/day",
+  "civitas.food.days_left": "Lasts: %s days",
+  "civitas.food.starving": "STARVING!",
+  "civitas.food.growth_in": "Growth in: %s days",
+  "civitas.role.farmer": "Farmer",
+  "civitas.btn.assign_farmer": "Assign Farmer",
+  "civitas.economy.title": "Economy",
+  "civitas.economy.delta_7d": "Change over 7 days",
+  "civitas.economy.recent_events": "Recent events",
+  "civitas.economy.history": "Daily history",
+  "civitas.msg.cargo_blocks_switch": "Cannot switch profession: worker carries cargo"
 }
-

@@ -27,7 +27,8 @@ public final class SettlementScreen extends Screen {
         OVERVIEW("Обзор"),
         RESIDENTS("Жители"),
         CONSTRUCTION("Стройка"),
-        STORAGE("Склад");
+        STORAGE("Склад"),
+        ECONOMY("Экономика");
 
         private final String title;
 
@@ -99,7 +100,7 @@ public final class SettlementScreen extends Screen {
         contentBottom = panelY + panelHeight - 42;
 
         int gap = 3;
-        int tabWidth = (contentWidth - gap * 3) / 4;
+        int tabWidth = (contentWidth - gap * (Tab.values().length - 1)) / Tab.values().length;
         int x = contentX;
         int tabY = panelY + 35;
         for (Tab tab : Tab.values()) {
@@ -109,6 +110,7 @@ public final class SettlementScreen extends Screen {
                 case RESIDENTS -> "Жит.";
                 case CONSTRUCTION -> "Стр.";
                 case STORAGE -> "Скл.";
+                case ECONOMY -> "Эк.";
             } : tab.title;
             if (tab == activeTab) tabLabel = "» " + tabLabel;
             addRenderableWidget(Button.builder(Component.literal(tabLabel), button -> switchTab(selected))
@@ -121,6 +123,7 @@ public final class SettlementScreen extends Screen {
             case RESIDENTS -> initResidents();
             case CONSTRUCTION -> initConstruction();
             case STORAGE -> initStorage();
+            case ECONOMY -> { }
         }
 
         int footerButtonY = panelY + panelHeight - 30;
@@ -168,11 +171,6 @@ public final class SettlementScreen extends Screen {
         String selectedRole = hasSelection ? snapshot.residentRoles().get(selectedIndex) : "";
 
         if (residentControlPage == 0) {
-            String lumberjackLabel = half < 90 ? "Лесоруб" : "Назначить лесорубом";
-            String builderLabel = contentWidth - half - 4 < 90 ? "Строитель" : "Назначить строителем";
-            addButton(lumberjackLabel, contentX, actionY, half, 20,
-                    () -> sendSelectedResidentAction(CivitasNetwork.Action.ASSIGN_LUMBERJACK_TO),
-                    Items.IRON_AXE, hasSelection);
             int third = (contentWidth - 8) / 3;
             addButton("Лесоруб", contentX, actionY, third, 20,
                     () -> sendSelectedResidentAction(CivitasNetwork.Action.ASSIGN_LUMBERJACK_TO),
@@ -580,6 +578,7 @@ public final class SettlementScreen extends Screen {
             case RESIDENTS -> renderResidents();
             case CONSTRUCTION -> renderConstruction();
             case STORAGE -> renderStorage();
+            case ECONOMY -> renderEconomy();
         }
 
         super.render(graphics, mouseX, mouseY, partialTick);
@@ -596,12 +595,14 @@ public final class SettlementScreen extends Screen {
             return;
         }
         List<String> lines = List.of(
-                "Уровень: " + snapshot.level() + " | Население: " + snapshot.population(),
-                "Еда: " + snapshot.foodStock() + " | Нужно в день: " + snapshot.foodConsumptionPerDay(),
+                "Уровень: " + snapshot.level() + " | Население: " + snapshot.population()
+                        + " | Кровати: " + snapshot.bedCount(),
+                "Еда: " + snapshot.foodStock() + " ед. | Нужно: " + snapshot.foodConsumptionPerDay()
+                        + " ед./день | Запас: " + (snapshot.foodDaysLeft() >= 999 ? "—" : snapshot.foodDaysLeft() + " дн."),
                 "Голод: " + (snapshot.hungerDays() > 0 ? "да (" + snapshot.hungerDays() + " дн.)" : "нет")
-                        + " | Рост: " + snapshot.growthProgressDays() + "/3 благополучных дней",
-                "Жители: " + snapshot.residentCount() + " | Лесорубы: " + snapshot.lumberjacks()
-                        + " | Строители: " + snapshot.builders() + " | Без роли: " + snapshot.idleResidents(),
+                        + " | Рост: " + snapshot.growthProgressDays() + "/" + snapshot.growthIntervalDays() + " дней",
+                "Рабочие: лесорубы " + snapshot.lumberjacks() + " | строители " + snapshot.builders()
+                        + " | фермеры " + snapshot.farmers() + " | без роли " + snapshot.idleResidents(),
                 "Здания: дома " + snapshot.cabinCount() + " | фермы " + snapshot.farmCount()
                         + " | мастерские " + snapshot.workshopCount(),
                 "Строительных заказов: " + snapshot.orderCount(),
@@ -614,6 +615,31 @@ public final class SettlementScreen extends Screen {
             drawLine(startY + i * 14, lines.get(i), 0xFF303030, contentWidth);
         }
     }
+
+    private void renderEconomy() {
+        if (snapshot == null) {
+            drawLine(contentY + 24, "Запрашиваю историю экономики…", 0xFF303030, contentWidth);
+            return;
+        }
+        int y = contentY + 16;
+        List<String> lines = new ArrayList<>();
+        lines.add("Изменение запасов за 7 дней");
+        lines.add("Дерево: " + signed(snapshot.woodDelta7d()) + " шт.");
+        lines.add("Камень: " + signed(snapshot.stoneDelta7d()) + " шт.");
+        lines.add("Еда: " + signed(snapshot.foodDelta7d()) + " ед.");
+        lines.add("Последние события:");
+        List<String> events = snapshot.recentEvents();
+        for (int i = Math.max(0, events.size() - 4); i < events.size(); i++) lines.add("• " + events.get(i));
+        lines.add("История по дням:");
+        List<String> history = snapshot.economy();
+        for (int i = Math.max(0, history.size() - 6); i < history.size(); i++) lines.add(history.get(i));
+        int rows = visibleRows(y, 13);
+        for (int i = 0; i < Math.min(rows, lines.size()); i++) {
+            drawLine(y + i * 13, lines.get(i), 0xFF303030, contentWidth);
+        }
+    }
+
+    private static String signed(int value) { return value >= 0 ? "+" + value : Integer.toString(value); }
 
     private void renderResidents() {
         if (snapshot == null) {

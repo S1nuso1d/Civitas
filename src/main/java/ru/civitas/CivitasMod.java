@@ -24,6 +24,8 @@ import ru.civitas.worker.LumberjackWorkerAI;
 import ru.civitas.worker.ConstructionWorkerAI;
 import ru.civitas.worker.FarmerWorkerAI;
 import ru.civitas.economy.SettlementEconomyAI;
+import net.minecraftforge.fml.config.ModConfig;
+import ru.civitas.economy.SettlementEconomyAI;
 
 @Mod(CivitasMod.MOD_ID)
 public final class CivitasMod {
@@ -36,6 +38,7 @@ public final class CivitasMod {
         ModBlockEntities.BLOCK_ENTITIES.register(context.getModEventBus());
         ModItems.ITEMS.register(context.getModEventBus());
         ModMenus.MENUS.register(context.getModEventBus());
+        net.minecraftforge.fml.ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, CivitasConfig.SPEC);
         CivitasNetwork.register();
         MinecraftForge.EVENT_BUS.addListener(this::onPlayerLoggedIn);
         MinecraftForge.EVENT_BUS.addListener(this::onPlayerRespawn);
@@ -45,6 +48,8 @@ public final class CivitasMod {
         MinecraftForge.EVENT_BUS.addListener(LumberjackWorkerAI::onLivingDeath);
         MinecraftForge.EVENT_BUS.addListener(ConstructionWorkerAI::onLevelTick);
         MinecraftForge.EVENT_BUS.addListener(FarmerWorkerAI::onLivingTick);
+        MinecraftForge.EVENT_BUS.addListener(FarmerWorkerAI::onLivingDeath);
+        MinecraftForge.EVENT_BUS.addListener(SettlementEconomyAI::onLevelTick);
         MinecraftForge.EVENT_BUS.addListener(SettlementEconomyAI::onLevelTick);
     }
 

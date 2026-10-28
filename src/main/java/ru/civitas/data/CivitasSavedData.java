@@ -9,6 +9,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.util.datafix.DataFixTypes;
+import ru.civitas.CivitasConfig;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -37,6 +38,8 @@ public final class CivitasSavedData extends SavedData {
     private long lastEconomyDay = -1L;
     private int hungerDays;
     private int growthProgressDays;
+    private final EconomyHistory economyHistory = new EconomyHistory(CivitasConfig.ECONOMY_HISTORY_DAYS.get());
+    private final SettlementReservations farmlandReservations = new SettlementReservations();
     private int level = 1;
     private boolean starterVillageGenerated;
     private int villageX;
@@ -180,7 +183,9 @@ public final class CivitasSavedData extends SavedData {
         data.population = Math.max(0, tag.getInt("population"));
         data.lastEconomyDay = tag.contains("last_economy_day") ? tag.getLong("last_economy_day") : -1L;
         data.hungerDays = Math.max(0, Math.min(1_000_000, tag.getInt("hunger_days")));
-        data.growthProgressDays = Math.max(0, Math.min(3, tag.getInt("growth_progress_days")));
+        data.growthProgressDays = Math.max(0, Math.min(30, tag.getInt("growth_progress_days")));
+        data.economyHistory.restoreFrom(EconomyHistory.load(tag, "economy_history", CivitasConfig.ECONOMY_HISTORY_DAYS.get()));
+        data.farmlandReservations.restoreFrom(SettlementReservations.load(tag, "farmland_reservations"));
         data.level = Math.max(1, tag.getInt("level"));
         data.starterVillageGenerated = tag.getBoolean("starter_village_generated");
         data.villageX = tag.getInt("village_x");
@@ -254,6 +259,8 @@ public final class CivitasSavedData extends SavedData {
         tag.putLong("last_economy_day", lastEconomyDay);
         tag.putInt("hunger_days", hungerDays);
         tag.putInt("growth_progress_days", growthProgressDays);
+        economyHistory.save(tag, "economy_history");
+        farmlandReservations.save(tag, "farmland_reservations");
         tag.putInt("level", level);
         tag.putBoolean("starter_village_generated", starterVillageGenerated);
         tag.putInt("village_x", villageX);
@@ -548,8 +555,39 @@ public final class CivitasSavedData extends SavedData {
     }
     public int getGrowthProgressDays() { return growthProgressDays; }
     public void setGrowthProgressDays(int days) {
-        int safe = Math.max(0, Math.min(3, days));
+        int safe = Math.max(0, Math.min(30, days));
         if (growthProgressDays != safe) { growthProgressDays = safe; setDirty(); }
+    }
+
+    public EconomyHistory getEconomyHistory() { return economyHistory; }
+
+    public void recordFoodProduction(long day, int foodValue) {
+        if (foodValue <= 0) return;
+        economyHistory.recordFoodProduction(day, foodValue);
+        economyHistory.recordEvent(day, "Фермер доставил " + foodValue + " ед. еды");
+        setDirty();
+    }
+
+    public boolean tryReserveFarmland(BlockPos pos, UUID workerId) {
+        boolean reserved = farmlandReservations.tryReserve(pos, workerId);
+        if (reserved) setDirty();
+        return reserved;
+    }
+
+    public boolean isFarmlandReservedByOther(BlockPos pos, UUID workerId) {
+        return farmlandReservations.isReservedByOther(pos, workerId);
+    }
+
+    public boolean isFarmlandReservedBy(BlockPos pos, UUID workerId) {
+        return farmlandReservations.isReservedBy(pos, workerId);
+    }
+
+    public void releaseFarmland(BlockPos pos, UUID workerId) {
+        if (farmlandReservations.release(pos, workerId)) setDirty();
+    }
+
+    public void releaseFarmlandForWorker(UUID workerId) {
+        if (farmlandReservations.releaseAll(workerId)) setDirty();
     }
 
     public int getLevel() {

@@ -26,6 +26,9 @@ import ru.civitas.worker.LumberjackWorkerAI;
 import ru.civitas.worker.ConstructionWorkerAI;
 import ru.civitas.worker.FarmerWorkerAI;
 import ru.civitas.economy.SettlementEconomyAI;
+import ru.civitas.CivitasConfig;
+import ru.civitas.data.StorageFoodExtension;
+import net.minecraft.world.item.Item;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -42,7 +45,7 @@ import java.util.regex.Pattern;
 public final class CivitasNetwork {
     public static final SimpleChannel CHANNEL = ChannelBuilder
             .named(ResourceLocation.fromNamespaceAndPath(CivitasMod.MOD_ID, "main"))
-            .networkProtocolVersion(2)
+            .networkProtocolVersion(3)
             .simpleChannel();
 
     private static final Pattern ITEM_ID_PATTERN =
@@ -243,9 +246,9 @@ public final class CivitasNetwork {
                 } else if ("lumberjack".equals(role) && carried > 0) {
                     succeeded = true;
                     message = name + " уже лесоруб и доставит накопленные брёвна.";
-                } else if ("farmer".equals(role)) {
+                } else if ("farmer".equals(role) && FarmerWorkerAI.hasCargo(villager)) {
                     succeeded = false;
-                    message = "Сначала сними профессию фермера и дождись доставки урожая на склад.";
+                    message = "Сначала дождись доставки урожая на склад.";
                 } else {
                     succeeded = LumberjackWorkerAI.assignLumberjackTo(level, center, villager);
                     message = succeeded
@@ -254,10 +257,18 @@ public final class CivitasNetwork {
                 }
             }
             case ASSIGN_FARMER_TO -> {
-                succeeded = FarmerWorkerAI.assignFarmerTo(level, center, villager);
-                message = succeeded
-                        ? "Житель «" + name + "» назначен фермером."
-                        : "Нельзя назначить фермером: сначала сними текущую профессию и доставь груз.";
+                if ("lumberjack".equals(role) && villager.getPersistentData().getInt("civitas.worker_carried_count") > 0) {
+                    succeeded = false;
+                    message = "Лесоруб несёт брёвна — дождись доставки на склад.";
+                } else if (FarmerWorkerAI.hasCargo(villager) && !"farmer".equals(role)) {
+                    succeeded = false;
+                    message = "Фермер несёт урожай — дождись доставки на склад.";
+                } else {
+                    succeeded = FarmerWorkerAI.assignFarmerTo(level, center, villager);
+                    message = succeeded
+                            ? "Житель «" + name + "» назначен фермером."
+                            : "Не удалось назначить фермера: житель занят другой задачей или вне поселения.";
+                }
             }
             case ASSIGN_BUILDER_TO -> {
                 int carried = villager.getPersistentData().getInt("civitas.worker_carried_count");
@@ -265,6 +276,9 @@ public final class CivitasNetwork {
                 if (cargoError != null) {
                     succeeded = false;
                     message = cargoError;
+                } else if (FarmerWorkerAI.hasCargo(villager)) {
+                    succeeded = false;
+                    message = "Фермер несёт урожай — дождись доставки на склад.";
                 } else {
                     succeeded = ConstructionWorkerAI.assignBuilderTo(level, center, villager);
                     message = succeeded
@@ -425,12 +439,32 @@ public final class CivitasNetwork {
         List<String> residentUuids = new ArrayList<>();
         List<String> residentRoles = new ArrayList<>();
         List<String> residentStatuses = new ArrayList<>();
-        int foodStock = level.hasChunkAt(center)
-                && level.getBlockEntity(center) instanceof SettlementWarehouseBlockEntity foodWarehouse
-                ? SettlementEconomyAI.countFood(foodWarehouse) : 0;
+        SettlementWarehouseBlockEntity foodWarehouse = level.hasChunkAt(center)
+                && level.getBlockEntity(center) instanceof SettlementWarehouseBlockEntity foundWarehouse
+                ? foundWarehouse : null;
+        int foodStock = StorageFoodExtension.totalFoodValue(foodWarehouse);
+        int beds = SettlementEconomyAI.countBeds(level, center);
+        int woodStock = 0;
+        int stoneStock = 0;
+        if (foodWarehouse != null) {
+            for (Item wood : List.of(net.minecraft.world.item.Items.OAK_LOG, net.minecraft.world.item.Items.BIRCH_LOG,
+                    net.minecraft.world.item.Items.SPRUCE_LOG, net.minecraft.world.item.Items.JUNGLE_LOG,
+                    net.minecraft.world.item.Items.ACACIA_LOG, net.minecraft.world.item.Items.DARK_OAK_LOG,
+                    net.minecraft.world.item.Items.MANGROVE_LOG, net.minecraft.world.item.Items.CHERRY_LOG,
+                    net.minecraft.world.item.Items.CRIMSON_STEM, net.minecraft.world.item.Items.WARPED_STEM)) {
+                woodStock = (int) Math.min(Integer.MAX_VALUE, (long) woodStock + SettlementEconomyAI.countItem(foodWarehouse, wood));
+            }
+            for (Item stone : List.of(net.minecraft.world.item.Items.COBBLESTONE, net.minecraft.world.item.Items.STONE,
+                    net.minecraft.world.item.Items.DEEPSLATE, net.minecraft.world.item.Items.COBBLED_DEEPSLATE,
+                    net.minecraft.world.item.Items.ANDESITE, net.minecraft.world.item.Items.DIORITE,
+                    net.minecraft.world.item.Items.GRANITE)) {
+                stoneStock = (int) Math.min(Integer.MAX_VALUE, (long) stoneStock + SettlementEconomyAI.countItem(foodWarehouse, stone));
+            }
+        }
         int lumberjacks = 0;
         int builders = 0;
         int idle = 0;
+        int farmers = 0;
         int residentCount = 0;
 
         for (Villager villager : villageResidents) {
@@ -444,6 +478,7 @@ public final class CivitasNetwork {
                 builders++;
                 roleLabel = "Строитель";
             } else if ("farmer".equals(role)) {
+                farmers++;
                 roleLabel = "Фермер";
             } else {
                 idle++;
@@ -551,36 +586,19 @@ public final class CivitasNetwork {
             storageLines.add("Физический склад сейчас недоступен.");
         }
 
+        int foodNeed = (int) Math.min(Integer.MAX_VALUE,
+                (long) residentCount * CivitasConfig.FOOD_PER_DAY.get());
+        int foodDaysLeft = foodNeed <= 0 ? 999 : foodStock / foodNeed;
+        List<String> eventLines = data.getEconomyHistory().recentEvents();
+        List<String> economyLines = data.getEconomyHistory().formattedRecentDays(20);
         SettlementSnapshot snapshot = new SettlementSnapshot(
-                true,
-                data.getSettlementName(),
-                data.getOwnerName(),
-                data.getLevel(),
-                data.getPopulation(),
-                foodStock,
-                residentCount,
-                residentCount,
-                data.getHungerDays(),
-                data.getGrowthProgressDays(),
-                lumberjacks,
-                builders,
-                idle,
-                cabins,
-                farms,
-                workshops,
-                orders.size(),
-                totalItems,
-                occupiedSlots,
-                warehouseSlots,
-                statusMessage,
-                residentNames,
-                residentUuids,
-                residentRoles,
-                residentStatuses,
-                buildingLines,
-                constructionLines,
-                storageLines
-        );
+                true, data.getSettlementName(), data.getOwnerName(), data.getLevel(), residentCount,
+                foodStock, foodNeed, foodDaysLeft, data.getHungerDays(), data.getGrowthProgressDays(),
+                CivitasConfig.GROWTH_INTERVAL_DAYS.get(), beds, residentCount, lumberjacks, builders, farmers, idle,
+                cabins, farms, workshops, orders.size(), totalItems, occupiedSlots, warehouseSlots,
+                data.getEconomyHistory().deltaWood(7), data.getEconomyHistory().deltaStone(7),
+                data.getEconomyHistory().deltaFood(7), statusMessage, eventLines, economyLines,
+                residentNames, residentUuids, residentRoles, residentStatuses, buildingLines, constructionLines, storageLines);
         send(player, snapshot);
     }
 

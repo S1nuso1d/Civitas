@@ -344,6 +344,8 @@ public final class ConstructionWorkerAI {
                     || !LumberjackWorkerAI.releaseLumberjackRole(villager)) {
                 return false;
             }
+        } else if ("farmer".equals(currentRole)) {
+            if (!FarmerWorkerAI.releaseFarmerRole(villager)) return false;
         } else if (!currentRole.isBlank()) {
             return false;
         }
