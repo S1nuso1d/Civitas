@@ -8,7 +8,6 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.Heightmap;
 import ru.civitas.block.SettlementWarehouseBlockEntity;
 import ru.civitas.data.CivitasSavedData;
@@ -151,57 +150,6 @@ public final class SettlementBuildingManager {
             if (clear) return ground;
         }
         return null;
-    }
-
-    private static void buildCabin(ServerLevel level, BlockPos ground) {
-        for (int dx=-2; dx<=2; dx++) for (int dz=-2; dz<=2; dz++) {
-            set(level, ground.offset(dx,1,dz), (Math.abs(dx)==2 || Math.abs(dz)==2) ? Blocks.OAK_PLANKS : Blocks.OAK_PLANKS);
-        }
-        for (int y=2; y<=4; y++) for (int dx=-2; dx<=2; dx++) for (int dz=-2; dz<=2; dz++) {
-            boolean wall = Math.abs(dx)==2 || Math.abs(dz)==2;
-            if (!wall) continue;
-            if (y==2 && dx==0 && dz==-2) continue; // door opening
-            if (y==3 && ((dx==2 && dz==0)||(dx==-2 && dz==0))) set(level, ground.offset(dx,y,dz), Blocks.GLASS);
-            else set(level, ground.offset(dx,y,dz), Blocks.OAK_LOG);
-        }
-        for (int dx=-3; dx<=3; dx++) for (int dz=-3; dz<=3; dz++) set(level, ground.offset(dx,5,dz), Blocks.SPRUCE_PLANKS);
-        set(level, ground.offset(0,1,-2), Blocks.AIR);
-        set(level, ground.offset(0,2,-2), Blocks.AIR);
-        set(level, ground.offset(0,1,0), Blocks.CRAFTING_TABLE);
-        set(level, ground.offset(1,1,0), Blocks.BARREL);
-        set(level, ground.offset(0,1,2), Blocks.RED_BED);
-    }
-
-    private static void buildFarm(ServerLevel level, BlockPos ground) {
-        for (int dx=-3; dx<=3; dx++) for (int dz=-3; dz<=3; dz++) {
-            if (Math.abs(dx)==3 || Math.abs(dz)==3) set(level, ground.offset(dx,1,dz), Blocks.OAK_FENCE);
-            else if (dx==0 && dz==0) set(level, ground.offset(dx,1,dz), Blocks.WATER);
-            else {
-                set(level, ground.offset(dx,1,dz), Blocks.FARMLAND);
-                level.setBlock(ground.offset(dx,2,dz), Blocks.WHEAT.defaultBlockState().setValue(net.minecraft.world.level.block.CropBlock.AGE, 0), 3);
-            }
-        }
-        set(level, ground.offset(0,1,-3), Blocks.AIR);
-        set(level, ground.offset(1,1,0), Blocks.COMPOSTER);
-        set(level, ground.offset(-1,1,0), Blocks.BARREL);
-    }
-
-    private static void buildWorkshop(ServerLevel level, BlockPos ground) {
-        for (int dx=-2; dx<=2; dx++) for (int dz=-2; dz<=2; dz++) {
-            set(level, ground.offset(dx,1,dz), Blocks.COBBLESTONE);
-        }
-        for (int y=2; y<=3; y++) for (int dx=-2; dx<=2; dx++) for (int dz=-2; dz<=2; dz++) {
-            if (Math.abs(dx)==2 || Math.abs(dz)==2) {
-                if (y==2 && dx==0 && dz==-2) continue;
-                set(level, ground.offset(dx,y,dz), Blocks.COBBLESTONE);
-            }
-        }
-        for (int dx=-3; dx<=3; dx++) for (int dz=-3; dz<=3; dz++) set(level, ground.offset(dx,4,dz), Blocks.OAK_PLANKS);
-        set(level, ground.offset(0,1,-2), Blocks.AIR);
-        set(level, ground.offset(0,1,0), Blocks.CRAFTING_TABLE);
-        set(level, ground.offset(1,1,0), Blocks.FURNACE);
-        set(level, ground.offset(-1,1,0), Blocks.BARREL);
-        set(level, ground.offset(0,1,1), Blocks.ANVIL);
     }
 
     private static void set(ServerLevel level, BlockPos pos, Block block) {
