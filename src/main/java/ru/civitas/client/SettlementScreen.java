@@ -78,8 +78,8 @@ public final class SettlementScreen extends Screen {
         icons.clear();
 
         // The panel follows the current viewport rather than assuming 360×480.
-        panelWidth = Math.min(MAX_PANEL_WIDTH, Math.max(200, width - 12));
-        panelHeight = Math.min(MAX_PANEL_HEIGHT, Math.max(180, height - 12));
+        panelWidth = Math.max(100, Math.min(MAX_PANEL_WIDTH, width - 8));
+        panelHeight = Math.max(150, Math.min(MAX_PANEL_HEIGHT, height - 8));
         panelX = (width - panelWidth) / 2;
         panelY = (height - panelHeight) / 2;
         contentX = panelX + PAD;
@@ -93,7 +93,14 @@ public final class SettlementScreen extends Screen {
         int tabY = panelY + 35;
         for (Tab tab : Tab.values()) {
             final Tab selected = tab;
-            addRenderableWidget(Button.builder(Component.literal(tab.title), button -> switchTab(selected))
+            String tabLabel = tabWidth < 52 ? switch (tab) {
+                case OVERVIEW -> "Обз.";
+                case RESIDENTS -> "Жит.";
+                case CONSTRUCTION -> "Стр.";
+                case STORAGE -> "Скл.";
+            } : tab.title;
+            if (tab == activeTab) tabLabel = "» " + tabLabel;
+            addRenderableWidget(Button.builder(Component.literal(tabLabel), button -> switchTab(selected))
                     .bounds(x, tabY, tabWidth, 20).build());
             x += tabWidth + gap;
         }
@@ -222,8 +229,8 @@ public final class SettlementScreen extends Screen {
     }
 
     private void initStorage() {
-        int amountWidth = Math.min(72, Math.max(48, contentWidth / 4));
-        int itemWidth = Math.max(80, contentWidth - amountWidth - 6);
+        int amountWidth = Math.min(72, Math.max(40, contentWidth / 4));
+        int itemWidth = Math.max(40, contentWidth - amountWidth - 6);
         itemId = new EditBox(font, contentX, contentY + 13, itemWidth, 20, Component.literal("ID предмета"));
         itemId.setMaxLength(128);
         itemId.setValue(itemIdValue);
@@ -249,7 +256,7 @@ public final class SettlementScreen extends Screen {
                             safeInteger(amountValue, 1, 2304, 1));
                 }, Items.BARREL);
 
-        addListNavigation(snapshot == null ? 0 : snapshot.storage().size(), contentY + 59);
+        addListNavigation(snapshot == null ? 0 : snapshot.storage().size(), contentY + 40);
     }
 
     private void addListNavigation(int itemCount, int y) {
