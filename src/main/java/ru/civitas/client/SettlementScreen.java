@@ -791,31 +791,33 @@ public final class SettlementScreen extends Screen {
             drawLine(contentY + 28, "Загружаю прогресс цивилизации…", 0xFF777777, contentWidth);
             return;
         }
-        record Achievement(String branch, String name, String condition, boolean unlocked, int tier) { }
+        record Achievement(String id, String branch, String name, String condition, int tier) {
+            boolean unlocked(SettlementSnapshot snapshot) { return snapshot.unlockedAchievements().contains(id); }
+        }
         List<Achievement> tree = List.of(
-                new Achievement("ОСНОВАНИЕ", "I. Первое поселение", "Основать поселение", snapshot.founded(), 1),
-                new Achievement("ОСНОВАНИЕ", "II. Первые руки", "Население не менее 5", snapshot.population() >= 5, 1),
-                new Achievement("ОСНОВАНИЕ", "III. Своя крыша", "Построить первый дом", snapshot.cabinCount() >= 1, 1),
-                new Achievement("НАСЕЛЕНИЕ", "IV. Растущая деревня", "Население не менее 10", snapshot.population() >= 10, 2),
-                new Achievement("НАСЕЛЕНИЕ", "V. Полный дом", "Кроватей не меньше, чем жителей", snapshot.bedCount() >= snapshot.population(), 2),
-                new Achievement("РЕМЁСЛА", "VI. Хлеб насущный", "Построить ферму", snapshot.farmCount() >= 1, 1),
-                new Achievement("РЕМЁСЛА", "VII. Мастерская", "Построить мастерскую", snapshot.workshopCount() >= 1, 1),
-                new Achievement("РЕМЁСЛА", "VIII. Три профессии", "Лесоруб, строитель и фермер работают", snapshot.lumberjacks() >= 1 && snapshot.builders() >= 1 && snapshot.farmers() >= 1, 2),
-                new Achievement("СТРОИТЕЛЬСТВО", "IX. Каменный фундамент", "Уровень поселения не менее 3", snapshot.level() >= 3, 2),
-                new Achievement("СТРОИТЕЛЬСТВО", "X. Большое поселение", "Построить 5 зданий", snapshot.cabinCount() + snapshot.farmCount() + snapshot.workshopCount() >= 5, 3),
-                new Achievement("ЭКОНОМИКА", "XI. Запас на чёрный день", "Еды хватит минимум на 3 дня", snapshot.foodConsumptionPerDay() > 0 && snapshot.foodStock() >= snapshot.foodConsumptionPerDay() * 3, 2),
-                new Achievement("ЭКОНОМИКА", "XII. Изобилие", "Склад занят хотя бы наполовину", snapshot.warehouseSlots() > 0 && snapshot.warehouseOccupiedSlots() * 2 >= snapshot.warehouseSlots(), 2),
-                new Achievement("ЭКОНОМИКА", "XIII. Положительный баланс", "Суммарная динамика еды, дерева и камня за 7 дней выше нуля", (long) snapshot.woodDelta7d() + snapshot.stoneDelta7d() + snapshot.foodDelta7d() > 0, 2),
-                new Achievement("РАЗВИТИЕ", "XIV. Опорный центр", "Развить поселение до 3-го уровня", snapshot.level() >= 3, 2),
-                new Achievement("РАЗВИТИЕ", "XV. Городская структура", "Население не менее 10 и 5 зданий", snapshot.population() >= 10 && snapshot.cabinCount() + snapshot.farmCount() + snapshot.workshopCount() >= 5, 3),
-                new Achievement("МАСТЕРСТВО", "XVI. Слаженная работа", "Не менее 3 назначенных рабочих", snapshot.lumberjacks() + snapshot.builders() + snapshot.farmers() >= 3, 2),
-                new Achievement("МАСТЕРСТВО", "XVII. Без простоя", "Нет бездействующих жителей", snapshot.residentCount() > 0 && snapshot.idleResidents() == 0, 3),
-                new Achievement("МАСТЕРСТВО", "XVIII. Устойчивый рост", "Нет голодных дней", snapshot.hungerDays() == 0 && snapshot.population() >= 5, 2),
-                new Achievement("РАЗВИТИЕ", "XIX. Первый этап развития", "Достичь 2-го уровня поселения", snapshot.level() >= 2, 1),
-                new Achievement("РАЗВИТИЕ", "XX. Центр региона", "Построить 3 здания", snapshot.cabinCount() + snapshot.farmCount() + snapshot.workshopCount() >= 3, 2),
-                new Achievement("РАЗВИТИЕ", "XXI. Городская жизнь", "Население не менее 15", snapshot.population() >= 15, 3)
+                new Achievement("settlement_founded", "ОСНОВАНИЕ", "I. Первое поселение", "Основать поселение", 1),
+                new Achievement("population_5", "ОСНОВАНИЕ", "II. Первые руки", "Население не менее 5", 1),
+                new Achievement("first_house", "ОСНОВАНИЕ", "III. Своя крыша", "Построить первый дом", 1),
+                new Achievement("population_10", "НАСЕЛЕНИЕ", "IV. Растущая деревня", "Население не менее 10", 2),
+                new Achievement("beds_cover_population", "НАСЕЛЕНИЕ", "V. Полный дом", "Кроватей не меньше, чем жителей", 2),
+                new Achievement("farm_built", "РЕМЁСЛА", "VI. Хлеб насущный", "Построить ферму", 1),
+                new Achievement("workshop_built", "РЕМЁСЛА", "VII. Мастерская", "Построить мастерскую", 1),
+                new Achievement("all_professions", "РЕМЁСЛА", "VIII. Три профессии", "Лесоруб, строитель и фермер работают", 2),
+                new Achievement("level_3", "СТРОИТЕЛЬСТВО", "IX. Каменный фундамент", "Уровень поселения не менее 3", 2),
+                new Achievement("five_buildings", "СТРОИТЕЛЬСТВО", "X. Большое поселение", "Построить 5 зданий", 3),
+                new Achievement("food_3_days", "ЭКОНОМИКА", "XI. Запас на чёрный день", "Еды хватит минимум на 3 дня", 2),
+                new Achievement("warehouse_half", "ЭКОНОМИКА", "XII. Изобилие", "Склад занят хотя бы наполовину", 2),
+                new Achievement("positive_resource_balance", "ЭКОНОМИКА", "XIII. Положительный баланс", "Суммарная динамика еды, дерева и камня за 7 дней выше нуля", 2),
+                new Achievement("level_3_center", "РАЗВИТИЕ", "XIV. Опорный центр", "Развить поселение до 3-го уровня", 2),
+                new Achievement("city_structure", "РАЗВИТИЕ", "XV. Городская структура", "Население не менее 10 и 5 зданий", 3),
+                new Achievement("three_workers", "МАСТЕРСТВО", "XVI. Слаженная работа", "Не менее 3 назначенных рабочих", 2),
+                new Achievement("no_idle_residents", "МАСТЕРСТВО", "XVII. Без простоя", "Нет бездействующих жителей", 3),
+                new Achievement("no_hunger", "МАСТЕРСТВО", "XVIII. Устойчивый рост", "Нет голодных дней", 2),
+                new Achievement("level_2", "РАЗВИТИЕ", "XIX. Первый этап развития", "Достичь 2-го уровня поселения", 1),
+                new Achievement("three_buildings", "РАЗВИТИЕ", "XX. Центр региона", "Построить 3 здания", 2),
+                new Achievement("population_15", "РАЗВИТИЕ", "XXI. Городская жизнь", "Население не менее 15", 3)
         );
-        int totalUnlocked = (int) tree.stream().filter(Achievement::unlocked).count();
+        int totalUnlocked = (int) tree.stream().filter(achievement -> achievement.unlocked(snapshot)).count();
         drawLine(contentY + 2, "ДОСТИЖЕНИЯ · 8 направлений развития", 0xFF303030, contentWidth);
         drawLine(contentY + 16, "Открыто " + totalUnlocked + "/" + tree.size()
                 + " · листай ветви кнопками ниже", 0xFF555555, contentWidth);
@@ -825,11 +827,12 @@ public final class SettlementScreen extends Screen {
         listOffset = Math.min(listOffset, achievementMaxOffset());
         for (int row = 0; row < rows && listOffset + row < tree.size(); row++) {
             Achievement achievement = tree.get(listOffset + row);
-            String line = (achievement.unlocked() ? "✓ " : "○ ")
+            boolean unlocked = achievement.unlocked(snapshot);
+            String line = (unlocked ? "✓ " : "○ ")
                     + "[" + achievement.branch() + "] " + achievement.name()
                     + " — " + achievement.condition();
             drawLine(startY + row * 14, line,
-                    achievement.unlocked() ? 0xFF236B36 : 0xFF777777, contentWidth);
+                    unlocked ? 0xFF236B36 : 0xFF777777, contentWidth);
         }
     }
 
