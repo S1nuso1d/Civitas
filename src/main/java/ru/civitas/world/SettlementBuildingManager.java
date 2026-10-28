@@ -110,9 +110,13 @@ public final class SettlementBuildingManager {
 
         // Player-selected construction must not overlap the protected 29x29 starter village.
         BlockPos protectedCenter = data.hasStarterVillage() ? data.getStarterVillageCenter() : villageCenter;
+        int footprintRadiusX = (rotationDegrees == 90 || rotationDegrees == 270)
+                ? definition.radiusZ() : definition.radiusX();
+        int footprintRadiusZ = (rotationDegrees == 90 || rotationDegrees == 270)
+                ? definition.radiusX() : definition.radiusZ();
         if (data.hasStarterVillage()
-                && Math.abs(site.getX() - protectedCenter.getX()) <= 14 + definition.radiusX()
-                && Math.abs(site.getZ() - protectedCenter.getZ()) <= 14 + definition.radiusZ()) {
+                && Math.abs(site.getX() - protectedCenter.getX()) <= 14 + footprintRadiusX
+                && Math.abs(site.getZ() - protectedCenter.getZ()) <= 14 + footprintRadiusZ) {
             return new BuildResult(false,
                     "Площадка пересекает стартовую деревню или её дорожки. Выбери участок за её пределами.");
         }
@@ -128,13 +132,19 @@ public final class SettlementBuildingManager {
             }
         }
 
-        // Require one solid, dry level under the complete footprint. The builder
-        // will clear replaceable vegetation above it, but never demolish solid blocks.
-        for (int dx = -definition.radiusX(); dx <= definition.radiusX(); dx++) {
-            for (int dz = -definition.radiusZ(); dz <= definition.radiusZ(); dz++) {
+        // Validate the rotated full footprint, not only the anchor. Every column
+        // must stay inside influence and a claimed chunk before materials are reserved.
+        for (int dx = -footprintRadiusX; dx <= footprintRadiusX; dx++) {
+            for (int dz = -footprintRadiusZ; dz <= footprintRadiusZ; dz++) {
                 BlockPos floorPos = site.offset(dx, 0, dz);
                 if (!level.hasChunkAt(floorPos)) {
                     return new BuildResult(false, "Не все чанки площадки загружены.");
+                }
+                if (!data.isWithinTerritory(floorPos)) {
+                    return new BuildResult(false, "Весь контур здания должен находиться внутри зоны влияния поселения.");
+                }
+                if (!data.isChunkClaimed(floorPos)) {
+                    return new BuildResult(false, "Весь контур здания должен находиться в занятых чанках. Расширь территорию командой /civitas territory claim.");
                 }
                 BlockState floor = level.getBlockState(floorPos);
                 if (!floor.isSolid() || !level.getFluidState(floorPos).isEmpty()) {
