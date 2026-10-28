@@ -443,7 +443,8 @@ public final class SettlementBuildingManager {
 
         int nextLevel = building.upgradeLevel() + 1;
         Map<String, Integer> costs = nextLevel == 2
-                ? Map.of("minecraft:oak_slab", 3, "minecraft:oak_fence", 4, "minecraft:lantern", 1)
+                ? Map.of("minecraft:oak_slab", 3, "minecraft:oak_fence", 4,
+                        "minecraft:oak_stairs", 1, "minecraft:lantern", 1)
                 : Map.of("minecraft:bricks", 4, "minecraft:lantern", 2);
         Map<String, Integer> stock = inventoryCounts(warehouse);
         Map<String, Integer> reserved = data.getWarehouseReservedResources();
