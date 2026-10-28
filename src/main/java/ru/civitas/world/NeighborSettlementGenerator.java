@@ -29,7 +29,7 @@ public final class NeighborSettlementGenerator {
         if (level == null || data == null || civilization == null || origin == null) return null;
         if (civilization.siteGenerated() && civilization.hasSite()) return civilization.site();
         if (civilization.hasSite() && level.hasChunkAt(civilization.site())
-                && level.getBlockState(civilization.site()).is(Blocks.BELL)) {
+                && level.getBlockState(civilization.site().above()).is(Blocks.BELL)) {
             civilization.markSiteGenerated();
             data.markTradeDataDirty();
             return civilization.site();
@@ -51,9 +51,8 @@ public final class NeighborSettlementGenerator {
                 }
             }
         }
-        set(level, site, Blocks.BELL);
-        set(level, site.offset(0, 1, 0), Blocks.AIR);
-        set(level, site.offset(0, 2, 0), Blocks.AIR);
+        set(level, site.above(), Blocks.BELL);
+        set(level, site.above(2), Blocks.AIR);
         spawnVillagers(level, site, civilization);
         civilization.markSiteGenerated();
         data.markTradeDataDirty();
