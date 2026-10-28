@@ -53,6 +53,10 @@ public final class CivitasCommands {
                                                             return builder.buildFuture();
                                                         })
                                                         .executes(CivitasCommands::setDiplomaticStance)))))
+                        .then(Commands.literal("visit")
+                                .then(Commands.argument("index", IntegerArgumentType.integer(1, 100))
+                                        .executes(CivitasCommands::visitNeighbor)))
+                        .then(Commands.literal("return").executes(CivitasCommands::returnFromNeighbor))
                         .then(Commands.literal("status").executes(CivitasCommands::status))
                         .then(Commands.literal("overview").executes(CivitasCommands::overview))
                         .then(Commands.literal("found")
@@ -131,6 +135,45 @@ public final class CivitasCommands {
                                         .then(Commands.argument("amount", IntegerArgumentType.integer(1, 2304))
                                                 .executes(CivitasCommands::withdraw))))
         );
+    }
+
+    private static int visitNeighbor(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        ServerPlayer player = context.getSource().getPlayerOrException();
+        CivitasSavedData data = CivitasSavedData.get(context.getSource().getServer());
+        if (!ensureOwner(context.getSource(), player, data)) return 0;
+        if (!context.getSource().getLevel().dimension().equals(net.minecraft.world.level.Level.OVERWORLD)) {
+            context.getSource().sendFailure(Component.literal("Посещать соседние цивилизации можно только из обычного мира."));
+            return 0;
+        }
+        int index = IntegerArgumentType.getInteger(context, "index");
+        java.util.List<NeighborCivilization> neighbors = new java.util.ArrayList<>(data.getNeighborCivilizations().values());
+        neighbors.sort(Comparator.comparing(NeighborCivilization::name, String.CASE_INSENSITIVE_ORDER));
+        if (index < 1 || index > neighbors.size()) {
+            context.getSource().sendFailure(Component.literal("Цивилизация №" + index + " не найдена. Используй /civitas diplomacy."));
+            return 0;
+        }
+        NeighborCivilization civilization = neighbors.get(index - 1);
+        BlockPos origin = data.hasStarterVillage() ? data.getStarterVillageCenter() : data.getCenter();
+        BlockPos site = ru.civitas.world.NeighborSettlementGenerator.ensureGenerated(
+                context.getSource().getServer().overworld(), data, civilization, origin);
+        if (site == null || !civilization.siteGenerated()) {
+            context.getSource().sendFailure(Component.literal("Не удалось безопасно найти место для поселения. Мир не изменён; попробуй ещё раз позже."));
+            return 0;
+        }
+        if (!ru.civitas.world.NeighborSettlementGenerator.visit(player, data, civilization)) {
+            context.getSource().sendFailure(Component.literal("Не удалось посетить поселение."));
+            return 0;
+        }
+        return Command.SINGLE_SUCCESS;
+    }
+
+    private static int returnFromNeighbor(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        ServerPlayer player = context.getSource().getPlayerOrException();
+        if (!ru.civitas.world.NeighborSettlementGenerator.returnToSavedPosition(player)) {
+            context.getSource().sendFailure(Component.literal("Нет сохранённой точки возврата. Сначала посети соседнюю цивилизацию через /civitas visit <номер>."));
+            return 0;
+        }
+        return Command.SINGLE_SUCCESS;
     }
 
     private static int help(CommandSourceStack source) {
