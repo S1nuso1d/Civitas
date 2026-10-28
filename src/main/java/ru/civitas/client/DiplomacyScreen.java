@@ -64,6 +64,14 @@ public final class DiplomacyScreen extends Screen {
                 .bounds(left + PANEL_W - 108, top + PANEL_H - 30, 96, 20).build());
     }
 
+    private String fitLine(String value, int maxWidth) {
+        String result = value;
+        while (font.width(result) > maxWidth && result.length() > 5) {
+            result = result.substring(0, result.length() - 2) + "…";
+        }
+        return result;
+    }
+
     private static String stanceLabel(String stance) {
         return switch (stance) {
             case "ALLIED" -> "Союз";
@@ -94,12 +102,17 @@ public final class DiplomacyScreen extends Screen {
                 g.fill(left + 8, y, left + PANEL_W - 8, y + 44, 0xFFD1D1D1);
                 g.drawString(font, c.name() + " · " + stanceLabel(c.stance()),
                         left + 14, y + 3, 0xFF202020, false);
-                String stats = "Население " + c.population() + " · Земли " + c.territory()
-                        + " · Еда " + c.food() + " · Стабильность " + c.stability()
-                        + "% · Репутация " + c.reputation();
-                while (font.width(stats) > PANEL_W - 28 && stats.length() > 5)
-                    stats = stats.substring(0, stats.length() - 2) + "…";
-                g.drawString(font, stats, left + 14, y + 14, 0xFF505050, false);
+                String economy = "Жители " + c.population() + " · Земли " + c.territory()
+                        + " · Еда " + c.food();
+                String reserves = "Дерево " + c.timber() + " · Камень " + c.stone()
+                        + " · Железо " + c.iron();
+                String diplomacy = "Стаб. " + c.stability() + "% · Репутация " + c.reputation();
+                economy = fitLine(economy, PANEL_W - 28);
+                reserves = fitLine(reserves, PANEL_W - 28);
+                diplomacy = fitLine(diplomacy, PANEL_W - 28);
+                g.drawString(font, economy, left + 14, y + 14, 0xFF505050, false);
+                g.drawString(font, reserves, left + 14, y + 25, 0xFF505050, false);
+                g.drawString(font, diplomacy, left + 14, y + 35, 0xFF505050, false);
             }
         }
         g.drawString(font, "Война блокирует торговлю; союз открывается через торговлю и подарки.",
