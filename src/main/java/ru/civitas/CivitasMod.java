@@ -23,6 +23,7 @@ import ru.civitas.world.StarterVillageGenerator;
 import ru.civitas.worker.LumberjackWorkerAI;
 import ru.civitas.worker.ConstructionWorkerAI;
 import ru.civitas.worker.FarmerWorkerAI;
+import ru.civitas.event.TerritoryProtectionHandler;
 import net.minecraftforge.fml.config.ModConfig;
 import ru.civitas.economy.SettlementEconomyAI;
 import ru.civitas.trade.TradeCaravanManager;
@@ -49,6 +50,9 @@ public final class CivitasMod {
         MinecraftForge.EVENT_BUS.addListener(this::onPlayerRespawn);
         MinecraftForge.EVENT_BUS.addListener(this::onBuildCreativeTab);
         MinecraftForge.EVENT_BUS.addListener(this::onRegisterCommands);
+        MinecraftForge.EVENT_BUS.addListener(TerritoryProtectionHandler::onBlockBreak);
+        MinecraftForge.EVENT_BUS.addListener(TerritoryProtectionHandler::onBlockPlace);
+        MinecraftForge.EVENT_BUS.addListener(TerritoryProtectionHandler::onRightClickBlock);
         MinecraftForge.EVENT_BUS.addListener(LumberjackWorkerAI::onLivingTick);
         MinecraftForge.EVENT_BUS.addListener(LumberjackWorkerAI::onLivingDeath);
         MinecraftForge.EVENT_BUS.addListener(ConstructionWorkerAI::onLevelTick);
