@@ -26,6 +26,7 @@ import ru.civitas.data.CivitasSavedData;
 import ru.civitas.worker.PersonalOrders;
 import ru.civitas.data.StorageFoodExtension;
 import ru.civitas.ai.AiLodController;
+import ru.civitas.ai.DecisionEngine;
 import ru.civitas.ai.ChunkGuard;
 import ru.civitas.ai.StuckDetector;
 
@@ -105,6 +106,7 @@ public final class FarmerWorkerAI {
     }
 
     private static void tickWorker(ServerLevel level, Villager villager) {
+        if (DecisionEngine.tick(level, villager)) return;
         CivitasSavedData data = CivitasSavedData.get(level.getServer());
         if (!data.hasStarterVillage()) {
             setStatus(villager, "Поселение не найдено");
