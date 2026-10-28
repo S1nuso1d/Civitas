@@ -309,6 +309,7 @@ public final class CivitasSavedData extends SavedData {
         // Backward-compatible migration: existing founded settlements receive their founding chunk.
         if (data.founded && data.claimedChunks.isEmpty()) {
             data.claimedChunks.add(new ChunkPos(data.centerX >> 4, data.centerZ >> 4).toLong());
+            data.setDirty();
         }
         return data;
     }
