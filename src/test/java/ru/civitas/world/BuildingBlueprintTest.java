@@ -33,9 +33,17 @@ class BuildingBlueprintTest {
     @Test
     void cabinBlueprintKeepsItsFloorWallsWindowsAndRoof() {
         var floor = BuildingBlueprint.layer(BuildingDefinition.Type.CABIN, 1);
-        assertEquals(25, floor.size());
-        assertTrue(floor.stream().anyMatch(p -> p.relativePosition().equals(new BlockPos(0, 1, 0))
+        assertEquals(29, floor.size(), "The 25-block floor also places four furnishings above it");
+        assertEquals(25, floor.stream().filter(p -> p.relativePosition().getY() == 1
+                && p.blockId().equals("minecraft:oak_planks")).count());
+        assertTrue(floor.stream().anyMatch(p -> p.relativePosition().equals(new BlockPos(1, 2, 0))
                 && p.blockId().equals("minecraft:crafting_table")));
+        assertTrue(floor.stream().anyMatch(p -> p.relativePosition().equals(new BlockPos(1, 2, 1))
+                && p.blockId().equals("minecraft:barrel")));
+        assertTrue(floor.stream().anyMatch(p -> p.relativePosition().equals(new BlockPos(-1, 2, 1))
+                && p.blockId().equals("minecraft:red_bed")), "Bed foot sits above the floor");
+        assertTrue(floor.stream().anyMatch(p -> p.relativePosition().equals(new BlockPos(-1, 2, 0))
+                && p.blockId().equals("minecraft:red_bed")), "Bed head sits above the floor");
         var walls = BuildingBlueprint.layer(BuildingDefinition.Type.CABIN, 3);
         assertEquals(2, walls.stream().filter(p -> p.blockId().equals("minecraft:glass")).count());
         var doorway = BuildingBlueprint.layer(BuildingDefinition.Type.CABIN, 2);
@@ -48,6 +56,22 @@ class BuildingBlueprintTest {
                 && p.blockId().equals("minecraft:oak_planks")));
         assertFalse(roof.stream().anyMatch(p -> p.clearsBlock()),
                 "Roof layer must not erase the cabin's doorway");
+    }
+
+    @Test
+    void cabinFurnishingsAreNotEmbeddedInTheFloor() {
+        var floor = BuildingBlueprint.layer(BuildingDefinition.Type.CABIN, 1);
+        Set<BlockPos> floorPositions = new HashSet<>();
+        for (BuildingBlueprint.Placement placement : floor) {
+            if (placement.relativePosition().getY() == 1) {
+                floorPositions.add(placement.relativePosition());
+            }
+        }
+        assertEquals(25, floorPositions.size());
+        assertTrue(floorPositions.stream().allMatch(pos -> floor.stream().anyMatch(p ->
+                p.relativePosition().equals(pos) && p.blockId().equals("minecraft:oak_planks"))));
+        assertFalse(floor.stream().anyMatch(p -> p.blockId().equals("minecraft:red_bed")
+                && p.relativePosition().getY() == 1));
     }
 
     @Test
