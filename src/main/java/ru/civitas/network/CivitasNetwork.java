@@ -242,6 +242,9 @@ public final class CivitasNetwork {
                 } else if ("lumberjack".equals(role) && carried > 0) {
                     succeeded = true;
                     message = name + " уже лесоруб и доставит накопленные брёвна.";
+                } else if ("farmer".equals(role)) {
+                    succeeded = false;
+                    message = "Сначала сними профессию фермера и дождись доставки урожая на склад.";
                 } else {
                     succeeded = LumberjackWorkerAI.assignLumberjackTo(level, center, villager);
                     message = succeeded
@@ -341,7 +344,7 @@ public final class CivitasNetwork {
                     : null;
             case ASSIGN_LUMBERJACK -> "civitas worker lumberjack";
             case ASSIGN_BUILDER -> "civitas worker builder";
-            case ASSIGN_LUMBERJACK_TO, ASSIGN_BUILDER_TO, PAUSE_SELECTED,
+            case ASSIGN_LUMBERJACK_TO, ASSIGN_BUILDER_TO, ASSIGN_FARMER_TO, PAUSE_SELECTED,
                     RESUME_SELECTED, RELEASE_SELECTED -> null;
             case PAUSE_LUMBERJACK -> "civitas worker pause";
             case RESUME_LUMBERJACK -> "civitas worker resume";
