@@ -367,7 +367,7 @@ public final class SettlementScreen extends Screen {
     private int buildingVisibleRows() {
         int startY = contentY + 30;
         int footerY = contentBottom - 24;
-        return Math.max(1, (footerY - startY - 58) / 13);
+        return Math.max(1, (footerY - startY - 72) / 13);
     }
 
     private void initBuildings() {
@@ -814,7 +814,7 @@ public final class SettlementScreen extends Screen {
                 0xFF303030, contentWidth);
         if (selectedIndex < snapshot.buildingDetails().size()) {
             String[] details = snapshot.buildingDetails().get(selectedIndex).split("\\n");
-            int visibleDetails = Math.min(3, details.length);
+            int visibleDetails = Math.min(5, details.length);
             for (int i = 0; i < visibleDetails; i++) {
                 drawLine(detailsY + 12 + i * 12, details[i], 0xFF555555, contentWidth);
             }
