@@ -711,7 +711,10 @@ public final class CivitasNetwork {
                     details.append("\n").append(history.get(historyIndex).toDisplayLine());
                 }
             }
-            buildingDetails.add(details.toString());
+            String detailText = details.toString();
+            // FriendlyByteBuf enforces the snapshot line limit; preserve valid short lines.
+            if (detailText.length() > 480) detailText = detailText.substring(0, 480);
+            buildingDetails.add(detailText);
             if (definition != null) {
                 switch (definition.type()) {
                     case CABIN -> cabins++;
