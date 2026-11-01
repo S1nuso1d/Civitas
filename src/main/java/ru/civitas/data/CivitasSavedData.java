@@ -11,6 +11,8 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.util.datafix.DataFixTypes;
 import ru.civitas.CivitasConfig;
+import ru.civitas.building.BuildingHistory;
+import ru.civitas.building.DamageLevel;
 import ru.civitas.trade.TradePartner;
 import ru.civitas.trade.TradeCaravan;
 import ru.civitas.trade.NeighborCivilization;
@@ -56,6 +58,8 @@ public final class CivitasSavedData extends SavedData {
     private int villageZ;
     private final Map<String, Integer> resources = new TreeMap<>();
     private final List<BuildingRecord> buildings = new ArrayList<>();
+    /** Bounded history keyed by building type and origin coordinates. */
+    private final Map<String, BuildingHistory> buildingHistories = new TreeMap<>();
     private final List<ConstructionOrder> constructionOrders = new ArrayList<>();
     private final Map<UUID, TradePartner> tradePartners = new HashMap<>();
     private final Map<UUID, NeighborCivilization> neighborCivilizations = new HashMap<>();
@@ -281,6 +285,17 @@ public final class CivitasSavedData extends SavedData {
                     building.contains("rotation_degrees") ? building.getInt("rotation_degrees") : 0,
                     building.contains("damage") ? building.getInt("damage") : 0));
         }
+        // Legacy worlds have no building_histories tag and retain their buildings unchanged.
+        ListTag storedBuildingHistories = tag.getList("building_histories", Tag.TAG_COMPOUND);
+        for (int i = 0; i < storedBuildingHistories.size(); i++) {
+            CompoundTag stored = storedBuildingHistories.getCompound(i);
+            String key = stored.getString("key");
+            if (!key.isBlank() && key.length() <= 128
+                    && stored.contains("history", Tag.TAG_COMPOUND)) {
+                BuildingHistory history = BuildingHistory.load(stored.getCompound("history"));
+                if (!history.isEmpty()) data.buildingHistories.put(key, history);
+            }
+        }
         CompoundTag storedResources = tag.getCompound("resources");
         for (String itemId : storedResources.getAllKeys()) {
             int count = storedResources.getInt(itemId);
@@ -406,6 +421,15 @@ public final class CivitasSavedData extends SavedData {
             storedBuildings.add(building);
         }
         tag.put("buildings", storedBuildings);
+        ListTag storedBuildingHistories = new ListTag();
+        for (Map.Entry<String, BuildingHistory> entry : buildingHistories.entrySet()) {
+            if (entry.getValue().isEmpty()) continue;
+            CompoundTag stored = new CompoundTag();
+            stored.putString("key", entry.getKey());
+            stored.put("history", entry.getValue().save());
+            storedBuildingHistories.add(stored);
+        }
+        tag.put("building_histories", storedBuildingHistories);
         CompoundTag storedResources = new CompoundTag();
         resources.forEach(storedResources::putInt);
         tag.put("resources", storedResources);
@@ -556,6 +580,14 @@ public final class CivitasSavedData extends SavedData {
             String type, BlockPos position, int totalLayers,
             Map<String, Integer> reservedResources, List<Map<String, Integer>> layerCosts,
             boolean materialsReservedInWarehouse, int rotationDegrees) {
+        addConstructionOrder(type, position, totalLayers, reservedResources, layerCosts,
+                materialsReservedInWarehouse, rotationDegrees, -1L, "Поселение");
+    }
+
+    public void addConstructionOrder(
+            String type, BlockPos position, int totalLayers,
+            Map<String, Integer> reservedResources, List<Map<String, Integer>> layerCosts,
+            boolean materialsReservedInWarehouse, int rotationDegrees, long worldDay, String actor) {
         if (type == null || type.isBlank() || position == null || totalLayers < 1) return;
         Map<String, Integer> reservation = new TreeMap<>();
         if (reservedResources != null) {
@@ -568,15 +600,15 @@ public final class CivitasSavedData extends SavedData {
         ConstructionOrder order = new ConstructionOrder(
                 type, position.getX(), position.getY(), position.getZ(), 0, totalLayers,
                 reservation, layerCosts, materialsReservedInWarehouse, Math.floorMod(rotationDegrees, 360));
-        if (materialsReservedInWarehouse && !order.hasValidLayerCosts()) {
-            // Do not create an unpaid order without a complete stage cost plan.
-            return;
-        }
+        if (materialsReservedInWarehouse && !order.hasValidLayerCosts()) return;
         if (!materialsReservedInWarehouse && !order.hasValidLayerCosts()) {
             order = new ConstructionOrder(type, position.getX(), position.getY(), position.getZ(),
                     0, totalLayers, reservation);
         }
         constructionOrders.add(order);
+        recordBuildingHistory(type, position, worldDay, BuildingHistory.EventType.CONSTRUCTION_STARTED,
+                actor, "Начато строительство " + type + " на участке "
+                        + position.getX() + ", " + position.getY() + ", " + position.getZ() + ".");
         setDirty();
     }
 
@@ -634,7 +666,15 @@ public final class CivitasSavedData extends SavedData {
 
     public List<ConstructionOrder> getConstructionOrders() { return Collections.unmodifiableList(new ArrayList<>(constructionOrders)); }
     public boolean removeConstructionOrder(ConstructionOrder order) {
+        return removeConstructionOrder(order, -1L, "Поселение");
+    }
+
+    public boolean removeConstructionOrder(ConstructionOrder order, long worldDay, String actor) {
         if (order == null || !constructionOrders.remove(order)) return false;
+        BlockPos position = new BlockPos(order.x(), order.y(), order.z());
+        recordBuildingHistory(order.type(), position, worldDay,
+                BuildingHistory.EventType.CONSTRUCTION_CANCELLED, actor,
+                "Заказ отменён на этапе " + order.progress() + "/" + order.totalLayers() + ".");
         setDirty();
         return true;
     }
@@ -657,6 +697,11 @@ public final class CivitasSavedData extends SavedData {
     }
 
     public void registerBuilding(String type, BlockPos position, int rotationDegrees) {
+        registerBuilding(type, position, rotationDegrees, -1L, "Строители поселения");
+    }
+
+    public void registerBuilding(String type, BlockPos position, int rotationDegrees,
+                                 long worldDay, String actor) {
         if (type == null || type.isBlank() || position == null) return;
         boolean exists = buildings.stream().anyMatch(building ->
                 building.type().equals(type) && building.x() == position.getX()
@@ -664,23 +709,42 @@ public final class CivitasSavedData extends SavedData {
         if (exists) return;
         buildings.add(new BuildingRecord(type, position.getX(), position.getY(), position.getZ(),
                 1, rotationDegrees));
+        recordBuildingHistory(type, position, worldDay, BuildingHistory.EventType.CONSTRUCTION_COMPLETED,
+                actor, "Строительство " + type + " завершено.");
         setDirty();
     }
 
     public boolean upgradeBuilding(int index, int expectedLevel) {
+        return upgradeBuilding(index, expectedLevel, -1L, "Поселение");
+    }
+
+    public boolean upgradeBuilding(int index, int expectedLevel, long worldDay, String actor) {
         if (index < 0 || index >= buildings.size()) return false;
         BuildingRecord current = buildings.get(index);
         if (current.upgradeLevel() != expectedLevel || current.upgradeLevel() >= 3) return false;
+        int nextLevel = current.upgradeLevel() + 1;
         buildings.set(index, new BuildingRecord(current.type(), current.x(), current.y(), current.z(),
-                current.upgradeLevel() + 1, current.rotationDegrees(), current.damage()));
+                nextLevel, current.rotationDegrees(), current.damage()));
+        recordBuildingHistory(current.type(), currentPosition(current), worldDay,
+                BuildingHistory.EventType.UPGRADED, actor,
+                "Уровень повышен с " + current.upgradeLevel() + " до " + nextLevel + ".");
         setDirty();
         return true;
     }
+
     public List<BuildingRecord> getBuildings() {
         return Collections.unmodifiableList(new ArrayList<>(buildings));
     }
 
-    /** Applies once-per-world-day passive wear. Old saves default to no damage. */
+    public List<BuildingHistory.Entry> getBuildingHistory(int buildingIndex) {
+        if (buildingIndex < 0 || buildingIndex >= buildings.size()) return List.of();
+        BuildingRecord building = buildings.get(buildingIndex);
+        BuildingHistory history = buildingHistories.get(buildingHistoryKey(
+                building.type(), building.x(), building.y(), building.z()));
+        return history == null ? List.of() : history.entries();
+    }
+
+    /** Applies daily wear and logs only meaningful changes of the visible damage state. */
     public boolean tickBuildingWear(long worldDay, boolean raining, boolean thundering) {
         if (worldDay < 0 || worldDay <= lastBuildingWearDay || buildings.isEmpty()) return false;
         lastBuildingWearDay = worldDay;
@@ -690,33 +754,76 @@ public final class CivitasSavedData extends SavedData {
             if (raining) wear++;
             if (thundering) wear += 2;
             wear = Math.max(1, (int) Math.ceil(wear / ru.civitas.building.MaterialTier.forBuildingType(building.type()).durabilityMultiplier));
+            int nextDamage = Math.min(100, building.damage() + wear);
+            DamageLevel before = DamageLevel.of(building.damage());
+            DamageLevel after = DamageLevel.of(nextDamage);
             buildings.set(i, new BuildingRecord(building.type(), building.x(), building.y(), building.z(),
-                    building.upgradeLevel(), building.rotationDegrees(), Math.min(100, building.damage() + wear)));
+                    building.upgradeLevel(), building.rotationDegrees(), nextDamage));
+            if (before != after) {
+                recordBuildingHistory(building.type(), currentPosition(building), worldDay,
+                        BuildingHistory.EventType.WEAR_STATE_CHANGED, "Погода",
+                        "Состояние изменилось: " + before.displayName() + " → " + after.displayName()
+                                + " (" + building.damage() + " → " + nextDamage + "/100).");
+            }
         }
         setDirty();
         return true;
     }
 
-    /** Repairs a registered building without changing its identity or upgrade level. */
     public boolean repairBuilding(int index, int amount) {
+        return repairBuilding(index, amount, -1L, "Поселение");
+    }
+
+    public boolean repairBuilding(int index, int amount, long worldDay, String actor) {
         if (index < 0 || index >= buildings.size() || amount <= 0) return false;
         BuildingRecord current = buildings.get(index);
-        if (current.damage() == 0) return false;
+        int nextDamage = Math.max(0, current.damage() - amount);
+        if (nextDamage == current.damage()) return false;
         buildings.set(index, new BuildingRecord(current.type(), current.x(), current.y(), current.z(),
-                current.upgradeLevel(), current.rotationDegrees(), Math.max(0, current.damage() - amount)));
+                current.upgradeLevel(), current.rotationDegrees(), nextDamage));
+        recordBuildingHistory(current.type(), currentPosition(current), worldDay,
+                BuildingHistory.EventType.REPAIRED, actor,
+                "Износ снижен с " + current.damage() + " до " + nextDamage + "/100.");
         setDirty();
         return true;
     }
 
     public boolean damageBuilding(int index, int amount) {
+        return damageBuilding(index, amount, -1L, "Поселение");
+    }
+
+    public boolean damageBuilding(int index, int amount, long worldDay, String actor) {
         if (index < 0 || index >= buildings.size() || amount <= 0) return false;
         BuildingRecord current = buildings.get(index);
-        int next = Math.min(100, current.damage() + amount);
-        if (next == current.damage()) return false;
+        int nextDamage = Math.min(100, current.damage() + amount);
+        if (nextDamage == current.damage()) return false;
         buildings.set(index, new BuildingRecord(current.type(), current.x(), current.y(), current.z(),
-                current.upgradeLevel(), current.rotationDegrees(), next));
+                current.upgradeLevel(), current.rotationDegrees(), nextDamage));
+        recordBuildingHistory(current.type(), currentPosition(current), worldDay,
+                BuildingHistory.EventType.DAMAGED, actor,
+                "Износ увеличен с " + current.damage() + " до " + nextDamage + "/100.");
         setDirty();
         return true;
+    }
+
+    private static BlockPos currentPosition(BuildingRecord building) {
+        return new BlockPos(building.x(), building.y(), building.z());
+    }
+
+    private static String buildingHistoryKey(String type, int x, int y, int z) {
+        return type + "|" + x + "|" + y + "|" + z;
+    }
+
+    private void recordBuildingHistory(String type, BlockPos position, long worldDay,
+                                       BuildingHistory.EventType eventType, String actor, String description) {
+        if (type == null || type.isBlank() || position == null) return;
+        String key = buildingHistoryKey(type, position.getX(), position.getY(), position.getZ());
+        BuildingHistory history = buildingHistories.computeIfAbsent(key, ignored -> new BuildingHistory());
+        if (history.record(worldDay, eventType, actor, description)) {
+            economyHistory.recordEvent(Math.max(0L, worldDay), description + " ["
+                    + position.getX() + ", " + position.getY() + ", " + position.getZ() + "]");
+            setDirty();
+        }
     }
 
     /** Current territory influence is derived from saved settlement state. */

@@ -2,21 +2,27 @@ package ru.civitas.building;
 
 /** Functional thresholds shared by building UI and settlement simulation. */
 public enum DamageLevel {
-    PRISTINE(0, 0, 1.00D),
-    WORN(10, 0, 1.00D),
-    CRACKED(30, -5, 0.95D),
-    DAMAGED(60, -15, 0.75D),
-    DANGEROUS(80, -30, 0.40D),
-    RUINED(100, -50, 0.00D);
+    PRISTINE(0, 0, 1.00D, "Без износа"),
+    WORN(10, 0, 1.00D, "Небольшой износ"),
+    CRACKED(30, -5, 0.95D, "Трещины"),
+    DAMAGED(60, -15, 0.75D, "Повреждено"),
+    DANGEROUS(80, -30, 0.40D, "Опасное состояние"),
+    RUINED(100, -50, 0.00D, "Разрушено");
 
     public final int threshold;
     public final int happinessPenalty;
     public final double productionMultiplier;
+    private final String displayName;
 
-    DamageLevel(int threshold, int happinessPenalty, double productionMultiplier) {
+    DamageLevel(int threshold, int happinessPenalty, double productionMultiplier, String displayName) {
         this.threshold = threshold;
         this.happinessPenalty = happinessPenalty;
         this.productionMultiplier = productionMultiplier;
+        this.displayName = displayName;
+    }
+
+    public String displayName() {
+        return displayName;
     }
 
     public static DamageLevel of(int damage) {

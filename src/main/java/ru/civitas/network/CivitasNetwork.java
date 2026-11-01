@@ -25,6 +25,9 @@ import ru.civitas.CivitasMod;
 import ru.civitas.block.SettlementWarehouseBlockEntity;
 import ru.civitas.client.ClientNetworkHandler;
 import ru.civitas.data.CivitasSavedData;
+import ru.civitas.building.BuildingHistory;
+import ru.civitas.building.DamageLevel;
+import ru.civitas.building.MaterialTier;
 import ru.civitas.data.TerritoryInfluence;
 import ru.civitas.world.BuildingDefinition;
 import ru.civitas.worker.LumberjackWorkerAI;
@@ -55,7 +58,7 @@ import java.util.regex.Pattern;
 public final class CivitasNetwork {
     public static final SimpleChannel CHANNEL = ChannelBuilder
             .named(ResourceLocation.fromNamespaceAndPath(CivitasMod.MOD_ID, "main"))
-            .networkProtocolVersion(8)
+            .networkProtocolVersion(9)
             .simpleChannel();
 
     private static final Pattern ITEM_ID_PATTERN =
@@ -674,6 +677,7 @@ public final class CivitasNetwork {
         }
 
         List<String> buildingLines = new ArrayList<>();
+        List<String> buildingDetails = new ArrayList<>();
         int cabins = 0;
         int farms = 0;
         int workshops = 0;
@@ -682,6 +686,32 @@ public final class CivitasNetwork {
             CivitasSavedData.BuildingRecord building = buildingRecords.get(buildingIndex);
             String prefix = (buildingIndex + 1) + ". ";
             BuildingDefinition definition = BuildingDefinition.find(building.type()).orElse(null);
+            DamageLevel damageLevel = DamageLevel.of(building.damage());
+            String materialName = switch (MaterialTier.forBuildingType(building.type())) {
+                case PRIMITIVE -> "Примитивные";
+                case STANDARD -> "Стандартные";
+                case QUALITY -> "Качественные";
+                case LUXURY -> "Премиальные";
+            };
+            List<BuildingHistory.Entry> history = data.getBuildingHistory(buildingIndex);
+            String completionDay = history.stream()
+                    .filter(entry -> entry.type() == BuildingHistory.EventType.CONSTRUCTION_COMPLETED)
+                    .map(entry -> "День " + entry.day()).findFirst().orElse("До 0.43.1 / не записана");
+            StringBuilder details = new StringBuilder("Состояние: ")
+                    .append(damageLevel.displayName()).append(" · износ ")
+                    .append(building.damage()).append("/100 · прочность ")
+                    .append(100 - building.damage()).append("/100")
+                    .append("\nМатериалы: ").append(materialName)
+                    .append("\nДата постройки: ").append(completionDay);
+            if (history.isEmpty()) {
+                details.append("\nИстория начнётся с первого изменения здания.");
+            } else {
+                int first = Math.max(0, history.size() - 2);
+                for (int historyIndex = first; historyIndex < history.size(); historyIndex++) {
+                    details.append("\n").append(history.get(historyIndex).toDisplayLine());
+                }
+            }
+            buildingDetails.add(details.toString());
             if (definition != null) {
                 switch (definition.type()) {
                     case CABIN -> cabins++;
@@ -691,12 +721,13 @@ public final class CivitasNetwork {
                 if (buildingLines.size() < 128) {
                     String levelText = definition.type() == BuildingDefinition.Type.CABIN
                             ? " · уровень " + building.upgradeLevel() + "/3" : "";
-                    buildingLines.add(prefix + definition.displayName() + levelText + " — "
-                            + building.x() + ", " + building.y() + ", " + building.z());
+                    buildingLines.add(prefix + definition.displayName() + levelText + " · износ "
+                            + building.damage() + "/100 — " + building.x() + ", "
+                            + building.y() + ", " + building.z());
                 }
             } else if (buildingLines.size() < 128) {
-                buildingLines.add(prefix + building.type() + " — "
-                        + building.x() + ", " + building.y() + ", " + building.z());
+                buildingLines.add(prefix + building.type() + " · износ " + building.damage()
+                        + "/100 — " + building.x() + ", " + building.y() + ", " + building.z());
             }
         }
 
@@ -784,8 +815,8 @@ public final class CivitasNetwork {
                 cabins, farms, workshops, orders.size(), totalItems, occupiedSlots, warehouseSlots,
                 data.getEconomyHistory().deltaWood(7), data.getEconomyHistory().deltaStone(7),
                 data.getEconomyHistory().deltaFood(7), statusMessage, eventLines, economyLines,
-                residentNames, residentUuids, residentRoles, residentStatuses, buildingLines, constructionLines, storageLines,
-                data.getUnlockedAchievementRecords());
+                residentNames, residentUuids, residentRoles, residentStatuses, buildingLines, buildingDetails,
+                constructionLines, storageLines, data.getUnlockedAchievementRecords());
         long worldDay = Math.max(0L, level.getDayTime() / 24000L);
         for (String achievementId : achievedMilestones(snapshot)) {
             if (hasAchievementPrerequisites(achievementId, data.getUnlockedAchievementIds())) {

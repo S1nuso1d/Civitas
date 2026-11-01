@@ -30,6 +30,12 @@ public final class SettlementBuildingManager {
     public static BuildResult build(ServerLevel level, BlockPos warehousePos,
                                     SettlementWarehouseBlockEntity warehouse, BuildingDefinition.Type type,
                                     CivitasSavedData data) {
+        return build(level, warehousePos, warehouse, type, data, "Поселение");
+    }
+
+    public static BuildResult build(ServerLevel level, BlockPos warehousePos,
+                                    SettlementWarehouseBlockEntity warehouse, BuildingDefinition.Type type,
+                                    CivitasSavedData data, String actor) {
         BlockPos site = findSite(level, warehousePos, type, data);
         if (site == null) {
             return new BuildResult(false,
@@ -37,16 +43,22 @@ public final class SettlementBuildingManager {
         }
         BuildResult validation = validateManualSite(level, warehousePos, type, data, site, 0);
         if (!validation.success()) return validation;
-        return queueAtSite(level, warehouse, type, data, site, 0);
+        return queueAtSite(level, warehouse, type, data, site, 0, actor);
     }
 
     /** Queues a player-selected build site with a validated 90-degree rotation. */
     public static BuildResult buildAt(ServerLevel level, BlockPos warehousePos,
                                       SettlementWarehouseBlockEntity warehouse, BuildingDefinition.Type type,
                                       CivitasSavedData data, BlockPos site, int rotationDegrees) {
+        return buildAt(level, warehousePos, warehouse, type, data, site, rotationDegrees, "Поселение");
+    }
+
+    public static BuildResult buildAt(ServerLevel level, BlockPos warehousePos,
+                                      SettlementWarehouseBlockEntity warehouse, BuildingDefinition.Type type,
+                                      CivitasSavedData data, BlockPos site, int rotationDegrees, String actor) {
         BuildResult validation = validateManualSite(level, warehousePos, type, data, site, rotationDegrees);
         if (!validation.success()) return validation;
-        return queueAtSite(level, warehouse, type, data, site, rotationDegrees);
+        return queueAtSite(level, warehouse, type, data, site, rotationDegrees, actor);
     }
 
     /**
@@ -171,7 +183,7 @@ public final class SettlementBuildingManager {
 
     private static BuildResult queueAtSite(ServerLevel level, SettlementWarehouseBlockEntity warehouse,
                                             BuildingDefinition.Type type, CivitasSavedData data,
-                                            BlockPos site, int rotationDegrees) {
+                                            BlockPos site, int rotationDegrees, String actor) {
         BuildingDefinition definition = BuildingDefinition.get(type);
         if (warehouse == null) {
             return new BuildResult(false, "Центральный физический склад не найден.");
@@ -201,7 +213,8 @@ public final class SettlementBuildingManager {
 
         clearReplaceableVolume(level, site, definition, rotationDegrees);
         data.addConstructionOrder(definition.id(), site, definition.totalLayers(),
-                definition.costs(), definition.layerCosts(), true, rotationDegrees);
+                definition.costs(), definition.layerCosts(), true, rotationDegrees,
+                Math.max(0L, level.getDayTime() / 24000L), actor);
         return new BuildResult(true, "Заказ принят: " + definition.displayName()
                 + " (поворот " + rotationDegrees + "°). Резерв материалов создан на складе. "
                 + "Растительность в объёме здания очищена; твёрдые блоки не удаляются. "
@@ -261,7 +274,8 @@ public final class SettlementBuildingManager {
         if (order.progress() > 0) {
             removeConstructedLayers(level, order);
         }
-        if (!data.removeConstructionOrder(order)) {
+        if (!data.removeConstructionOrder(order, Math.max(0L, level.getDayTime() / 24000L),
+                player.getName().getString())) {
             return new BuildResult(false, "Заказ уже изменился. Обнови очередь строительства.");
         }
 
@@ -352,6 +366,11 @@ public final class SettlementBuildingManager {
      */
     public static BuildResult placeConstructionLayer(
             ServerLevel level, CivitasSavedData data, CivitasSavedData.ConstructionOrder order) {
+        return placeConstructionLayer(level, data, order, "Строители поселения");
+    }
+
+    public static BuildResult placeConstructionLayer(
+            ServerLevel level, CivitasSavedData data, CivitasSavedData.ConstructionOrder order, String actor) {
         if (order == null || !data.getConstructionOrders().contains(order)) {
             return new BuildResult(false, "Заказ строительства больше не активен.");
         }
@@ -416,7 +435,8 @@ public final class SettlementBuildingManager {
         BuildingBlueprint.placeLayer(level, ground, type, layer, order.rotationDegrees());
         data.advanceConstructionOrder(order);
         if (layer >= BuildingDefinition.get(type).totalLayers()) {
-            data.registerBuilding(order.type(), ground, order.rotationDegrees());
+            data.registerBuilding(order.type(), ground, order.rotationDegrees(),
+                    Math.max(0L, level.getDayTime() / 24000L), actor);
         }
         return new BuildResult(true, "Слой " + layer + " завершён.");
     }
@@ -426,6 +446,12 @@ public final class SettlementBuildingManager {
      */
     public static BuildResult upgradeHouse(ServerLevel level, CivitasSavedData data,
                                             SettlementWarehouseBlockEntity warehouse, int buildingIndex) {
+        return upgradeHouse(level, data, warehouse, buildingIndex, "Поселение");
+    }
+
+    public static BuildResult upgradeHouse(ServerLevel level, CivitasSavedData data,
+                                            SettlementWarehouseBlockEntity warehouse, int buildingIndex,
+                                            String actor) {
         if (warehouse == null) {
             return new BuildResult(false, "Центральный склад не найден или не загружен.");
         }
@@ -475,7 +501,8 @@ public final class SettlementBuildingManager {
         }
         try {
             BuildingBlueprint.placeHouseUpgrade(level, ground, nextLevel, building.rotationDegrees());
-            if (!data.upgradeBuilding(buildingIndex - 1, building.upgradeLevel())) {
+            if (!data.upgradeBuilding(buildingIndex - 1, building.upgradeLevel(),
+                    Math.max(0L, level.getDayTime() / 24000L), actor)) {
                 BuildingBlueprint.removeHouseUpgrade(level, ground, nextLevel, building.rotationDegrees());
                 for (Map.Entry<String, Integer> entry : costs.entrySet()) {
                     Item item = BuiltInRegistries.ITEM.get(ResourceLocation.parse(entry.getKey()));

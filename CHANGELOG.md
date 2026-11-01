@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.43.1] - Building History
+### Added
+- Added a bounded per-building event journal keyed by building type and origin coordinates.
+- Persisted construction start/completion/cancellation, upgrades, repairs, direct damage and meaningful weather wear transitions in world SavedData/NBT.
+- Recorded the requesting player's name for construction and upgrades, plus the villager builder's name on completion.
+- Added building material tier, wear, strength, construction day and recent history to the Buildings tab.
+- Building events are also included in the settlement's recent event feed.
+- Existing worlds remain compatible; old buildings keep their state and start with an empty history. Historical dates are not fabricated.
+- Increased the network protocol version to 9 for the expanded server snapshot.
+
+### Validation
+- Source committed; local Gradle build/tests and in-game save/load validation are required before calling this release verified.
+
 ## [0.42.0] - Living Systems Pass (first implementation slice)
 
 ### Added

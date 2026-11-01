@@ -776,7 +776,8 @@ public final class CivitasCommands {
                 data.getStarterVillageCenter(),
                 warehouse,
                 type,
-                data
+                data,
+                player.getName().getString()
         );
         if (result.success()) {
             context.getSource().sendSuccess(() -> Component.literal("§a" + result.message()), false);
@@ -811,7 +812,8 @@ public final class CivitasCommands {
             return 0;
         }
         SettlementBuildingManager.BuildResult result = SettlementBuildingManager.buildAt(
-                context.getSource().getServer().overworld(), center, warehouse, type, data, site, rotationDegrees);
+                context.getSource().getServer().overworld(), center, warehouse, type, data, site, rotationDegrees,
+                player.getName().getString());
         if (result.success()) {
             context.getSource().sendSuccess(() -> Component.literal("§a" + result.message()), false);
             return Command.SINGLE_SUCCESS;
@@ -972,7 +974,7 @@ public final class CivitasCommands {
         }
         int index = IntegerArgumentType.getInteger(context, "index");
         var result = SettlementBuildingManager.upgradeHouse(
-                context.getSource().getServer().overworld(), data, warehouse, index);
+                context.getSource().getServer().overworld(), data, warehouse, index, player.getName().getString());
         if (result.success()) context.getSource().sendSuccess(() -> Component.literal(result.message()), false);
         else context.getSource().sendFailure(Component.literal(result.message()));
         return result.success() ? 1 : 0;

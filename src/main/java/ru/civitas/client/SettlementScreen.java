@@ -364,10 +364,16 @@ public final class SettlementScreen extends Screen {
         return value != null && value.trim().matches("(?:-?\\d+|~(?:-?\\d+)?)");
     }
 
+    private int buildingVisibleRows() {
+        int startY = contentY + 30;
+        int footerY = contentBottom - 24;
+        return Math.max(1, (footerY - startY - 58) / 13);
+    }
+
     private void initBuildings() {
         int startY = contentY + 30;
         int footerY = contentBottom - 24;
-        int rows = Math.max(1, (footerY - startY) / 13);
+        int rows = buildingVisibleRows();
         List<String> buildings = snapshot == null ? List.of() : snapshot.buildings();
         int maxOffset = Math.max(0, buildings.size() - rows);
         listOffset = Math.min(listOffset, maxOffset);
@@ -792,6 +798,28 @@ public final class SettlementScreen extends Screen {
                 0xFF303030, Math.max(20, contentWidth - 58));
         if (snapshot.buildings().isEmpty()) {
             drawLine(contentY + 28, "Пока нет зарегистрированных построек.", 0xFF777777, contentWidth);
+            return;
+        }
+
+        String selectedValue = buildingIndex == null ? buildingIndexValue : buildingIndex.getValue();
+        int selectedIndex = safeInteger(selectedValue, 1, 128, 1) - 1;
+        int detailsY = contentY + 30 + buildingVisibleRows() * 13 + 3;
+        if (selectedIndex < 0 || selectedIndex >= snapshot.buildings().size()) {
+            drawLine(detailsY, "Введи номер существующего здания для просмотра истории.",
+                    0xFF777777, contentWidth);
+            return;
+        }
+
+        drawLine(detailsY, "История: " + snapshot.buildings().get(selectedIndex),
+                0xFF303030, contentWidth);
+        if (selectedIndex < snapshot.buildingDetails().size()) {
+            String[] details = snapshot.buildingDetails().get(selectedIndex).split("\\n");
+            int visibleDetails = Math.min(3, details.length);
+            for (int i = 0; i < visibleDetails; i++) {
+                drawLine(detailsY + 12 + i * 12, details[i], 0xFF555555, contentWidth);
+            }
+        } else {
+            drawLine(detailsY + 12, "История пока пуста.", 0xFF777777, contentWidth);
         }
     }
 

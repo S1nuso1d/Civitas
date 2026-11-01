@@ -186,7 +186,7 @@ public final class ConstructionWorkerAI {
             }
 
             SettlementBuildingManager.BuildResult result =
-                    SettlementBuildingManager.placeConstructionLayer(level, data, order);
+                    SettlementBuildingManager.placeConstructionLayer(level, data, order, builder.getName().getString());
             if (result.success()) {
                 persistent.putInt(WORK_PROGRESS_KEY, 0);
                 persistent.remove(BLOCKED_REASON_KEY);

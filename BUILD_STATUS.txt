@@ -1,17 +1,15 @@
-Civitas Alpha 0.42.0 — Living Systems Pass (first implementation slice)
+Civitas Alpha 0.43.1 — Building History
 Target: Minecraft Java Edition 1.21.1 + Forge 52.1.20 + Java 21
 
 Implemented in source:
-- Server-authoritative hunger decision for assigned lumberjacks, farmers and builders: one hunger point per 1,000 game ticks; below/equal 40 the worker seeks food at the warehouse, consumes food if available and resumes work. Explicit personal orders have priority.
-- F4 client-only realtime HUD backed by the existing server snapshot: population and roles, food reserve estimate, seven-day resource deltas, construction queue, building count, warehouse occupancy and settlement status.
-- Targeted villager inspection panel with current display/custom status, movement state, health and Minecraft profession.
-- No network packet fields or SettlementData save-schema fields were added. Hunger is stored in per-villager persistent data with safe defaults.
-
-Not yet implemented from the larger 0.42 plan:
-- Further needs-based decisions: tool replacement, shelter seeking, sleep/social/family behavior. Hunger is implemented in this slice.
-- Persistent traditions, festivals, generations and culture.
-- Advancement triggers, trend charts, ambient soundscapes and dynamic music.
-- Third-party profession/blueprint API, accessibility configuration, export/profiler/save validator.
+- Per-building journal with a 24-event cap, keyed by building type and origin coordinates.
+- NBT save/load for the journal; existing worlds without the new tag keep their existing building records and load with empty histories.
+- Construction started/completed/cancelled, upgrades, repairs, direct damage, and weather wear state transitions are recorded.
+- Construction requester names and builder villager names are stored in journal entries.
+- Buildings tab now shows material tier, wear, remaining strength, construction day when known, and the two latest events for the selected building.
+- Building events also appear in the existing settlement recent-events feed.
+- Network protocol increased from 8 to 9 for the updated snapshot.
 
 Validation:
-- Source change is committed; CI build/tests and in-game rendering remain unverified until GitHub Actions completes and the mod is tested in Minecraft.
+- Changes are committed to GitHub but have not been built in this session.
+- Run Gradle build/tests locally. In-game test should include loading an existing world, placing a new structure, upgrading it, saving/reloading, and checking that history persists.
