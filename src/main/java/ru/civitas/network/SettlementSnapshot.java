@@ -39,6 +39,28 @@ public record SettlementSnapshot(
         unlockedAchievements=boundedLines(unlockedAchievements,256);
     }
 
+    /** Compatibility constructor for callers that do not provide per-building details. */
+    public SettlementSnapshot(
+            boolean founded, String settlementName, String ownerName, int level, int population,
+            int foodStock, int foodConsumptionPerDay, int foodDaysLeft, int hungerDays,
+            int growthProgressDays, int growthIntervalDays, int bedCount,
+            int residentCount, int lumberjacks, int builders, int farmers, int idleResidents,
+            int cabinCount, int farmCount, int workshopCount, int orderCount,
+            int warehouseItemCount, int warehouseOccupiedSlots, int warehouseSlots,
+            int woodDelta7d, int stoneDelta7d, int foodDelta7d,
+            String statusMessage, List<String> recentEvents, List<String> economy,
+            List<String> residents, List<String> residentUuids, List<String> residentRoles,
+            List<String> residentStatuses, List<String> buildings, List<String> construction,
+            List<String> storage, List<String> unlockedAchievements) {
+        this(founded, settlementName, ownerName, level, population,
+                foodStock, foodConsumptionPerDay, foodDaysLeft, hungerDays, growthProgressDays,
+                growthIntervalDays, bedCount, residentCount, lumberjacks, builders, farmers, idleResidents,
+                cabinCount, farmCount, workshopCount, orderCount, warehouseItemCount, warehouseOccupiedSlots,
+                warehouseSlots, woodDelta7d, stoneDelta7d, foodDelta7d, statusMessage, recentEvents, economy,
+                residents, residentUuids, residentRoles, residentStatuses, buildings, List.of(),
+                construction, storage, unlockedAchievements);
+    }
+
     public static SettlementSnapshot empty(String message) {
         return new SettlementSnapshot(false,"Нет поселения","",1,0,
                 0,0,0,0,0,2,0,
